@@ -187,6 +187,14 @@ Every interactive element defines: rest / hover / active / focus-visible / disab
       memory-updated divider.
 - [x] Dropped from old SkyChat: amber user avatar (brand-only rule), double "Conversation
       History" heading, orphan single-item "Chats" accordion.
+- [x] **Adopted from Claude's app shell** (client feedback, 2026-08-11): a persistent
+      nav-shortcut row above the conversation search (currently just "Agents", styled at the
+      same row height as `.sc-chat-item` so it reads as one list, not the app-shell
+      `.nav-item` which goes solid amber active and would fight the soft tint the history
+      list uses), and a clickable account row in the footer opening straight to
+      Settings > Account. Explicitly **not** adopted: the Chat / Cowork / Code top tab bar —
+      skyChat has one product today, so tabs for products that do not exist would mislead
+      rather than orient.
 
 > **Documented deviation: the selected conversation row.** The DS hard rule says an active
 > sidebar item is a solid `--accent-9` pill. That rule is written for *primary navigation*,
@@ -199,3 +207,22 @@ Every interactive element defines: rest / hover / active / focus-visible / disab
 > text rather than `--accent-11`, which also sidesteps the amber-on-cream contrast caveat
 > noted in §8. Selection is therefore carried by two cues, fill plus text contrast, exactly
 > the model Claude's own sidebar uses.
+
+## 10. Deferred, by design
+
+Not gaps found during a pass — features scoped out on purpose, so a future contributor does not
+"fix" them into existence without the context.
+
+- **Automatic agent routing.** Client feedback (2026-08-11) was to eventually have skyChat pick
+  the right agent for a message itself, using the composer's agent chip only as a fallback or
+  override rather than the primary mechanism. Manual selection (the `#kbBtn` chip) is the whole
+  mechanism today. Auto-routing needs real classification behaviour to demo honestly, which is
+  out of reach for a static prototype, so it is documented here rather than faked with a toggle
+  that does nothing. When it is built, the chip's role changes from *the* selector to an
+  *override*, which likely means restating its default label (e.g. "Auto" versus a pinned
+  agent name) rather than just adding a setting.
+- **Removed rather than deferred:** a second, inert "Agents" toggle used to sit beside the
+  working agent chip in the composer (`aria-haspopup="menu"` with no menu ever wired to it).
+  Two adjacent controls that both look like agent selection, only one of which worked, was worse
+  than one. It is gone; the sidebar's new "Agents" shortcut (below) covers the "browse agents"
+  need instead.

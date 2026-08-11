@@ -43,6 +43,17 @@
           New Chat
         </button>
 
+        <!-- Persistent shortcuts, same row geometry as the chat history below so
+             the sidebar reads as one list. Agents is the one real analog skyChat
+             has to a "Projects"-style destination: a place people go to browse
+             or configure, not a specific conversation. -->
+        <div class="sc-nav-list">
+          <button class="sc-nav-item" id="navAgentsBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+            <span class="nav-label">Agents</span>
+          </button>
+        </div>
+
         <div class="search">
           <span class="search-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
           <input class="input" id="chatSearch" placeholder="Search chats" aria-label="Search chats" />
@@ -80,10 +91,10 @@
       </div>
 
       <div class="sc-side-foot">
-        <span class="persona">
+        <button class="persona" id="personaBtn" aria-label="Open account settings">
           <span class="avatar c6">SA</span>
           <span class="persona-text"><span class="persona-name">Sumit Awinash</span></span>
-        </span>
+        </button>
         <button class="icon-btn" id="settingsBtn" aria-label="Settings" data-tip="Settings">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg>
         </button>
@@ -194,11 +205,11 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 18V5"/><path d="M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4"/><path d="M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5"/><path d="M17.997 5.125a4 4 0 0 1 2.526 5.77"/><path d="M18 18a4 4 0 0 0 2-7.464"/><path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517"/><path d="M6 18a4 4 0 0 1-2-7.464"/><path d="M6.003 5.125a4 4 0 0 0-2.526 5.77"/></svg>
             Think
           </button>
-          <button class="toggle" id="btnAgents" aria-haspopup="menu" aria-expanded="false">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
-            Agents
-          </button>
           <span class="sc-row-spacer"></span>
+          <!-- The agent picker. Manual selection today; the natural next step
+               (flagged as "eventually" in client feedback, not built here) is
+               for skyChat to route a message to the right agent itself and
+               only fall back to this chip when it is unsure or overridden. -->
           <button class="sc-kb-chip" id="kbBtn" aria-haspopup="menu" aria-expanded="false">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
             <span id="kbLabel">General Knowledge</span>
@@ -1573,7 +1584,6 @@
 
     /* Toggles: Search / Think */
     $$(".toggle", composerUnit).forEach(function (t) {
-      if (t.id === "btnAgents") return;
       t.addEventListener("click", function () {
         var on = t.classList.toggle("is-on");
         t.setAttribute("aria-pressed", String(on));
@@ -2048,6 +2058,10 @@
       }, 120);
     }
     $("#settingsBtn").addEventListener("click", openSettings);
+    /* Persistent sidebar shortcuts open straight to the relevant pane, rather
+       than to whatever pane Settings last happened to be on. */
+    $("#navAgentsBtn").addEventListener("click", function () { showPane("agents"); openSettings(); });
+    $("#personaBtn").addEventListener("click", function () { showPane("account"); openSettings(); });
     $("#setClose").addEventListener("click", closeSettings);
     setOverlay.addEventListener("click", function (e) { if (e.target === setOverlay) closeSettings(); });
 

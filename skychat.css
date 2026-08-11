@@ -74,6 +74,28 @@
 .sc-side-body .search { width: 100%; }
 .sc-side-body .search .input { width: 100%; background: var(--color-surface); }
 
+/* Persistent nav shortcuts. Same row geometry as .sc-chat-item (32px, same
+   padding/radius) so the sidebar reads as one continuous list rather than two
+   unrelated components, but plain icon+label since these are fixed
+   destinations, not data. Deliberately NOT the app-shell .nav-item: that
+   variant goes solid amber when active, which is correct for a shell where
+   this is the only nav, but would fight the soft accent-3 tint the chat
+   history already uses for its active row. One accent treatment per list. */
+.sc-nav-list { display: flex; flex-direction: column; gap: 2px; }
+.sc-nav-item {
+  display: flex; align-items: center; gap: var(--space-2);
+  min-height: 32px; padding: var(--space-1) var(--space-2) var(--space-1) var(--space-3);
+  width: 100%; border: 0; background: transparent; border-radius: var(--radius-3);
+  color: var(--fg-low); font-family: inherit; font-size: var(--fs-2); font-weight: var(--weight-medium);
+  text-decoration: none; cursor: pointer;
+  transition: background .12s ease-in-out, color .12s ease-in-out;
+}
+.sc-nav-item svg { width: 18px; height: 18px; flex: 0 0 auto; color: var(--fg-subtle); }
+.sc-nav-item .nav-label { flex: 1; text-align: left; }
+.sc-nav-item:hover { background: var(--gray-3); color: var(--fg-high); }
+.sc-nav-item:hover svg { color: var(--fg-low); }
+.sc-nav-item:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--gray-2), 0 0 0 4px var(--focus-ring); }
+
 .sc-groups { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-4); }
 /* Rows sit flush; the group label supplies the only vertical break. */
 .sc-group { display: flex; flex-direction: column; }
@@ -122,7 +144,20 @@
   padding: var(--space-3) var(--space-4);
   border-top: var(--stroke-thin) solid var(--border-subtle);
 }
-.sc-side-foot .persona { flex: 1; min-width: 0; }
+/* .persona was a static span elsewhere in the DS; here it is the account entry
+   point (opens Settings > Account), so it needs the interactive reset a plain
+   span never had: no button chrome, a hover state, and text left-aligned since
+   buttons center by default. */
+.sc-side-foot .persona {
+  flex: 1; min-width: 0; text-align: left;
+  border: 0; background: transparent; padding: var(--space-1) var(--space-2);
+  margin: 0 calc(-1 * var(--space-2));
+  border-radius: var(--radius-3); cursor: pointer;
+  font-family: inherit;
+  transition: background .12s ease-in-out;
+}
+.sc-side-foot .persona:hover { background: var(--gray-3); }
+.sc-side-foot .persona:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--gray-2), 0 0 0 4px var(--focus-ring); }
 .sc-side-foot .persona-name { font-size: var(--fs-2); }
 
 /* ---- Icon button (standalone, ghost) ---- */
