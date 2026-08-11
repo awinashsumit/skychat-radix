@@ -844,6 +844,24 @@
 .btn-ghost.is-danger { color: var(--danger-text); }
 .btn-ghost.is-danger:hover { background: var(--danger-bg); color: var(--danger-text); }
 
+/* Brand amber in the composer, applied where it can actually be seen.
+   #FFB31C as a LABEL on the pale amber pill measures 1.59:1, so the word
+   "Search" stops being readable. As the FILL with dark text it measures 9.27:1,
+   and reads as the brand colour far more strongly than tinted text ever did.
+
+   An on/off state should be loud, so the toggles take the solid brand fill. The
+   knowledge selector is a persistent value rather than a state, so it stays
+   quiet and carries the brand in its icon, leaving Send as the loudest control. */
+.sc-composer-row .toggle.is-on {
+  background: var(--accent-9); color: var(--accent-contrast); box-shadow: none;
+}
+.sc-composer-row .toggle.is-on:hover { background: var(--accent-10); color: var(--accent-contrast); }
+.sc-composer-row .toggle.is-on svg { color: var(--accent-contrast); }
+
+.sc-kb-chip { color: var(--accent-12); }
+.sc-kb-chip svg { color: var(--accent-9); }
+.sc-kb-chip .sc-chevron { color: var(--accent-12); }
+
 /* Accent icons vs accent text.
    Step 11 is the dark TEXT step and must stay dark wherever it colours words
    (.sc-kb-chip, .link, .badge, the "Add" label on an upload tile).
