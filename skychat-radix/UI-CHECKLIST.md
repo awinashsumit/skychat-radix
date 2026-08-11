@@ -1,0 +1,201 @@
+# SkyChat Redesign: UI Checklist (Radix flavor)
+
+The verification contract for the SkyChat redesign. Every item is checked against
+`index.html` + `skychat.css` before the screen is called done. Values bind to
+`tokens.css`; no literals except the documented ones.
+
+---
+
+## 1. Grid & layout
+
+- [x] App shell: 2 columns. Sidebar `288px` fixed, content `1fr`. Sidebar collapses to `0`
+      (animated) below 1024px or on toggle.
+- [x] Top bar: `64px` tall, hairline bottom border (`--border-subtle`), white surface.
+- [x] Reading column: messages and composer share ONE max-width, `768px`, centered as a
+      column; text inside stays left-aligned.
+- [x] Hero (empty state) is the only centered block, per the empty-state exception.
+- [x] All gutters and paddings on the Radix space scale (`--space-1`..`--space-9`), 4/8px
+      rhythm. No off-scale px.
+- [x] Sidebar canvas `--gray-2`, chat canvas `--color-panel-solid` (white), separated by a
+      1px `--border-subtle` line, matching the skyAgent rail-vs-canvas split.
+
+## 2. Type ramp (Inter, Radix sizes)
+
+- [x] Inter loaded via Google Fonts; weights 400 / 500 / 700 only. The one exception is the
+      logo wordmark, which is set in the brand serif via `--font-brand` and scoped to
+      `.sc-brand-name`, so no UI text can inherit it.
+- [x] One H1 per view: greeting `t-8` Bold (35/40) on Home; conversation title `t-3` Medium
+      in the top bar on Chat (the H1 of that view).
+- [x] Message body `t-3` (16/24) - long-form reading size.
+- [x] UI labels and buttons `t-2` Medium (14/20). Section labels `t-1` Medium uppercase.
+- [x] Meta rows, timestamps, hints `t-1` (12/16). Nothing below 12px.
+- [x] Hierarchy carried by weight + the `--fg-high` / `--fg-low` two-step split, not by
+      inventing sizes. No size off the `t-1`..`t-9` ramp.
+
+## 3. Spacing & density
+
+Density target: a working chat app, not a marketing page. Rows and blocks stay tight enough
+that a full conversation list reads at a glance.
+
+- [x] Composer internal padding `--space-3`/`--space-4`; gap between composer and message
+      list `--space-5`.
+- [x] Message blocks separated by `--space-5` (24px); elements inside a block by
+      `--space-2`/`--space-3` (internal <= external).
+- [x] Sidebar: CTA / search / groups separated by `--space-3`; conversation rows sit flush
+      (no gap), so the group label is the only vertical break.
+- [x] Conversation row: 32px tall, 32px pitch. This is the density benchmark, one row per
+      32px with no gap; anything looser makes the history list feel padded.
+- [x] Chip rows wrap with `--space-2` gaps; message action buttons `--space-1`.
+
+## 4. Color & theming
+
+- [x] Every color is a `var(--...)` token; zero raw hex outside inline SVG art.
+- [x] Amber is brand only: New Chat CTA, active sidebar pill, send button, knowledge chip,
+      assistant spark tile, focus rings. Status uses red / green / orange / blue.
+- [x] Text and icons on solid amber are `--accent-contrast` (dark), never white.
+- [x] Avatars are never amber: user "SA" uses a deterministic chart hue (`.c6`).
+- [x] Logo mark is inline SVG whose fills are accent tokens (`--accent-3` bubble, `--accent-9`
+      dots), so it re-tints per theme instead of shipping two raster files. Its geometry is
+      artwork and therefore exempt from the radius scale.
+- [x] Dark theme works by flipping `data-theme`; both themes read from the same step roles.
+
+## 5. Elevation (one strategy per plane)
+
+- [x] In-flow surfaces (composer, inputs, chips, toolbar buttons) separate with **inset 1px
+      hairline rings** (`--border-ui` / `--border-subtle`), not shadows, not CSS borders on
+      inputs.
+- [x] Floating surfaces only get shadows: menus/popovers `--shadow-4`, dialogs `--shadow-5`,
+      toasts `--shadow-4`. Every shadow keeps its crisp 1px ring layer.
+- [x] **One z-index scale, no literals.** Ordered by what can be summoned from what:
+      drawer 100 < overlay 1000 < nested dialog 1100 < menu 1200 < tooltip 1300 < toast 1400.
+      A menu opens from inside a dialog and a toast confirms an action taken anywhere, so
+      both must outrank the overlay. Tokens live in one block in `skychat.css`; never
+      hardcode a z-index elsewhere.
+- [x] The composer floats over scrolling content via a **gradient scroll fade**, not a shadow,
+      so the border strategy stays pure.
+- [x] Focus swaps the inset ring to `--accent-8` with zero layout shift.
+- [x] Radii on the Radix scale: composer `--radius-5`, menus `--radius-4`, buttons/chips/
+      toggles `--radius-3`, small icon actions `--radius-2`. No pill-shaped (`--radius-full`)
+      controls; only avatars are circular.
+
+## 6. Component states (micro-interaction inventory)
+
+Every interactive element defines: rest / hover / active / focus-visible / disabled.
+
+- [x] **Buttons** (solid, soft, surface, ghost, icon): hover fill step +1, pressed scale
+      `0.98`, focus ring `--focus-ring` 2px offset, disabled `--gray-3` + `--fg-disabled`.
+- [x] **Send button**: disabled until input has text; enabling animates fill from gray to
+      amber (150ms); hover `--accent-10`.
+- [x] **Sidebar history rows**: hover `--gray-3`; ellipsis action appears on hover/focus;
+      selected row = soft `--accent-3` tint with `--fg-high` text (only one). Deliberate
+      deviation from the DS "active nav = solid amber pill" rule, see the note in §9.
+- [x] **Composer**: focus-within ring swap to `--accent-8`; textarea autogrows (max 5 lines);
+      Enter sends, Shift+Enter breaks line.
+- [x] **Toggles** (Search / Think): pressed = `--accent-3` fill + `--accent-11` text + inset
+      `--accent-7` ring, `aria-pressed` synced.
+- [x] **Suggestion / follow-up chips**: hover raises border to `--border-strong` + bg
+      `--gray-2`; click fills or sends.
+- [x] **Menus** (model, knowledge, history context): highlighted row solid amber + dark text;
+      selected row shows leading check; danger row (Delete) hovers red with white text.
+- [x] **Copy / feedback actions**: tooltip on hover (300ms delay); copy shows a toast;
+      thumbs latch on (soft tint) when selected.
+- [x] Keyboard: Esc closes any open overlay; outside click closes; focus visible on
+      every control.
+- [x] **Share dialog**: `.overlay` + `.dialog`, left-aligned title with a close icon-btn,
+      body in `--fg-low`, a read-only `.sc-share-item` summary, right-aligned footer with
+      soft Cancel + one solid amber CTA carrying dark text. Opens focused on the CTA, traps
+      Tab, closes on Esc / scrim click / Cancel, and restores focus to the trigger.
+- [x] **Memory**: clearing memory confirms with a toast, not a silent state change.
+- [x] **Settings modal**: fixed rail + scrolling pane, rail item selected with the soft
+      `--accent-3` tint (secondary list, same rule as the conversation rows). Rows are
+      hairline-separated rather than boxed, so one floating surface carries one elevation.
+      Theme mode is driven by a single `setTheme()` so the cards and the top-bar toggle
+      cannot disagree. Closes on Esc / scrim / X and restores focus to the trigger.
+
+## 7. Motion & animation
+
+- [x] Micro-interactions 120-160ms; standard state changes 200ms; overlays 150ms in /
+      120ms out; view switches 250ms.
+- [x] Entering = ease-out, exiting = ease-in, same-element = ease-in-out.
+- [x] Menus/popovers scale from `0.96` + fade, transform-origin at the anchor edge.
+- [x] New messages enter with 4px rise + fade (200ms ease-out).
+- [x] Loading indicator: the assistant sparkle mark itself. Star stays steady and legible
+      while the plus and dot twinkle in and out (1.4s, overshoot to 1.3 then settle), dot
+      staggered 280ms behind the plus. Replaces the three-dot bounce so a given state has
+      exactly one animation. SVG accents need `transform-box: fill-box` to scale about their
+      own centre rather than the user-space origin.
+- [x] Sidebar collapse animates width 200ms ease-in-out; labels fade first.
+- [x] Toasts slide up + fade, auto-dismiss 2.4s.
+- [x] `prefers-reduced-motion`: all transforms/animations neutralized (opacity-only or none).
+
+## 8. Content & accessibility
+
+- [x] Status/state never by color alone (toggle state has pressed styling + aria;
+      memory event has icon + label).
+- [x] **Appearance matches affordance.** Read-only state uses `.sc-status` (dot + label) and
+      sits in the identity block. A filled `.badge` is never placed in an actions area beside
+      a button: matching size, shape, and soft tint make the two read as a button pair, and a
+      status that looks clickable invites a click that does nothing. A header's actions area
+      holds actions only.
+- [x] Icons: Lucide only, stroke 1.75; 18px nav, 16px buttons; `currentColor`. The one
+      filled glyph is the assistant sparkle (brand mark, not UI chrome): star and dot take
+      a fill, the plus stays stroked since a cross reads as line work.
+- [x] No emojis, no em-dashes in UI copy.
+- [x] Contrast: text >= 4.5:1, UI glyphs >= 3:1 (step-11 on step 1-3 backgrounds,
+      `--accent-contrast` on amber-9).
+- [x] Buttons carry `aria-label` when icon-only; menus use `aria-expanded` +
+      `role="menu"`; composer textarea labelled.
+
+- [x] **Every editable surface declares its save model, and there are only two.**
+      *Immediate* for a single atomic, instantly-visible, reversible control (my theme, an
+      agent's enable switch), always confirmed by a toast, because a silent instant save is
+      indistinguishable from nothing happening. *Staged* for forms, via the shared
+      `stagedForm()` helper: one save bar, shown only when something actually differs, with
+      Discard. Lifecycle state lives in the header and is immediate; settings live in the
+      body and are staged. No pane may have editable fields and no save affordance.
+- [x] **An upload says it uploads, and shows what it holds.** Each asset variant is its own
+      labelled drop target: "Add" when empty, the real image preview when set, filename on
+      hover, remove control. Variant captions never reuse words that mean something else
+      elsewhere in the app.
+- [x] **Accent secondary is for accent-flavoured actions, not for negations.** Cancel,
+      Discard, and Back are dismissals and use the neutral `.btn-surface`. Spending brand
+      colour on the least important action in a dialog both dilutes the accent and puts two
+      amber buttons side by side, which is the competition the one-solid-CTA rule exists to
+      prevent. `.btn-soft` is now used only in its `.is-danger` form.
+
+- [x] **Accent icons use `--accent-9`; accent text uses `--accent-11`.** Step 11 is the dark
+      text step and stays dark wherever it colours words (kb chip, links, badges, the "Add"
+      label). Icons take the brand amber: the assistant sparkle is a brand mark, and brand
+      marks are exempt from contrast rules; the tile icons and active nav glyph always sit
+      beside a label that carries the meaning. An icon that IS the only signal (the menu
+      selection check) stays on step 11.
+
+> **Resolved:** light-mode `--accent-11` had been set to the brand amber `#FFB31C`, identical
+> to step 9. Step 11 is the low-contrast *text* step, so for a warm hue it must be dark. Every
+> use of it as text or an icon measured 1.59:1 on `--accent-3` and 1.79:1 on white. Fixed at
+> source in `tokens.css` to `#a05a00`, which measures 4.71:1 and 5.31:1. Brand amber is
+> untouched at step 9, so solid CTAs, the active nav pill, and the logo are unchanged.
+
+## 9. Parity with skyAgent (similar, not a clone)
+
+- [x] Adopted: New Chat as the sidebar solid CTA; grouped history (Pinned / Today /
+      Yesterday); greeting hero with composer directly beneath; suggestion chips; hint line
+      under composer; off-white rail on white canvas.
+- [x] Kept SkyChat's own: model selector in the top bar; conversation title + timestamp
+      centered in the top bar; voice / memory / share actions; knowledge-base selector in
+      the composer; follow-up question chips; response meta row (kb, model, latency);
+      memory-updated divider.
+- [x] Dropped from old SkyChat: amber user avatar (brand-only rule), double "Conversation
+      History" heading, orphan single-item "Chats" accordion.
+
+> **Documented deviation: the selected conversation row.** The DS hard rule says an active
+> sidebar item is a solid `--accent-9` pill. That rule is written for *primary navigation*,
+> where one loud marker orients you across a handful of destinations. This sidebar is
+> conversation history: a long, growing, homogeneous list where a saturated amber bar reads
+> as an alert rather than a cursor, and fights the message content for attention. The DS
+> anticipates this and allows secondary lists (`.tree`, `.pane-folder` in the three-pane
+> archetype, which is the mail/chat archetype this screen belongs to) to use the soft
+> `--accent-3` selected tint instead. We take that path, and pair the tint with `--fg-high`
+> text rather than `--accent-11`, which also sidesteps the amber-on-cream contrast caveat
+> noted in §8. Selection is therefore carried by two cues, fill plus text contrast, exactly
+> the model Claude's own sidebar uses.

@@ -1,0 +1,983 @@
+/* ============================================================
+   SkyChat - Radix flavor, chat-app layer
+   Sits on dashboard.css -> tokens.css. Chat-specific shell
+   (rail + canvas), composer, message thread, and overlays.
+   Every value binds to a token; documented literals only:
+   rail width 288px, top bar 64px, reading column 768px.
+   ============================================================ */
+@import url("./dashboard.css?v=2");
+
+/* hidden attr is inert on SVG elements; enforce it */
+[hidden] { display: none !important; }
+
+/* Brand asset only. Swap the first family here to switch the logo wordmark to
+   the exact licensed face; nothing else in the app reads this token. */
+:root { --font-brand: "Playfair Display", "Source Serif 4", Georgia, "Times New Roman", serif; }
+
+/* ---- Layering ----
+   One ordered scale for everything that floats. The ordering rule is "what can
+   be summoned from what": a menu can open from inside a dialog, a tooltip can
+   label a menu item, and a toast confirms an action taken anywhere, so each sits
+   above the last. Numbers are spaced so a layer can be inserted without a
+   renumber. Never hardcode a z-index outside this block. */
+:root {
+  --z-drawer: 100;          /* mobile sidebar and its scrim */
+  --z-overlay: 1000;        /* scrim + primary dialog (matches .overlay in dashboard.css) */
+  --z-dialog-nested: 1100;  /* a dialog opened from a dialog */
+  --z-menu: 1200;           /* dropdowns, row menus, popovers */
+  --z-tooltip: 1300;        /* labels anything above */
+  --z-toast: 1400;          /* confirmation, must never be occluded */
+}
+/* A dialog launched from inside another dialog. */
+.overlay.is-nested { z-index: var(--z-dialog-nested); }
+
+/* ---- Shell: rail + canvas ---- */
+.sc-app { display: flex; height: 100vh; background: var(--color-panel-solid); overflow: hidden; }
+
+.sc-sidebar {
+  width: 288px; flex: 0 0 auto; min-width: 0;
+  background: var(--gray-2);
+  border-right: var(--stroke-thin) solid var(--border-subtle);
+  display: flex; flex-direction: column;
+  margin-left: 0;
+  transition: margin-left .2s ease-in-out, opacity .2s ease-in-out;
+}
+.sc-app.is-rail-collapsed .sc-sidebar { margin-left: -288px; opacity: 0; }
+
+.sc-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+/* ---- Sidebar internals ---- */
+.sc-brand {
+  height: 64px; flex: 0 0 auto;
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: 0 var(--space-4);
+  border-bottom: var(--stroke-thin) solid var(--border-subtle);
+}
+/* Logo. The mark is artwork, so its geometry is its own; the fills are still
+   accent tokens, which keeps it correct in both themes. The wordmark is set in
+   the brand serif: a deliberate, logo-only exception to the Inter rule, scoped
+   to this one class so no UI text can inherit it. */
+.sc-brand-mark { width: 30px; height: 30px; flex: 0 0 auto; display: block; }
+.sc-brand-name {
+  font-family: var(--font-brand);
+  font-size: var(--fs-4); line-height: var(--lh-4);
+  font-weight: var(--weight-bold); color: var(--fg-high);
+}
+.sc-brand-name .sc-brand-tm { font-size: var(--fs-1); color: var(--fg-subtle); vertical-align: super; margin-left: 1px; }
+
+.sc-side-body {
+  flex: 1; min-height: 0;
+  display: flex; flex-direction: column; gap: var(--space-3);
+  padding: var(--space-3);
+}
+.sc-side-body > .btn-solid { justify-content: center; }
+.sc-side-body .search { width: 100%; }
+.sc-side-body .search .input { width: 100%; background: var(--color-surface); }
+
+.sc-groups { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-4); }
+/* Rows sit flush; the group label supplies the only vertical break. */
+.sc-group { display: flex; flex-direction: column; }
+.sc-group .nav-section { padding: 0 var(--space-3); margin: 0 0 var(--space-1); }
+
+/* History row: nav-item discipline + hover-revealed action */
+.sc-chat-item {
+  position: relative;
+  display: flex; align-items: center; gap: var(--space-2);
+  min-height: 32px; padding: var(--space-1) var(--space-2) var(--space-1) var(--space-3);
+  border-radius: var(--radius-3);
+  color: var(--fg-low); font-size: var(--fs-2); font-weight: var(--weight-medium);
+  text-decoration: none; cursor: pointer;
+  transition: background .12s ease-in-out, color .12s ease-in-out;
+}
+.sc-chat-item .sc-chat-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-chat-item:hover { background: var(--gray-3); color: var(--fg-high); }
+.sc-chat-item:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--gray-2), 0 0 0 4px var(--focus-ring); }
+/* Selected row is a soft brand tint, not the solid amber pill. This list is
+   conversation history, which the DS treats as a secondary list (same family as
+   .pane-folder in the three-pane archetype) and those may use the accent-3 tint.
+   Text goes to --fg-high rather than --accent-11, so the selected state is
+   carried by fill + text weight and never by low-contrast amber-on-cream. */
+.sc-chat-item.is-active { background: var(--accent-3); color: var(--fg-high); }
+.sc-chat-item.is-active:hover { background: var(--accent-3); }
+
+.sc-item-menu {
+  flex: 0 0 auto; width: 24px; height: 24px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: var(--radius-2); background: transparent;
+  color: inherit; cursor: pointer;
+  opacity: 0; transition: opacity .12s ease-in-out, background .12s ease-in-out;
+}
+.sc-chat-item:hover .sc-item-menu,
+.sc-chat-item:focus-within .sc-item-menu,
+.sc-item-menu[aria-expanded="true"] { opacity: 1; }
+.sc-item-menu:hover { background: var(--gray-4); }
+.sc-chat-item.is-active .sc-item-menu:hover { background: transparent; box-shadow: inset 0 0 0 1px var(--accent-7); }
+.sc-item-menu:focus-visible { outline: none; opacity: 1; box-shadow: 0 0 0 2px var(--focus-ring); }
+.sc-pin-ic { width: 14px; height: 14px; flex: 0 0 auto; color: var(--fg-subtle); }
+.sc-chat-item.is-active .sc-pin-ic { color: var(--fg-low); }
+
+.sc-side-foot {
+  flex: 0 0 auto;
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-top: var(--stroke-thin) solid var(--border-subtle);
+}
+.sc-side-foot .persona { flex: 1; min-width: 0; }
+.sc-side-foot .persona-name { font-size: var(--fs-2); }
+
+/* ---- Icon button (standalone, ghost) ---- */
+.icon-btn {
+  width: 36px; height: 36px; flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: var(--radius-3);
+  background: transparent; color: var(--fg-low); cursor: pointer;
+  transition: background .12s ease-in-out, color .12s ease-in-out, transform .12s ease-in-out;
+}
+.icon-btn:hover { background: var(--gray-3); color: var(--fg-high); }
+.icon-btn:active { transform: scale(.96); }
+.icon-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--color-panel-solid), 0 0 0 4px var(--focus-ring); }
+
+/* ---- Top bar ---- */
+.sc-topbar {
+  position: relative; z-index: 30;
+  height: 64px; flex: 0 0 auto;
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: 0 var(--space-4);
+  background: var(--color-panel-solid);
+  border-bottom: var(--stroke-thin) solid var(--border-subtle);
+}
+.sc-topbar-left, .sc-topbar-right { display: flex; align-items: center; gap: var(--space-1); z-index: 1; }
+.sc-topbar-left { margin-right: auto; }
+.sc-topbar-right { margin-left: auto; }
+
+.sc-topbar-title {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  text-align: center; max-width: 40%; pointer-events: none;
+}
+.sc-topbar-title .sc-title { font-size: var(--fs-3); line-height: var(--lh-3); font-weight: var(--weight-medium); color: var(--fg-high); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-topbar-title .sc-title-meta { font-size: var(--fs-1); color: var(--fg-subtle); }
+
+/* Model selector trigger (ghost) */
+.sc-model-btn {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  height: 36px; padding: 0 var(--space-3);
+  border: 0; border-radius: var(--radius-3); background: transparent;
+  font-family: var(--font-base); font-size: var(--fs-2); font-weight: var(--weight-medium);
+  color: var(--fg-high); cursor: pointer;
+  transition: background .12s ease-in-out;
+}
+.sc-model-btn:hover { background: var(--gray-3); }
+.sc-model-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--color-panel-solid), 0 0 0 4px var(--focus-ring); }
+.sc-model-btn .sc-chevron { width: 16px; height: 16px; color: var(--fg-subtle); transition: transform .15s ease-in-out; }
+.sc-model-btn[aria-expanded="true"] .sc-chevron { transform: rotate(180deg); }
+
+/* ---- Floating menus (model / context / knowledge) ---- */
+.sc-menu {
+  position: absolute; z-index: var(--z-menu);
+  background: var(--color-panel-solid);
+  border-radius: var(--radius-4); box-shadow: var(--shadow-4);
+  padding: var(--space-1); min-width: 220px; max-width: 380px;
+  display: flex; flex-direction: column; gap: 1px;
+  transform-origin: top left;
+  animation: sc-pop-in .15s ease-out;
+}
+.sc-menu.is-closing { animation: sc-pop-out .12s ease-in forwards; }
+.sc-menu[hidden] { display: none; }
+.sc-menu .sc-menu-label {
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  font-size: var(--fs-1); font-weight: var(--weight-medium);
+  text-transform: uppercase; letter-spacing: .04em; color: var(--fg-subtle);
+}
+.sc-menu .sc-menu-sep { border: 0; border-top: var(--stroke-thin) solid var(--border-subtle); margin: var(--space-1) 0; }
+
+.sc-menu-item {
+  display: flex; align-items: flex-start; gap: var(--space-2);
+  padding: var(--space-2); border-radius: var(--radius-2);
+  border: 0; background: transparent; width: 100%; text-align: left;
+  font-family: var(--font-base); font-size: var(--fs-2); color: var(--fg-high);
+  cursor: pointer;
+  transition: background .12s ease-in-out, color .12s ease-in-out;
+}
+.sc-menu-item .mi-ic { width: 16px; height: 16px; flex: 0 0 auto; margin-top: 2px; color: var(--fg-low); }
+.sc-menu-item .mi-text { flex: 1; min-width: 0; }
+.sc-menu-item .mi-title { display: block; font-weight: var(--weight-medium); }
+.sc-menu-item .mi-desc { display: block; font-size: var(--fs-1); line-height: var(--lh-1); color: var(--fg-low); margin-top: 2px; }
+.sc-menu-item .mi-check { width: 16px; height: 16px; flex: 0 0 auto; margin-top: 2px; color: var(--accent-11); opacity: 0; }
+.sc-menu-item.is-selected .mi-check { opacity: 1; }
+.sc-menu-item:hover, .sc-menu-item:focus-visible {
+  outline: none; background: var(--accent-9); color: var(--accent-contrast);
+}
+.sc-menu-item:hover .mi-ic, .sc-menu-item:focus-visible .mi-ic,
+.sc-menu-item:hover .mi-desc, .sc-menu-item:focus-visible .mi-desc,
+.sc-menu-item:hover .mi-check, .sc-menu-item:focus-visible .mi-check { color: var(--accent-contrast); }
+.sc-menu-item.is-danger { color: var(--danger-text); }
+.sc-menu-item.is-danger .mi-ic { color: var(--danger-text); }
+.sc-menu-item.is-danger:hover, .sc-menu-item.is-danger:focus-visible { background: var(--red-9); color: #fff; }
+.sc-menu-item.is-danger:hover .mi-ic, .sc-menu-item.is-danger:focus-visible .mi-ic { color: #fff; }
+
+/* ---- Views ---- */
+.sc-view { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.sc-view[hidden] { display: none; }
+.sc-view-anim { animation: sc-view-in .25s ease-out; }
+
+/* ---- Home / hero ---- */
+.sc-hero {
+  flex: 1; min-height: 0; overflow-y: auto;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: var(--space-6); padding: var(--space-6) var(--space-5);
+}
+.sc-greet { text-align: center; }
+.sc-greet .sc-greet-row { display: inline-flex; align-items: center; gap: var(--space-3); }
+.sc-greet .sc-greet-spark { width: 32px; height: 32px; color: var(--accent-9); }
+.sc-greet h1 { font-size: var(--fs-8); line-height: var(--lh-8); letter-spacing: var(--ls-8); font-weight: var(--weight-bold); color: var(--fg-high); }
+.sc-greet p { margin-top: var(--space-2); font-size: var(--fs-3); line-height: var(--lh-3); color: var(--fg-low); }
+
+.sc-hero-stack { width: 100%; display: flex; flex-direction: column; align-items: center; gap: var(--space-4); }
+
+/* Suggestion chips */
+.sc-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); }
+.sc-chip {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  height: 32px; padding: 0 var(--space-3);
+  border: 0; border-radius: var(--radius-3);
+  background: var(--color-surface); color: var(--fg-low);
+  box-shadow: inset 0 0 0 1px var(--border-ui);
+  font-family: var(--font-base); font-size: var(--fs-2); font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: background .12s ease-in-out, color .12s ease-in-out, box-shadow .12s ease-in-out, transform .12s ease-in-out;
+}
+.sc-chip svg { width: 16px; height: 16px; color: var(--fg-subtle); transition: color .12s ease-in-out; }
+.sc-chip:hover { background: var(--gray-2); color: var(--fg-high); box-shadow: inset 0 0 0 1px var(--border-strong); }
+.sc-chip:hover svg { color: var(--fg-low); }
+.sc-chip:active { transform: scale(.98); }
+.sc-chip:focus-visible { outline: none; box-shadow: inset 0 0 0 1px var(--accent-8), 0 0 0 2px var(--color-panel-solid), 0 0 0 4px var(--focus-ring); }
+
+/* ---- Thread ---- */
+.sc-thread-wrap { flex: 1; min-height: 0; overflow-y: auto; }
+.sc-thread {
+  max-width: 768px; margin: 0 auto;
+  padding: var(--space-5) var(--space-5) var(--space-6);
+  display: flex; flex-direction: column; gap: var(--space-5);
+}
+
+.sc-msg { display: flex; gap: var(--space-3); animation: sc-msg-in .2s ease-out; }
+.sc-msg-body { flex: 1; min-width: 0; padding-top: var(--space-1); }
+.sc-msg.is-user .sc-msg-text { font-size: var(--fs-3); line-height: var(--lh-3); font-weight: var(--weight-medium); color: var(--fg-high); }
+.sc-msg-time { margin-top: var(--space-1); font-size: var(--fs-1); color: var(--fg-subtle); }
+
+.sc-spark {
+  width: 28px; height: 28px; flex: 0 0 auto; margin-top: 2px;
+  border-radius: var(--radius-3);
+  background: var(--accent-3); color: var(--accent-9);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.sc-spark svg { width: 16px; height: 16px; }
+.sc-msg.is-assistant .sc-msg-text { font-size: var(--fs-3); line-height: var(--lh-3); color: var(--fg-high); }
+.sc-msg.is-assistant .sc-msg-text strong { font-weight: var(--weight-bold); }
+
+.sc-followups { margin-top: var(--space-3); }
+.sc-followups .sc-followups-label { font-size: var(--fs-2); color: var(--fg-low); margin-bottom: var(--space-2); }
+.sc-followups .sc-chips { justify-content: flex-start; }
+.sc-followups .sc-chip { height: auto; min-height: 32px; padding: var(--space-1) var(--space-3); white-space: normal; text-align: left; }
+
+.sc-meta {
+  margin-top: var(--space-2);
+  display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2);
+  font-size: var(--fs-1); color: var(--fg-low); font-weight: var(--weight-medium);
+}
+.sc-meta .sc-meta-dot { width: 3px; height: 3px; border-radius: var(--radius-full); background: var(--gray-8); }
+.sc-meta svg { width: 14px; height: 14px; color: var(--fg-subtle); }
+
+.sc-actions { margin-top: var(--space-2); display: flex; gap: var(--space-1); }
+.sc-action {
+  width: 28px; height: 28px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: var(--radius-2);
+  background: transparent; color: var(--fg-subtle);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+  cursor: pointer;
+  transition: background .12s ease-in-out, color .12s ease-in-out, box-shadow .12s ease-in-out, transform .12s ease-in-out;
+}
+.sc-action svg { width: 14px; height: 14px; }
+.sc-action:hover { background: var(--gray-2); color: var(--fg-low); box-shadow: inset 0 0 0 1px var(--border-ui); }
+.sc-action:active { transform: scale(.94); }
+.sc-action:focus-visible { outline: none; box-shadow: inset 0 0 0 1px var(--border-ui), 0 0 0 2px var(--color-panel-solid), 0 0 0 4px var(--focus-ring); }
+.sc-action.is-latched { background: var(--accent-3); color: var(--accent-11); box-shadow: inset 0 0 0 1px var(--accent-7); }
+
+/* Memory event divider */
+.sc-event { display: flex; align-items: center; gap: var(--space-3); color: var(--fg-subtle); font-size: var(--fs-1); font-weight: var(--weight-medium); }
+.sc-event::before, .sc-event::after { content: ""; flex: 1; border-top: var(--stroke-thin) dashed var(--border-subtle); }
+.sc-event .sc-event-pill { display: inline-flex; align-items: center; gap: var(--space-2); }
+.sc-event svg { width: 14px; height: 14px; }
+
+/* Assistant mark. The star and dot carry a fill; scaling is about each element's
+   own centre, which needs fill-box since SVG children default to the user-space
+   origin at 0,0. */
+.sc-spark .sp-plus, .sc-spark .sp-dot,
+.sc-greet-spark .sp-plus, .sc-greet-spark .sp-dot {
+  transform-box: fill-box; transform-origin: center;
+}
+
+/* Loading: the two accents twinkle in and out around a steady star, so the mark
+   stays legible while it reads as working. This replaces the three-dot indicator,
+   one loading animation per state. */
+.sc-spark.is-loading .sp-plus,
+.sc-spark.is-loading .sp-dot { animation: sc-spark-pop 1.4s ease-in-out infinite; }
+.sc-spark.is-loading .sp-dot { animation-delay: .28s; }
+
+/* Visually hidden, still announced. */
+.sc-sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* ---- Composer ---- */
+.sc-composer-zone { position: relative; flex: 0 0 auto; padding: 0 var(--space-5) var(--space-4); background: var(--color-panel-solid); }
+.sc-composer-zone::before {
+  content: ""; position: absolute; left: 0; right: 0; top: calc(-1 * var(--space-6)); height: var(--space-6);
+  background: linear-gradient(to bottom, transparent, var(--color-panel-solid));
+  pointer-events: none;
+}
+.sc-hero .sc-composer-zone { padding: 0; background: transparent; width: 100%; }
+.sc-hero .sc-composer-zone::before { display: none; }
+
+.sc-composer {
+  max-width: 768px; width: 100%; margin: 0 auto;
+  background: var(--color-surface);
+  border-radius: var(--radius-5);
+  box-shadow: inset 0 0 0 1px var(--border-ui);
+  transition: box-shadow .15s ease-in-out;
+}
+.sc-composer:focus-within { box-shadow: inset 0 0 0 1px var(--accent-8); }
+.sc-composer .sc-input {
+  display: block; width: 100%; resize: none; border: 0; outline: none; background: transparent;
+  padding: var(--space-4) var(--space-4) var(--space-2);
+  font-family: var(--font-base); font-size: var(--fs-3); line-height: var(--lh-3);
+  color: var(--fg-high); max-height: 160px;
+}
+.sc-composer .sc-input::placeholder { color: var(--fg-subtle); }
+.sc-composer-row { display: flex; align-items: center; gap: var(--space-1); padding: var(--space-2) var(--space-3) var(--space-3); }
+.sc-composer-row .sc-row-spacer { flex: 1; }
+.sc-composer-row .toggle { height: 30px; border-radius: var(--radius-3); }
+.sc-composer-row .toggle svg { width: 16px; height: 16px; }
+.sc-composer-row .icon-btn { width: 32px; height: 32px; }
+
+.sc-kb-chip {
+  position: relative;
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  height: 30px; padding: 0 var(--space-2) 0 var(--space-3);
+  border: 0; border-radius: var(--radius-3);
+  background: var(--accent-3); color: var(--accent-11);
+  font-family: var(--font-base); font-size: var(--fs-2); font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: background .12s ease-in-out;
+}
+/* Hover deepens the hairline ring and leaves the fill alone. Stepping the fill to
+   --accent-4 shifts cream toward yellow, since the amber scale has no intermediate
+   step, which read as a state change rather than a hover. */
+.sc-kb-chip:hover { box-shadow: inset 0 0 0 1px var(--accent-7); }
+.sc-kb-chip:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--color-panel-solid), 0 0 0 4px var(--focus-ring); }
+.sc-kb-chip svg { width: 15px; height: 15px; }
+.sc-kb-chip .sc-chevron { transition: transform .15s ease-in-out; }
+.sc-kb-chip[aria-expanded="true"] .sc-chevron { transform: rotate(180deg); }
+
+.sc-send {
+  width: 34px; height: 34px; flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: var(--radius-3);
+  background: var(--accent-9); color: var(--accent-contrast); cursor: pointer;
+  transition: background .15s ease-in-out, color .15s ease-in-out, transform .12s ease-in-out;
+}
+.sc-send svg { width: 16px; height: 16px; }
+.sc-send:hover { background: var(--accent-10); }
+.sc-send:active { transform: scale(.94); }
+.sc-send:disabled { background: var(--gray-3); color: var(--fg-disabled); cursor: not-allowed; transform: none; }
+.sc-send:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--color-panel-solid), 0 0 0 4px var(--focus-ring); }
+
+.sc-hint { margin-top: var(--space-2); text-align: center; font-size: var(--fs-1); color: var(--fg-subtle); }
+
+/* ---- Tooltip (CSS, inverted per DS) ---- */
+[data-tip] { position: relative; }
+[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%) translateY(2px);
+  background: var(--color-inverted); color: var(--fg-on-inverted);
+  font-size: var(--fs-1); font-weight: var(--weight-medium); line-height: var(--lh-1);
+  padding: var(--space-1) var(--space-2); border-radius: var(--radius-2);
+  box-shadow: var(--shadow-3); white-space: nowrap;
+  opacity: 0; pointer-events: none;
+  transition: opacity .15s ease-out, transform .15s ease-out;
+  z-index: var(--z-tooltip);
+}
+[data-tip]:hover::after, [data-tip]:focus-visible::after {
+  opacity: 1; transform: translateX(-50%) translateY(0);
+  transition-delay: .3s;
+}
+/* Controls on the top row have no room above them, so their tooltips drop below
+   instead of being clipped by the top of the viewport. */
+.sc-topbar [data-tip]::after {
+  bottom: auto; top: calc(100% + 6px);
+  transform: translateX(-50%) translateY(-2px);
+}
+.sc-topbar [data-tip]:hover::after, .sc-topbar [data-tip]:focus-visible::after {
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ---- Share dialog ----
+   Left-aligned per the DS (only .empty-state centers), title and close on one
+   row, action in the right-aligned .dialog-footer. */
+.overlay { animation: sc-fade-in .15s ease-out; }
+.overlay.is-closing { animation: sc-fade-out .12s ease-in forwards; }
+.overlay .dialog { animation: sc-dialog-in .15s ease-out; }
+.overlay.is-closing .dialog { animation: sc-dialog-out .12s ease-in forwards; }
+
+.sc-dialog-head { display: flex; align-items: flex-start; gap: var(--space-3); }
+.sc-dialog-head .dialog-title { flex: 1; min-width: 0; }
+.sc-dialog-head .icon-btn { margin: calc(-1 * var(--space-1)) calc(-1 * var(--space-2)) 0 0; }
+
+/* Read-only summary of what is being shared. */
+.sc-share-item {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-4);
+  background: var(--gray-2);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+.sc-share-item .ss-title { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+.sc-share-item .ss-meta { margin-top: 2px; font-size: var(--fs-1); color: var(--fg-low); }
+
+/* ---- Settings modal ----
+   Shell: fixed rail + scrolling pane, so the section list stays put while the
+   content scrolls. Rows are hairline-separated rather than boxed in cards, which
+   keeps one elevation strategy inside an already-floating surface. */
+.sc-settings {
+  width: min(1040px, 94vw); height: min(720px, 88vh);
+  display: flex; overflow: hidden;
+  background: var(--color-panel-solid);
+  border-radius: var(--radius-5); box-shadow: var(--shadow-5);
+}
+
+.sc-set-rail {
+  width: 236px; flex: 0 0 auto;
+  display: flex; flex-direction: column; gap: var(--space-1);
+  padding: var(--space-3);
+  background: var(--gray-2);
+  border-right: var(--stroke-thin) solid var(--border-subtle);
+}
+.sc-set-rail-head {
+  display: flex; align-items: center;
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  font-size: var(--fs-4); font-weight: var(--weight-bold); color: var(--fg-high);
+}
+/* Grouping the rail by scope is what stops "my theme" and "the default theme for
+   new users" from reading as the same setting listed twice. */
+.sc-set-rail-group {
+  padding: var(--space-3) var(--space-3) var(--space-1);
+  font-size: var(--fs-1); font-weight: var(--weight-medium);
+  text-transform: uppercase; letter-spacing: .04em; color: var(--fg-subtle);
+}
+.sc-set-rail-group:first-of-type { padding-top: var(--space-1); }
+
+.sc-set-nav {
+  display: flex; align-items: center; gap: var(--space-3);
+  min-height: 36px; padding: var(--space-2) var(--space-3);
+  border: 0; width: 100%; text-align: left;
+  border-radius: var(--radius-3); background: transparent;
+  font-family: var(--font-base); font-size: var(--fs-2); font-weight: var(--weight-medium);
+  color: var(--fg-low); cursor: pointer;
+  transition: background .12s ease-in-out, color .12s ease-in-out;
+}
+.sc-set-nav svg { width: 18px; height: 18px; flex: 0 0 auto; color: var(--fg-subtle); }
+.sc-set-nav:hover { background: var(--gray-3); color: var(--fg-high); }
+.sc-set-nav:hover svg { color: var(--fg-low); }
+.sc-set-nav:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--gray-2), 0 0 0 4px var(--focus-ring); }
+/* Secondary list, so the soft tint rather than the solid brand pill. */
+.sc-set-nav.is-active { background: var(--accent-3); color: var(--fg-high); }
+.sc-set-nav.is-active svg { color: var(--accent-9); }
+
+.sc-set-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.sc-set-head {
+  flex: 0 0 auto; display: flex; align-items: flex-start; gap: var(--space-3);
+  padding: var(--space-5) var(--space-5) var(--space-4);
+}
+.sc-set-head-text { flex: 1; min-width: 0; }
+.sc-set-title { font-size: var(--fs-6); line-height: var(--lh-6); letter-spacing: var(--ls-6); font-weight: var(--weight-bold); color: var(--fg-high); }
+.sc-set-sub { margin-top: 2px; font-size: var(--fs-2); color: var(--fg-low); }
+.sc-set-body { flex: 1; min-height: 0; overflow-y: auto; padding: 0 var(--space-5) var(--space-6); }
+
+.sc-set-section { padding-top: var(--space-5); }
+.sc-set-section + .sc-set-section { border-top: var(--stroke-thin) solid var(--border-subtle); margin-top: var(--space-5); }
+.sc-set-section-title { font-size: var(--fs-4); line-height: var(--lh-4); font-weight: var(--weight-bold); color: var(--fg-high); }
+.sc-set-section-sub { margin-top: 2px; margin-bottom: var(--space-3); font-size: var(--fs-2); color: var(--fg-low); }
+.sc-set-section-title + .sc-set-rows { margin-top: var(--space-2); }
+
+/* Label + description on the left, one control on the right. */
+.sc-set-row {
+  display: flex; align-items: center; gap: var(--space-5);
+  padding: var(--space-3) 0;
+  border-bottom: var(--stroke-thin) solid var(--border-subtle);
+}
+.sc-set-rows .sc-set-row:last-child { border-bottom: 0; }
+.sc-set-row.is-stacked { flex-direction: column; align-items: stretch; gap: var(--space-2); }
+.sc-set-row-text { flex: 1; min-width: 0; }
+/* block, so these read the same whether authored as div or span */
+.sc-set-label { display: block; font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+.sc-set-desc { display: block; margin-top: 2px; font-size: var(--fs-1); line-height: var(--lh-1); color: var(--fg-low); }
+.sc-set-control { flex: 0 0 auto; display: flex; align-items: center; gap: var(--space-2); }
+.sc-set-control .select, .sc-set-control .input { min-width: 220px; }
+.sc-set-value { font-size: var(--fs-2); color: var(--fg-high); }
+
+/* Read-only identifier with a copy affordance. */
+.sc-set-id { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-2); }
+.sc-set-id .sc-set-id-label { font-size: var(--fs-1); color: var(--fg-low); }
+.sc-set-id .code { font-size: var(--fs-1); }
+.sc-set-id .icon-btn { width: 24px; height: 24px; }
+.sc-set-id .icon-btn svg { width: 14px; height: 14px; }
+
+/* Colour swatch paired with its hex field. */
+.sc-swatch {
+  width: 56px; height: 32px; flex: 0 0 auto; padding: 0; border: 0;
+  border-radius: var(--radius-2); cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--border-ui);
+}
+.sc-color-row { display: flex; align-items: center; gap: var(--space-2); }
+.sc-color-row .input { flex: 1; font-family: var(--font-mono); }
+
+/* Upload rows read as a stack of identical affordances. */
+.sc-upload { display: flex; align-items: center; gap: var(--space-3); }
+.sc-upload-hint { font-size: var(--fs-1); color: var(--fg-low); margin-top: var(--space-2); }
+
+.sc-set-empty { padding: var(--space-8) var(--space-5); }
+
+/* In-pane tab bar. One level only: the rail is the nav, this splits a single
+   subject, and nothing nests below it. */
+.sc-set-tabs { margin-bottom: var(--space-4); }
+
+/* Compact table for admin lists. */
+.sc-set-table .table tbody td { height: 44px; }
+.sc-set-table .table-toolbar { margin-bottom: var(--space-3); }
+.sc-set-table .table-toolbar .search { flex: 1; min-width: 200px; }
+.sc-set-table .table-toolbar .search .input { width: 100%; }
+.sc-set-table .cell-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); }
+.sc-set-table .table tbody tr:hover td { background: var(--row-accent); }
+
+/* Row overflow menu: frequent action stays visible, destructive one is tucked away. */
+.sc-row-menu {
+  width: 28px; height: 28px; flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: var(--radius-2); background: transparent;
+  color: var(--fg-subtle); cursor: pointer;
+  transition: background .12s ease-in-out, color .12s ease-in-out;
+}
+.sc-row-menu:hover { background: var(--gray-3); color: var(--fg-high); }
+.sc-row-menu:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
+
+/* Scope banner: states plainly who a pane's settings affect. */
+.sc-scope { margin-bottom: var(--space-4); }
+
+/* ---- Agents ---- */
+/* Drill-down inside one pane rather than a third level of tabs: list -> create,
+   list -> detail, each with an explicit back. */
+.sc-agent-view[hidden] { display: none !important; }
+
+.sc-agent-back {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  height: 28px; padding: 0 var(--space-2) 0 var(--space-1);
+  margin-bottom: var(--space-3);
+  border: 0; border-radius: var(--radius-3); background: transparent;
+  font-family: var(--font-base); font-size: var(--fs-2); font-weight: var(--weight-medium);
+  color: var(--fg-low); cursor: pointer;
+  transition: background .12s ease-in-out, color .12s ease-in-out;
+}
+.sc-agent-back:hover { background: var(--gray-3); color: var(--fg-high); }
+.sc-agent-back svg { width: 16px; height: 16px; }
+
+.sc-agent-grid {
+  display: grid; gap: var(--space-3);
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+.sc-agent-card {
+  display: flex; flex-direction: column; gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-panel-solid);
+  border: var(--stroke-thin) solid var(--border-subtle);
+  border-radius: var(--radius-4);
+  transition: border-color .12s ease-in-out;
+}
+.sc-agent-card:hover { border-color: var(--border-strong); }
+/* Off agents recede rather than changing button variant, so "Configure" keeps
+   one meaning and the toggle stays the only signal of enabled state. */
+.sc-agent-card.is-off .sc-agent-ic,
+.sc-agent-card.is-off .sc-agent-name,
+.sc-agent-card.is-off .sc-agent-desc { opacity: .55; }
+
+.sc-agent-top { display: flex; align-items: flex-start; gap: var(--space-3); }
+.sc-agent-ic {
+  width: 36px; height: 36px; flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-3);
+  background: var(--accent-3); color: var(--accent-9);
+}
+.sc-agent-ic svg { width: 18px; height: 18px; }
+.sc-agent-head { flex: 1; min-width: 0; }
+.sc-agent-name { display: block; font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+.sc-agent-tag { display: block; margin-top: 2px; font-size: var(--fs-1); color: var(--fg-subtle); }
+.sc-agent-desc { flex: 1; font-size: var(--fs-1); line-height: var(--lh-1); color: var(--fg-low); }
+.sc-agent-card .btn { justify-content: center; }
+
+/* Default-agent picker: one row, not a full card for a single select.
+   Grows so the row's action is pushed to the right edge rather than crowding
+   the identity it acts on. */
+.sc-default-row { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--space-3); }
+.sc-default-row .sc-agent-ic { background: var(--accent-3); color: var(--accent-9); }
+
+/* Model priority table. Rows are draggable and also movable from the keyboard,
+   because drag alone locks out keyboard and screen-reader users. */
+.sc-model-list { display: flex; flex-direction: column; }
+.sc-model-row {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-2);
+  border-bottom: var(--stroke-thin) solid var(--border-subtle);
+  background: var(--color-panel-solid);
+}
+.sc-model-row:last-child { border-bottom: 0; }
+.sc-model-row.is-dragging { opacity: .4; }
+.sc-model-row.is-over { box-shadow: inset 0 2px 0 0 var(--accent-9); }
+.sc-model-grip {
+  width: 22px; height: 28px; flex: 0 0 auto; cursor: grab;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--fg-subtle); border: 0; background: transparent; border-radius: var(--radius-2);
+}
+.sc-model-grip:active { cursor: grabbing; }
+.sc-model-grip svg { width: 16px; height: 16px; }
+.sc-model-move { display: flex; flex-direction: column; gap: 2px; }
+.sc-model-move button {
+  width: 20px; height: 16px; padding: 0; border: 0; background: transparent;
+  color: var(--fg-subtle); cursor: pointer; border-radius: var(--radius-1);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.sc-model-move button:hover:not(:disabled) { background: var(--gray-3); color: var(--fg-high); }
+.sc-model-move button:disabled { opacity: .3; cursor: not-allowed; }
+.sc-model-move svg { width: 13px; height: 13px; }
+.sc-model-main { flex: 1; min-width: 0; }
+.sc-model-name { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+.sc-model-id { font-size: var(--fs-1); color: var(--fg-subtle); font-family: var(--font-mono); }
+.sc-model-desc { flex: 1.2; min-width: 0; font-size: var(--fs-1); color: var(--fg-low); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-model-col { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 72px; }
+.sc-model-headrow {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: 0 var(--space-2) var(--space-2);
+  font-size: var(--fs-1); font-weight: var(--weight-medium);
+  text-transform: uppercase; letter-spacing: .04em; color: var(--fg-subtle);
+}
+.sc-model-headrow .sc-model-spacer { width: 42px; flex: 0 0 auto; }
+
+/* Sticky save bar. One save per view, shown only when something is unsaved,
+   which removes the "which of these three buttons saves my change" problem. */
+.sc-savebar {
+  position: sticky; bottom: 0; z-index: 2;
+  display: flex; align-items: center; gap: var(--space-3);
+  margin: var(--space-5) calc(-1 * var(--space-5)) 0;
+  padding: var(--space-3) var(--space-5);
+  background: var(--color-panel-solid);
+  border-top: var(--stroke-thin) solid var(--border-subtle);
+}
+.sc-savebar[hidden] { display: none !important; }
+.sc-savebar .sb-text { flex: 1; font-size: var(--fs-2); color: var(--fg-low); }
+
+/* Readiness. An agent can be misconfigured in ways the toggle does not show,
+   so the derived state is surfaced on the card and at the top of the detail. */
+.sc-agent-status { margin-top: var(--space-2); }
+.sc-ready-callout { margin-bottom: var(--space-4); }
+.sc-ready-callout .rc-actions { margin-top: var(--space-2); display: flex; gap: var(--space-2); }
+
+/* Knowledge source */
+.sc-src {
+  padding: var(--space-4);
+  border: var(--stroke-thin) solid var(--border-subtle);
+  border-radius: var(--radius-4);
+  background: var(--color-panel-solid);
+}
+.sc-src + .sc-src { margin-top: var(--space-3); }
+.sc-src-head { display: flex; align-items: flex-start; gap: var(--space-3); }
+.sc-src-title { flex: 1; min-width: 0; }
+.sc-src-name { display: block; font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+.sc-src-path { display: block; margin-top: 2px; font-size: var(--fs-1); color: var(--fg-low); overflow: hidden; text-overflow: ellipsis; }
+.sc-src-meta {
+  margin-top: var(--space-3); display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2);
+  font-size: var(--fs-1); color: var(--fg-low);
+}
+.sc-src-meta .sc-meta-dot { width: 3px; height: 3px; border-radius: var(--radius-full); background: var(--gray-8); }
+.sc-src-meta .link { font-size: var(--fs-1); background: none; border: 0; padding: 0; cursor: pointer; font-family: var(--font-base); }
+.sc-src-actions { margin-top: var(--space-3); padding-top: var(--space-3); border-top: var(--stroke-thin) solid var(--border-subtle); display: flex; align-items: center; gap: var(--space-2); }
+.sc-src-actions .spacer { flex: 1; }
+
+/* Documents toolbar: filters are visible controls, not hidden behind a button. */
+/* The DS input/select is width:100% by default, which makes every control claim
+   a full row inside a flex toolbar. Each one is given an explicit basis instead. */
+.sc-doc-toolbar { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-3); }
+.sc-doc-toolbar .search { flex: 1 1 200px; min-width: 180px; }
+.sc-doc-toolbar .search .input { width: 100%; }
+.sc-doc-toolbar .select { flex: 0 0 auto; width: auto; min-width: 160px; }
+.sc-doc-toolbar .btn { flex: 0 0 auto; }
+.sc-doc-name { display: inline-flex; align-items: center; gap: var(--space-2); }
+.sc-doc-name svg { width: 14px; height: 14px; color: var(--fg-subtle); flex: 0 0 auto; }
+
+/* ---- Asset upload ----
+   The old control was two unlabelled buttons reading "Light" and "Dark", which
+   in this app already mean theme modes. It said nothing about uploading, showed
+   no preview, and gave no way to tell a set asset from an unset one. Each
+   variant is now its own drop target that shows what is in it. */
+.sc-assets { display: flex; gap: var(--space-4); }
+.sc-asset { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }
+.sc-asset-drop {
+  position: relative;
+  width: var(--asset-w, 56px); height: 56px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  border-radius: var(--radius-3); border: 1px dashed var(--border-ui);
+  background: var(--color-surface); cursor: pointer; overflow: hidden;
+  color: var(--fg-subtle); font-size: var(--fs-1);
+  transition: border-color .12s ease-in-out, background .12s ease-in-out;
+}
+.sc-asset-drop:hover { border-color: var(--accent-8); background: var(--accent-2); color: var(--accent-11); }
+.sc-asset-drop:focus-within { outline: none; border-color: var(--accent-8); box-shadow: 0 0 0 2px var(--focus-ring); }
+.sc-asset-drop svg { width: 16px; height: 16px; }
+.sc-asset-drop input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.sc-asset-drop img { width: 100%; height: 100%; object-fit: contain; padding: var(--space-1); }
+.sc-asset.is-set .sc-asset-drop { border-style: solid; border-color: var(--border-subtle); background: var(--gray-2); }
+.sc-asset-cap { font-size: var(--fs-1); color: var(--fg-low); }
+.sc-asset-clear {
+  position: absolute; top: 2px; right: 2px;
+  width: 18px; height: 18px; border: 0; border-radius: var(--radius-full);
+  background: var(--color-inverted); color: var(--fg-on-inverted);
+  display: none; align-items: center; justify-content: center; cursor: pointer; z-index: 1;
+}
+.sc-asset-clear svg { width: 11px; height: 11px; }
+.sc-asset.is-set .sc-asset-drop:hover .sc-asset-clear,
+.sc-asset.is-set .sc-asset-drop:focus-within .sc-asset-clear { display: inline-flex; }
+
+/* ---- Help and support ----
+   Self-serve first: the answer is cheaper for everyone than a ticket. */
+.sc-help-grid { display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.sc-help-link {
+  display: flex; align-items: flex-start; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: var(--stroke-thin) solid var(--border-subtle); border-radius: var(--radius-4);
+  background: var(--color-panel-solid); text-decoration: none; cursor: pointer; text-align: left;
+  transition: border-color .12s ease-in-out, background .12s ease-in-out;
+}
+.sc-help-link:hover { border-color: var(--border-strong); background: var(--gray-2); }
+.sc-help-link .hl-ic { width: 32px; height: 32px; flex: 0 0 auto; border-radius: var(--radius-3);
+  background: var(--accent-3); color: var(--accent-9); display: inline-flex; align-items: center; justify-content: center; }
+.sc-help-link .hl-ic svg { width: 16px; height: 16px; }
+.sc-help-link .hl-title { display: block; font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+.sc-help-link .hl-sub { display: block; margin-top: 2px; font-size: var(--fs-1); color: var(--fg-low); }
+
+/* The DS badge has a fixed height, so a wrapped label breaks it. */
+.badge { white-space: nowrap; }
+
+/* The DS styles .rc-title / .rc-sub without a display, so as spans they run
+   together on one line. Fixed here rather than with an inline display on every
+   card that happens to use them. */
+.radio-card .rc-title, .radio-card .rc-sub { display: block; }
+
+/* Priority is ordinal, so it is carried by weight and colour on the word itself
+   rather than a badge, which would give Low the same presence as Urgent. */
+.sc-prio { font-size: var(--fs-2); color: var(--fg-low); }
+.sc-prio.is-urgent { color: var(--danger-text); font-weight: var(--weight-medium); }
+.sc-prio.is-high   { color: var(--warning-text); font-weight: var(--weight-medium); }
+.sc-prio.is-low    { color: var(--fg-subtle); }
+
+/* Comment thread */
+.sc-thread-list { display: flex; flex-direction: column; gap: var(--space-4); }
+.sc-comment { display: flex; gap: var(--space-3); }
+.sc-comment-body { flex: 1; min-width: 0; }
+.sc-comment-head { display: flex; align-items: baseline; gap: var(--space-2); }
+.sc-comment-who { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+.sc-comment-when { font-size: var(--fs-1); color: var(--fg-subtle); }
+.sc-comment-text { margin-top: var(--space-1); font-size: var(--fs-2); line-height: var(--lh-2); color: var(--fg-high); }
+.sc-comment.is-staff .sc-comment-text {
+  padding: var(--space-3); border-radius: var(--radius-4);
+  background: var(--accent-3); color: var(--accent-12);
+}
+
+/* Attachments stay collapsed until wanted, instead of a permanent dropzone
+   occupying more room than the reply itself. */
+.sc-attach-row { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-2); }
+.sc-attach-row .sc-set-desc { flex: 1; }
+
+/* ---- Analytics ----
+   The DS ties delta colour to direction (.is-up green, .is-down red), which is
+   wrong for any metric where lower is better: a rising response time would read
+   as good. Colour is bound to meaning instead, and the arrow carries direction. */
+.stat-card .sc-delta.is-good { color: var(--success-text); }
+.stat-card .sc-delta.is-bad  { color: var(--danger-text); }
+.stat-card .sc-delta.is-flat { color: var(--fg-subtle); }
+.stat-card .sc-delta svg { width: 13px; height: 13px; }
+.stat-card .sc-sub { font-size: var(--fs-1); color: var(--fg-subtle); }
+
+/* Horizontal breakdown. Replaces the pie charts: it compares near-equal values
+   accurately, degrades gracefully to a single row, and carries its own labels so
+   no separate legend list is needed. */
+.sc-bars { display: flex; flex-direction: column; gap: var(--space-3); }
+.sc-bar-row { display: grid; grid-template-columns: minmax(96px, 22%) 1fr auto; align-items: center; gap: var(--space-3); }
+.sc-bar-label { font-size: var(--fs-2); color: var(--fg-high); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-bar-track { display: block; height: 22px; border-radius: var(--radius-2); background: var(--gray-3); overflow: hidden; }
+/* block, or height:100% has no containing height to resolve against */
+.sc-bar-fill { display: block; height: 100%; border-radius: var(--radius-2); transition: width .3s ease-out; }
+.sc-bar-val { font-size: var(--fs-2); color: var(--fg-low); font-variant-numeric: tabular-nums; min-width: 68px; text-align: right; }
+
+/* Daily activity. Counts are discrete, so columns, not a smoothed curve that
+   invents values between days that never existed. */
+.sc-cols { display: flex; align-items: flex-end; gap: 2px; height: 160px; }
+.sc-col { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; position: relative; }
+.sc-col-fill { width: 100%; min-height: 2px; border-radius: 2px 2px 0 0; background: var(--chart-1); transition: height .3s ease-out; }
+.sc-col:hover .sc-col-fill { background: var(--chart-6); }
+.sc-col-axis { display: flex; justify-content: space-between; margin-top: var(--space-2); font-size: var(--fs-1); color: var(--chart-axis); }
+.sc-chart-note { margin-top: var(--space-2); font-size: var(--fs-1); color: var(--fg-subtle); }
+
+.sc-an-toolbar { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-4); }
+.sc-an-toolbar .spacer { flex: 1; }
+
+/* The DS defines .is-danger for solid and soft only. A destructive action sitting
+   alone in a header should not be the loudest thing on the row, so ghost gets a
+   danger variant: quiet at rest, unmistakably destructive on hover. */
+.btn-ghost.is-danger { color: var(--danger-text); }
+.btn-ghost.is-danger:hover { background: var(--danger-bg); color: var(--danger-text); }
+
+/* Accent icons vs accent text.
+   Step 11 is the dark TEXT step and must stay dark wherever it colours words
+   (.sc-kb-chip, .link, .badge, the "Add" label on an upload tile).
+   Icons are a different case. The assistant sparkle is a brand mark, and brand
+   marks are exempt from contrast rules; the tile icons and the active nav glyph
+   always sit beside a label that carries the meaning, so none of them is the
+   sole carrier of information. Those use --accent-9, the brand colour, which is
+   also what makes them match the greeting sparkle. Icons that ARE the only
+   signal (the menu selection check) stay on step 11. */
+/* Status indicator. A filled pill placed beside a button reads as a second
+   button, so state is shown as a dot plus a label instead. It sits in the
+   identity block, never in the actions area: appearance has to match affordance.
+   Failure also takes colour and weight, so it is never carried by colour alone. */
+.sc-status { display: inline-flex; align-items: center; gap: 6px; color: var(--fg-low); }
+.sc-status .sc-status-dot { width: 7px; height: 7px; flex: 0 0 auto; border-radius: var(--radius-full); background: var(--gray-8); }
+.sc-status.is-ok .sc-status-dot { background: var(--success-solid); }
+.sc-status.is-failed .sc-status-dot { background: var(--danger-solid); }
+.sc-status.is-failed { color: var(--danger-text); font-weight: var(--weight-medium); }
+
+/* ---- Connections ----
+   Rows, not cards: a connection is identified by its target and its health, both
+   of which read better on one line than stacked in a tile. */
+.sc-conn {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: var(--stroke-thin) solid var(--border-subtle);
+  border-radius: var(--radius-4);
+  background: var(--color-panel-solid);
+  transition: border-color .12s ease-in-out;
+}
+.sc-conn + .sc-conn { margin-top: var(--space-2); }
+.sc-conn:hover { border-color: var(--border-strong); }
+.sc-conn-main { flex: 1; min-width: 0; }
+.sc-conn-name { display: block; font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+.sc-conn-meta { display: block; margin-top: 2px; font-size: var(--fs-1); color: var(--fg-low); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-conn-actions { flex: 0 0 auto; display: flex; align-items: center; gap: var(--space-2); }
+
+/* Wizard step indicator. Segments carry the position; the label carries the name,
+   so neither is doing the other's job. */
+.sc-steps { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-4); }
+.sc-steps .sc-step { flex: 1; height: 4px; border-radius: var(--radius-full); background: var(--gray-4); }
+.sc-steps .sc-step.is-done { background: var(--accent-9); }
+
+/* A stored secret is shown as configured, never echoed back. */
+.sc-secret { display: flex; align-items: center; gap: var(--space-3); }
+.sc-secret .sc-secret-state {
+  flex: 1; display: flex; align-items: center; gap: var(--space-2);
+  height: 32px; padding: 0 var(--space-3);
+  border-radius: var(--radius-2); background: var(--gray-2);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+  font-size: var(--fs-2); color: var(--fg-low);
+}
+.sc-secret .sc-secret-state svg { width: 15px; height: 15px; color: var(--success-solid); }
+
+/* File drop target for a key file. */
+.sc-drop {
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-2);
+  padding: var(--space-5); border-radius: var(--radius-4);
+  border: 1px dashed var(--border-ui);
+  color: var(--fg-low); font-size: var(--fs-2); cursor: pointer;
+  transition: border-color .12s ease-in-out, background .12s ease-in-out;
+}
+.sc-drop:hover { border-color: var(--accent-8); background: var(--accent-2); }
+.sc-drop svg { width: 24px; height: 24px; color: var(--fg-subtle); }
+
+.sc-agent-pick { display: flex; flex-direction: column; gap: var(--space-1); }
+.sc-agent-pick .checkbox { align-items: flex-start; padding: var(--space-2); border-radius: var(--radius-3); }
+.sc-agent-pick .checkbox:hover { background: var(--gray-2); }
+.sc-agent-pick .ap-text { display: flex; flex-direction: column; }
+.sc-agent-pick .ap-name { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+.sc-agent-pick .ap-kind { font-size: var(--fs-1); color: var(--fg-low); }
+
+@media (max-width: 860px) {
+  .sc-settings { flex-direction: column; height: min(760px, 92vh); }
+  .sc-set-rail { width: auto; flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: var(--stroke-thin) solid var(--border-subtle); }
+  .sc-set-rail-head { display: none; }
+  .sc-set-nav { width: auto; white-space: nowrap; }
+}
+
+/* ---- Toast ---- */
+.sc-toaster { position: fixed; right: var(--space-5); bottom: var(--space-5); z-index: var(--z-toast); display: flex; flex-direction: column; gap: var(--space-2); }
+.sc-toast {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-panel-solid); border-radius: var(--radius-4); box-shadow: var(--shadow-4);
+  font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high);
+  animation: sc-toast-in .2s ease-out;
+}
+.sc-toast.is-leaving { animation: sc-toast-out .15s ease-in forwards; }
+.sc-toast svg { width: 16px; height: 16px; color: var(--success-solid); }
+
+/* ---- Scrim (mobile rail) ---- */
+.sc-scrim { position: fixed; inset: 0; background: var(--color-overlay); z-index: var(--z-drawer); opacity: 1; transition: opacity .2s ease-in-out; }
+.sc-scrim[hidden] { display: none; }
+
+/* ---- Animations ---- */
+@keyframes sc-pop-in { from { opacity: 0; transform: scale(.96) translateY(-2px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+@keyframes sc-pop-out { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(.97) translateY(-2px); } }
+@keyframes sc-msg-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes sc-view-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes sc-spark-pop {
+  0%   { opacity: 0; transform: scale(0); }
+  18%  { opacity: 1; transform: scale(1.3); }
+  32%  { opacity: 1; transform: scale(1); }
+  66%  { opacity: 1; transform: scale(1); }
+  82%, 100% { opacity: 0; transform: scale(0); }
+}
+@keyframes sc-toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes sc-toast-out { from { opacity: 1; } to { opacity: 0; transform: translateY(4px); } }
+@keyframes sc-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sc-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes sc-dialog-in { from { opacity: 0; transform: scale(.96) translateY(-4px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+@keyframes sc-dialog-out { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(.98); } }
+
+/* ---- Responsive ---- */
+@media (max-width: 1024px) {
+  .sc-sidebar { position: fixed; top: 0; bottom: 0; left: 0; z-index: var(--z-drawer); margin-left: 0; transform: translateX(-100%); transition: transform .2s ease-in-out; box-shadow: none; }
+  .sc-app.is-rail-open .sc-sidebar { transform: translateX(0); box-shadow: var(--shadow-5); }
+  .sc-app.is-rail-collapsed .sc-sidebar { margin-left: 0; opacity: 1; }
+}
+@media (max-width: 640px) {
+  .sc-topbar-title { display: none; }
+  .sc-thread { padding: var(--space-5) var(--space-4) var(--space-6); }
+  .sc-composer-zone { padding: 0 var(--space-4) var(--space-4); }
+}
+
+/* ---- Reduced motion ---- */
+@media (prefers-reduced-motion: reduce) {
+  .sc-sidebar, .sc-menu, .sc-msg, .sc-view-anim, .sc-toast,
+  .sc-spark.is-loading .sp-plus, .sc-spark.is-loading .sp-dot,
+  .sc-chip, .sc-send, .icon-btn, .sc-action, [data-tip]::after,
+  .overlay, .overlay .dialog {
+    animation: none !important; transition: none !important;
+  }
+  /* With the twinkle off, the accents must not be left mid-keyframe. */
+  .sc-spark.is-loading .sp-plus, .sc-spark.is-loading .sp-dot { opacity: 1; transform: none; }
+}
