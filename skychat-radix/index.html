@@ -2078,25 +2078,25 @@
 
     /* ---------- People and roles ---------- */
     var USERS = [
-      ["eklavya.rathore@skypoint.ai","member","Viewer"],["abhishek.krishna@skypoint.ai","member","Viewer"],
-      ["akshay.mehta@skypoint.ai","admin","Admin"],["anusha.kadakollmath@skypoint.ai","admin","Admin"],
-      ["anushree.naik@skypoint.ai","admin","Admin"],["athihari.kishore@skypoint.ai","member","Viewer"],
-      ["auto.test@yopmail.com","admin","Admin"],["automation01@skypointcloud.com","member","Viewer"],
-      ["avinash.selvan@skypointcloud.com","admin","Admin"],["testsc@skypointcloud.com","member","Viewer"],
-      ["testsc01@skypointcloud.com","member","Viewer"],["testskypoint@gmail.com","member","Owner"],
-      ["training@skypoint.ai","admin","Admin"],["umeshgouda.hiregoudra@skypoint.ai","member","Viewer"],
-      ["user62@skypointcloud.com","member","Viewer"],["vishnu.gopal@skypoint.ai","member","Viewer"],
-      ["rashi.gupta@skypoint.ai","admin","Admin"],["yaswanthram.ponnada@skypoint.ai","member","Viewer"],
-      ["yuvaraj.ganesh@skypoint.ai","member","Viewer"],["vyshnavi.rao@skypoint.ai","admin","Admin"],
-      ["vidya.prakasha@skypoint.ai","member","Viewer"],["puneeth.747@gmail.com","admin","Admin"],
-      ["keerthana.manjunath@skypoint.ai","member","Viewer"],["khyati.sikarwar@skypoint.ai","admin","Admin"],
-      ["vishnu.vallab@skypoint.ai","admin","Admin"]
+      ["victor.hugo@example.com","member","Viewer"],["tom.becker@example.com","member","Viewer"],
+      ["priya.raman@example.com","admin","Admin"],["luis.ortega@example.com","admin","Admin"],
+      ["hannah.cole@example.com","admin","Admin"],["daniel.ross@example.com","member","Viewer"],
+      ["maya.fischer@example.com","admin","Admin"],["noah.park@example.com","member","Viewer"],
+      ["samir.patel@example.com","admin","Admin"],["kai.tanaka@example.com","member","Viewer"],
+      ["nadia.faris@example.com","member","Viewer"],["rosa.pineda@example.com","member","Owner"],
+      ["felix.duarte@example.com","admin","Admin"],["iris.moreau@example.com","member","Viewer"],
+      ["hugo.lindqvist@example.com","member","Viewer"],["arjun.rao@example.com","member","Viewer"],
+      ["freya.olsen@example.com","admin","Admin"],["zara.ahmed@example.com","member","Viewer"],
+      ["otto.keller@example.com","member","Viewer"],["marco.bianchi@example.com","admin","Admin"],
+      ["tessa.blum@example.com","member","Viewer"],["milo.vance@example.com","admin","Admin"],
+      ["peter.nowak@example.com","member","Viewer"],["lena.brandt@example.com","admin","Admin"],
+      ["leah.kovacs@example.com","admin","Admin"]
     ].map(function (u) { return { email: u[0], access: u[1], role: u[2] }; });
 
     var ADMINS = [
-      "abbas.mithasheth@skypointcloud.com","arun.kumar@skypoint.ai","arun.sathiamoorthy@skypointcloud.com",
-      "avi.sahney@skypointcloud.com","bhuvan.mahadevaswamy@skypoint.ai","jai.shanker@skypointcloud.com",
-      "kishoreb@skypoint.ai","playbook@skypointcloud.com","ravish.vasudevachar@skypointcloud.com"
+      "ana.medina@example.com","omar.haddad@example.com","grace.liu@example.com",
+      "elena.rossi@example.com","clara.mbeki@example.com","irene.sato@example.com",
+      "jonas.eriksen@example.com","ruth.abara@example.com","adam.silva@example.com"
     ].map(function (e) { return { email: e }; });
 
     var ROLES = [
@@ -2396,7 +2396,7 @@
     var AGENT_LIST = [
       { key: "a1", name: "General Knowledge",         tpl: "general",    icon: "brain",        desc: "A versatile assistant for questions across many topics.",            on: true,  instr: "Be polite but give constructive feedback even when it is negative. Speak in a warm tone.", followups: true,  models: seedModels(), def: "gpt-5.6-luna" },
       { key: "a2", name: "Senior Living Policies",    tpl: "document",   icon: "file-text",    desc: "Extract insights and answer questions from uploaded documents.",     on: true,  instr: "", followups: true,  models: seedModels(), def: "gpt-5.6-luna",
-        sources: [{ id: "s1", connId: "c2", name: "Senior living demo v2", system: "SharePoint", project: "Lighthouse-Senior living projects", path: "Documents / .../root:/Senior Living Demo v2", status: "failed", error: "The connector could not reach the site. The access token expired on 4 Jan 2026.", lastSync: "4 Jan 2026", docs: 5, schedule: "" }],
+        sources: [{ id: "s1", connId: "c2", name: "Senior living demo v2", system: "SharePoint", project: "Senior living projects", path: "Documents / .../root:/Senior Living Demo v2", status: "failed", error: "The connector could not reach the site. The access token expired on 4 Jan 2026.", lastSync: "4 Jan 2026", docs: 5, schedule: "" }],
         docs: [
           { name: "Policies-and-Procedures.pdf", src: "s1", status: "synced", size: "1 MB", updated: "2 Dec 2025, 10:26 PM" },
           { name: "ETQATSLSBrowse.pdf", src: "s1", status: "synced", size: "968.7 KB", updated: "2 Dec 2025, 10:26 PM" },
@@ -2962,11 +2962,11 @@
     var CONNECTIONS = [
       { id: "c1", name: "Sharepoint Dev", desc: "Sandbox site used for testing connectors.", type: "sharepoint",
         status: "ok", lastTest: "6 Aug 2026",
-        cfg: { tenant: "19393f3e-7639-4afe-bd82-ffb6e79b24b", client: "de760a09-adcd-49ea-b39d-7954bdc4793", site: "https://ffcinc.sharepoint.com/sites/BickfordSandboxDev" },
+        cfg: { tenant: "19393f3e-7639-4afe-bd82-ffb6e79b24b", client: "de760a09-adcd-49ea-b39d-7954bdc4793", site: "https://contoso.sharepoint.com/sites/SandboxDev" },
         secretSet: true },
-      { id: "c2", name: "Lighthouse-Senior living projects", desc: "Policy and compliance documents for the care teams.", type: "sharepoint",
+      { id: "c2", name: "Senior living projects", desc: "Policy and compliance documents for the care teams.", type: "sharepoint",
         status: "failed", lastTest: "4 Jan 2026", error: "The access token expired on 4 Jan 2026. Replace the client secret and test again.",
-        cfg: { tenant: "19393f3e-7639-4afe-bd82-ffb6e79b24b", client: "a0417cb2-11de-4c0a-9a10-2f7ac0d3e551", site: "https://ffcinc.sharepoint.com/sites/SeniorLivingDemo" },
+        cfg: { tenant: "19393f3e-7639-4afe-bd82-ffb6e79b24b", client: "a0417cb2-11de-4c0a-9a10-2f7ac0d3e551", site: "https://contoso.sharepoint.com/sites/SeniorLivingDemo" },
         secretSet: true }
     ];
     function connById(id) { return CONNECTIONS.filter(function (c) { return c.id === id; })[0]; }
@@ -3626,16 +3626,16 @@
     /* ---------- Help and support ---------- */
     var TICKETS = [
       { id: "SPX-827", app: "skyAdvisor", subject: "skyAdvisor demo is empty, nothing in the inbox or dashboards",
-        status: "done", prio: "medium", mine: true, reporter: "Sumit Awinash", assignee: "Chetan Pandey",
+        status: "done", prio: "medium", mine: true, reporter: "Sumit Awinash", assignee: "Luis Ortega",
         created: "6 May 2026", updated: "9 May 2026", updatedAgo: "3 months ago",
         desc: "The skyAdvisor demo environment (SL demo 2) shows an empty inbox and empty dashboards. Nothing has loaded since Friday.",
-        thread: [{ who: "Chetan Pandey", staff: true, when: "9 May 2026", text: "Dummy data from the demo was cleaned up. The team has re-created new leads and data on the environment." }] },
+        thread: [{ who: "Luis Ortega", staff: true, when: "9 May 2026", text: "Dummy data from the demo was cleaned up. The team has re-created new leads and data on the environment." }] },
       { id: "SPX-793", app: "skyChat", subject: "Senior Living Policies agent stopped returning document answers",
         status: "progress", prio: "urgent", mine: true, reporter: "Sumit Awinash", assignee: "Support",
         created: "2 Aug 2026", updated: "10 Aug 2026", updatedAgo: "yesterday",
         desc: "Since the SharePoint token expired the agent answers from general knowledge instead of the policy documents. Care teams are getting wrong answers.",
         thread: [
-          { who: "Support", staff: true, when: "9 Aug 2026", text: "Thanks, we can see the connection error on Lighthouse-Senior living projects. Can you confirm the client secret has been rotated in Azure?" },
+          { who: "Support", staff: true, when: "9 Aug 2026", text: "Thanks, we can see the connection error on Senior living projects. Can you confirm the client secret has been rotated in Azure?" },
           { who: "Sumit Awinash", staff: false, when: "10 Aug 2026", text: "Rotated it this morning. Testing the connection now." }
         ] },
       { id: "SPX-744", app: "skyChat", subject: "Add a way to export a conversation as PDF",
@@ -3643,15 +3643,15 @@
         created: "18 Jul 2026", updated: "18 Jul 2026", updatedAgo: "3 weeks ago",
         desc: "Care managers want to attach a conversation to a resident record. A PDF export from the share menu would cover it.", thread: [] },
       { id: "SPX-707", app: "SkyStudio", subject: "PL_TRAN_DbtExecutionEngine pipeline fails on retry",
-        status: "done", prio: "medium", mine: false, reporter: "Bhuvan Mahadevaswamy", assignee: "Bhuvan Mahadevaswamy",
+        status: "done", prio: "medium", mine: false, reporter: "Tom Becker", assignee: "Tom Becker",
         created: "3 Apr 2026", updated: "11 Apr 2026", updatedAgo: "4 months ago",
         desc: "The transformation pipeline fails when retried after a timeout.", thread: [] },
       { id: "SPX-696", app: "SkyStudio", subject: "PL_TRAN_DbtExecutionEngine schedule drift",
-        status: "done", prio: "low", mine: false, reporter: "Bhuvan Mahadevaswamy", assignee: "Bhuvan Mahadevaswamy",
+        status: "done", prio: "low", mine: false, reporter: "Tom Becker", assignee: "Tom Becker",
         created: "29 Mar 2026", updated: "2 Apr 2026", updatedAgo: "4 months ago",
         desc: "Scheduled runs start several minutes late.", thread: [] },
       { id: "SPX-612", app: "skyAdvisor", subject: "SMS flow is not working",
-        status: "done", prio: "high", mine: false, reporter: "Abbas Mithasheth", assignee: "Chetan Pandey",
+        status: "done", prio: "high", mine: false, reporter: "Priya Raman", assignee: "Luis Ortega",
         created: "12 Mar 2026", updated: "20 Mar 2026", updatedAgo: "4 months ago",
         desc: "Outbound SMS steps silently fail in the advisor flow.", thread: [] },
       { id: "SPX-557", app: "SkyStudio", subject: "Dbt does not work",
