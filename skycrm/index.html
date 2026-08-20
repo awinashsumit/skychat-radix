@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<!--
+  skyCRM - Overview dashboard, Radix flavour redesign
+  Shell + components from the shared Radix-Design System (../dashboard.css / ../tokens.css).
+  Populated with realistic sample data so every widget reads as a working product, not an
+  empty state.
+-->
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>skyCRM &middot; Overview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../tokens.css" />
+  <link rel="stylesheet" href="../dashboard.css" />
+  <style>
+    /* skyCRM-only: funnel + donut + goal-bar primitives, all built from tokens. */
+    .funnel-row { display: grid; grid-template-columns: 132px 1fr 44px; align-items: center; gap: var(--space-3); }
+    .funnel-row + .funnel-row { margin-top: var(--space-3); }
+    .funnel-label { font-size: var(--fs-2); color: var(--fg-high); }
+    .funnel-track { height: 10px; border-radius: var(--radius-full); background: var(--gray-4); overflow: hidden; }
+    .funnel-fill { height: 100%; border-radius: var(--radius-full); background: var(--chart-1); }
+    .funnel-count { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); text-align: right; font-variant-numeric: tabular-nums; }
+    .funnel-conv { font-size: var(--fs-1); color: var(--fg-low); grid-column: 2 / 4; margin-top: 2px; }
+
+    .stage-row { display: grid; grid-template-columns: 1fr auto 88px; align-items: center; gap: var(--space-3); }
+    .stage-row + .stage-row { margin-top: var(--space-3); }
+    .stage-dot { width: 8px; height: 8px; border-radius: var(--radius-full); flex: 0 0 auto; display: inline-block; margin-right: var(--space-2); }
+    .stage-name { font-size: var(--fs-2); color: var(--fg-high); display: flex; align-items: center; }
+    .stage-count { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); text-align: right; font-variant-numeric: tabular-nums; }
+    .stage-track { height: 8px; border-radius: var(--radius-full); background: var(--gray-4); overflow: hidden; }
+    .stage-fill { height: 100%; border-radius: var(--radius-full); }
+
+    .donut-wrap { display: flex; align-items: center; justify-content: center; gap: var(--space-5); flex-wrap: wrap; }
+    .donut-figure { position: relative; width: 152px; height: 152px; flex: 0 0 auto; }
+    .donut-figure svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .donut-center .dc-value { font-size: var(--fs-7); font-weight: var(--weight-bold); color: var(--fg-high); line-height: 1; }
+    .donut-center .dc-label { font-size: var(--fs-1); color: var(--fg-low); margin-top: 4px; }
+    .donut-legend { display: flex; flex-direction: column; gap: var(--space-2); }
+    .dl-row { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-2); color: var(--fg-high); }
+    .dl-swatch { width: 10px; height: 10px; border-radius: var(--radius-1); flex: 0 0 auto; }
+    .dl-num { margin-left: auto; padding-left: var(--space-4); font-weight: var(--weight-medium); font-variant-numeric: tabular-nums; }
+
+    .mini-stat { display: flex; flex-direction: column; gap: var(--space-1); }
+    .mini-stat .ms-value { font-size: var(--fs-8); line-height: 1; letter-spacing: var(--ls-8); font-weight: var(--weight-bold); color: var(--fg-high); }
+    .mini-stat .ms-sub { font-size: var(--fs-1); color: var(--fg-low); }
+
+    .inquiry-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) 0; }
+    .inquiry-row + .inquiry-row { border-top: var(--stroke-thin) solid var(--border-subtle); }
+    .inquiry-text { min-width: 0; flex: 1; }
+    .inquiry-name { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+    .inquiry-meta { font-size: var(--fs-1); color: var(--fg-low); margin-top: 1px; }
+    .inquiry-score { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-1); font-weight: var(--weight-medium); color: var(--warning-text); background: var(--warning-bg); padding: 2px var(--space-2); border-radius: var(--radius-full); flex: 0 0 auto; }
+    .inquiry-score svg { width: 12px; height: 12px; }
+
+    .goal-block + .goal-block { margin-top: var(--space-5); }
+    .goal-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: var(--space-2); }
+    .goal-title { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+    .goal-nums { font-size: var(--fs-1); color: var(--fg-low); font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+
+    <!-- ============ HEADER ============ -->
+    <header class="app-header">
+      <div class="brand">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect width="24" height="24" rx="6" fill="var(--accent-9)"/><text x="12" y="16.5" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-contrast)">S</text></svg>
+        <span>skyCRM</span>
+      </div>
+      <div class="search" style="flex:1;max-width:420px;margin:0 var(--space-4);">
+        <span class="search-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34" /><circle cx="11" cy="11" r="8" /></svg></span>
+        <input class="input" placeholder="Search prospects, residents, referrers..." />
+      </div>
+      <div class="header-right">
+        <span class="dropdown" style="min-width:200px;" aria-haspopup="listbox">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="color:var(--fg-subtle);"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/></svg>
+          Community: All communities (6)
+          <span class="dropdown-chevron"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5" /><path d="m7 9 5-5 5 5" /></svg></span>
+        </span>
+        <div class="segmented is-brand" role="tablist" aria-label="Module">
+          <button class="segmented-item is-active" role="tab" aria-selected="true">Sales</button>
+          <button class="segmented-item" role="tab" aria-selected="false">Marketing</button>
+        </div>
+        <button class="icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0" /><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" /></svg><span class="ic-badge">5</span></button>
+        <button class="icon-btn" aria-label="Toggle theme" data-theme-toggle><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" /></svg></button>
+        <span class="divider-v"></span>
+        <span class="header-user"><span class="avatar">SA</span><span>Sumit Awinash</span></span>
+      </div>
+    </header>
+
+    <!-- ============ SIDEBAR ============ -->
+    <nav class="app-sidebar" aria-label="Primary">
+      <button class="sidebar-toggle" aria-label="Collapse navigation">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M9 3v18" /></svg>
+      </button>
+
+      <div class="nav-section">Senior Living</div>
+      <a class="nav-item is-active" href="#" aria-current="page">
+        <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>
+        <span class="nav-label">Overview</span>
+      </a>
+      <a class="nav-item" href="#">
+        <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1" /><rect width="7" height="7" x="14" y="3" rx="1" /><rect width="7" height="7" x="14" y="14" rx="1" /><rect width="7" height="7" x="3" y="14" rx="1" /></svg>
+        <span class="nav-label">Planner</span>
+      </a>
+      <a class="nav-item" href="#">
+        <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><path d="M16 3.128a4 4 0 0 1 0 7.744" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><circle cx="9" cy="7" r="4" /></svg>
+        <span class="nav-label">Prospects</span>
+      </a>
+      <a class="nav-item" href="#">
+        <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        <span class="nav-label">Residents</span>
+      </a>
+      <a class="nav-item" href="#">
+        <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-9.33-5"/><path d="M13.56 11.747a6 6 0 0 1-6.812 3.815"/><path d="m16 12 5-5"/><path d="m19 15-5-5"/><path d="m21 9-4-4"/><circle cx="6" cy="18" r="3"/></svg>
+        <span class="nav-label">Referrers</span>
+      </a>
+      <a class="nav-item" href="#">
+        <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h11a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v.5a2.5 2.5 0 0 0 2.5 2.5"/></svg>
+        <span class="nav-label">Occupancy</span>
+      </a>
+      <a class="nav-item" href="#">
+        <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></svg>
+        <span class="nav-label">Reports</span>
+      </a>
+      <a class="nav-item" href="#">
+        <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11"/></svg>
+        <span class="nav-label">Inbox</span>
+      </a>
+      <a class="nav-item" href="#">
+        <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4" /><path d="M16 2v4" /><rect width="18" height="18" x="3" y="4" rx="2" /><path d="M3 10h18" /></svg>
+        <span class="nav-label">Events</span>
+      </a>
+      <a class="nav-item" href="#">
+        <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11.998 2a25 25 0 0 0 8.421 2.522A1 1 0 0 1 21 5.517V11c0 7-4.135 9.667-9 11-4.865-1.333-9-4-9-11V5.517a1 1 0 0 1 .581-.995A25 25 0 0 0 12 2"/><path d="m9 12 2 2 4-4"/></svg>
+        <span class="nav-label">Data Quality</span>
+      </a>
+
+      <div class="nav-section" style="margin-top:auto;">Settings</div>
+      <a class="nav-item" href="#">
+        <svg class="nav-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        <span class="nav-label">Help + Support</span>
+      </a>
+    </nav>
+
+    <!-- ============ CONTENT ============ -->
+    <main class="app-content">
+
+      <div class="breadcrumbs">
+        <a href="#">Senior Living</a>
+        <span class="sep"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+        <span class="current">Overview</span>
+      </div>
+
+      <div class="content-body">
+        <header class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);flex-wrap:wrap;">
+          <div>
+            <h1>Overview</h1>
+            <p>Sales and occupancy at a glance across your communities, with drill-downs into prospects, inquiries, and the activities driving move-ins.</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:var(--space-3);flex:0 0 auto;">
+            <span style="font-size:var(--fs-1);color:var(--fg-low);">Updated 4 min ago</span>
+            <button class="btn btn-surface is-sm">
+              <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+              Refresh
+            </button>
+          </div>
+        </header>
+
+        <div class="stack-5">
+
+          <!-- Context strip: role + community scope, replaces the old empty "Roles" card -->
+          <div class="summary-strip">
+            <div>
+              <div class="ss-label">Communities in scope</div>
+              <div class="ss-value">6 of 6</div>
+            </div>
+            <div>
+              <div class="ss-label">Your role</div>
+              <div class="ss-value">Sales Director</div>
+            </div>
+            <div>
+              <div class="ss-label">Sales team</div>
+              <div class="ss-value">14 reps</div>
+            </div>
+            <div>
+              <div class="ss-label">Reporting period</div>
+              <div class="ss-value">Aug 1 &ndash; 11, MTD</div>
+            </div>
+          </div>
+
+          <!-- KPI row -->
+          <div class="kpi-row">
+            <section class="card stat-card">
+              <div class="sc-head">
+                <span class="sc-label">Occupancy</span>
+                <span class="sc-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h11a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v.5a2.5 2.5 0 0 0 2.5 2.5"/></svg></span>
+              </div>
+              <div class="sc-value">94.2%</div>
+              <div class="sc-delta is-up"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 7h6v6"/><path d="m22 7-8.5 8.5-5-5L2 17"/></svg> 0.6 pts vs last month</div>
+              <div class="sc-spark"><svg viewBox="0 0 100 32" preserveAspectRatio="none"><polyline points="0,24 15,22 30,23 45,17 60,18 75,10 90,8 100,6" fill="none" stroke="var(--chart-1)" stroke-width="2" opacity=".6"/></svg></div>
+            </section>
+            <section class="card stat-card">
+              <div class="sc-head">
+                <span class="sc-label">Open prospects</span>
+                <span class="sc-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><path d="M16 3.128a4 4 0 0 1 0 7.744" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><circle cx="9" cy="7" r="4" /></svg></span>
+              </div>
+              <div class="sc-value">128</div>
+              <div class="sc-delta is-up"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 7h6v6"/><path d="m22 7-8.5 8.5-5-5L2 17"/></svg> 6.7% vs last week</div>
+              <div class="sc-spark"><svg viewBox="0 0 100 32" preserveAspectRatio="none"><polyline points="0,20 15,22 30,18 45,19 60,14 75,15 90,9 100,10" fill="none" stroke="var(--chart-1)" stroke-width="2" opacity=".6"/></svg></div>
+            </section>
+            <section class="card stat-card">
+              <div class="sc-head">
+                <span class="sc-label">New inquiries, MTD</span>
+                <span class="sc-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11"/></svg></span>
+              </div>
+              <div class="sc-value">86</div>
+              <div class="sc-delta is-up"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 7h6v6"/><path d="m22 7-8.5 8.5-5-5L2 17"/></svg> 14.7% vs last month</div>
+              <div class="sc-spark"><svg viewBox="0 0 100 32" preserveAspectRatio="none"><polyline points="0,26 15,20 30,21 45,15 60,16 75,9 90,11 100,4" fill="none" stroke="var(--chart-1)" stroke-width="2" opacity=".6"/></svg></div>
+            </section>
+            <section class="card stat-card">
+              <div class="sc-head">
+                <span class="sc-label">Move-ins, MTD</span>
+                <span class="sc-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>
+              </div>
+              <div class="sc-value">9</div>
+              <div class="sc-delta is-down"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 17h6v-6"/><path d="m22 17-8.5-8.5-5 5L2 7"/></svg> 2 fewer than last month</div>
+              <div class="sc-spark"><svg viewBox="0 0 100 32" preserveAspectRatio="none"><polyline points="0,6 15,10 30,9 45,15 60,14 75,20 90,19 100,24" fill="none" stroke="var(--chart-1)" stroke-width="2" opacity=".6"/></svg></div>
+            </section>
+          </div>
+
+          <!-- Sales Funnel + Occupancy -->
+          <div class="split-2">
+            <section class="card">
+              <div class="panel-head">
+                <div>
+                  <div class="panel-title">Sales Funnel</div>
+                  <div class="panel-sub">Cohort: prospects who entered this period</div>
+                </div>
+                <span class="dropdown" style="min-width:110px;height:32px;">
+                  MTD
+                  <span class="dropdown-chevron"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5" /><path d="m7 9 5-5 5 5" /></svg></span>
+                </span>
+              </div>
+
+              <div class="funnel-row">
+                <span class="funnel-label">Inquiry</span>
+                <div class="funnel-track"><div class="funnel-fill" style="width:100%;"></div></div>
+                <span class="funnel-count">86</span>
+              </div>
+              <div class="funnel-row">
+                <span class="funnel-label">Tour scheduled</span>
+                <div class="funnel-track"><div class="funnel-fill" style="width:63%;"></div></div>
+                <span class="funnel-count">54</span>
+                <span class="funnel-conv">63% of inquiries scheduled a tour</span>
+              </div>
+              <div class="funnel-row">
+                <span class="funnel-label">Tour completed</span>
+                <div class="funnel-track"><div class="funnel-fill" style="width:55%;"></div></div>
+                <span class="funnel-count">47</span>
+              </div>
+              <div class="funnel-row">
+                <span class="funnel-label">Application</span>
+                <div class="funnel-track"><div class="funnel-fill" style="width:24%;"></div></div>
+                <span class="funnel-count">21</span>
+              </div>
+              <div class="funnel-row">
+                <span class="funnel-label">Move-in</span>
+                <div class="funnel-track"><div class="funnel-fill" style="width:10%;"></div></div>
+                <span class="funnel-count">9</span>
+                <span class="funnel-conv">10.5% inquiry-to-move-in conversion</span>
+              </div>
+            </section>
+
+            <section class="card">
+              <div class="panel-head">
+                <div class="panel-title">Occupancy</div>
+                <div class="toggle-group">
+                  <button class="toggle is-on">%</button>
+                  <button class="toggle">#</button>
+                </div>
+              </div>
+
+              <div class="donut-wrap">
+                <div class="donut-figure">
+                  <svg viewBox="0 0 36 36">
+                    <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--gray-4)" stroke-width="4"></circle>
+                    <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--chart-1)" stroke-width="4" stroke-linecap="round" stroke-dasharray="91.2 97.4" stroke-dashoffset="0"></circle>
+                  </svg>
+                  <div class="donut-center">
+                    <span class="dc-value">94.2%</span>
+                    <span class="dc-label">occupied</span>
+                  </div>
+                </div>
+                <div class="donut-legend">
+                  <div class="dl-row"><span class="dl-swatch" style="background:var(--chart-1);"></span>Occupied<span class="dl-num">699</span></div>
+                  <div class="dl-row"><span class="dl-swatch" style="background:var(--gray-4);"></span>Vacant<span class="dl-num">43</span></div>
+                  <div class="dl-row" style="border-top:var(--stroke-thin) solid var(--border-subtle);padding-top:var(--space-2);margin-top:2px;"><span class="dl-swatch" style="background:transparent;"></span>Total units<span class="dl-num">742</span></div>
+                </div>
+              </div>
+
+              <div style="margin-top:var(--space-4);padding-top:var(--space-4);border-top:var(--stroke-thin) solid var(--border-subtle);display:flex;align-items:center;justify-content:space-between;">
+                <span style="font-size:var(--fs-1);color:var(--fg-low);">Projected EOM</span>
+                <span class="badge is-success">94.6%</span>
+              </div>
+            </section>
+          </div>
+
+          <!-- Prospects by Stage + New Inquiries -->
+          <div class="split-2">
+            <section class="card">
+              <div class="panel-head">
+                <div>
+                  <div class="panel-title">Prospects by Stage</div>
+                  <div class="panel-sub">Snapshot: current open pipeline</div>
+                </div>
+              </div>
+
+              <div class="stage-row">
+                <span class="stage-name"><span class="stage-dot" style="background:var(--chart-1);"></span>New</span>
+                <span class="stage-count">34</span>
+                <div class="stage-track"><div class="stage-fill" style="width:100%;background:var(--chart-1);"></div></div>
+              </div>
+              <div class="stage-row">
+                <span class="stage-name"><span class="stage-dot" style="background:var(--chart-2);"></span>Contacted</span>
+                <span class="stage-count">28</span>
+                <div class="stage-track"><div class="stage-fill" style="width:82%;background:var(--chart-2);"></div></div>
+              </div>
+              <div class="stage-row">
+                <span class="stage-name"><span class="stage-dot" style="background:var(--chart-3);"></span>Tour scheduled</span>
+                <span class="stage-count">19</span>
+                <div class="stage-track"><div class="stage-fill" style="width:56%;background:var(--chart-3);"></div></div>
+              </div>
+              <div class="stage-row">
+                <span class="stage-name"><span class="stage-dot" style="background:var(--chart-4);"></span>Touring</span>
+                <span class="stage-count">12</span>
+                <div class="stage-track"><div class="stage-fill" style="width:35%;background:var(--chart-4);"></div></div>
+              </div>
+              <div class="stage-row">
+                <span class="stage-name"><span class="stage-dot" style="background:var(--chart-5);"></span>Application</span>
+                <span class="stage-count">15</span>
+                <div class="stage-track"><div class="stage-fill" style="width:44%;background:var(--chart-5);"></div></div>
+              </div>
+              <div class="stage-row">
+                <span class="stage-name"><span class="stage-dot" style="background:var(--chart-6);"></span>Approved</span>
+                <span class="stage-count">20</span>
+                <div class="stage-track"><div class="stage-fill" style="width:59%;background:var(--chart-6);"></div></div>
+              </div>
+
+              <div style="margin-top:var(--space-4);padding-top:var(--space-4);border-top:var(--stroke-thin) solid var(--border-subtle);display:flex;align-items:center;justify-content:space-between;">
+                <span style="font-size:var(--fs-1);color:var(--fg-low);">Total open pipeline</span>
+                <span style="font-size:var(--fs-2);font-weight:var(--weight-medium);color:var(--fg-high);">128 prospects</span>
+              </div>
+            </section>
+
+            <section class="card">
+              <div class="panel-head">
+                <div class="panel-title">New Inquiries</div>
+                <span class="dropdown" style="min-width:90px;height:32px;">
+                  MTD
+                  <span class="dropdown-chevron"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5" /><path d="m7 9 5-5 5 5" /></svg></span>
+                </span>
+              </div>
+              <div class="mini-stat">
+                <span class="ms-value">86</span>
+                <span class="ms-sub">Aug 1&ndash;11 &middot; up 14.7% vs the same period last month</span>
+              </div>
+              <div style="margin-top:var(--space-4);padding-top:var(--space-4);border-top:var(--stroke-thin) solid var(--border-subtle);">
+                <div class="data-list">
+                  <span class="dl-label">Phone</span><span class="dl-value">38</span>
+                  <span class="dl-label">Web form</span><span class="dl-value">31</span>
+                  <span class="dl-label">Walk-in</span><span class="dl-value">11</span>
+                  <span class="dl-label">Referral</span><span class="dl-value">6</span>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- Follow-up backlog: Past Due, Prospects w/o Next, Referrers w/o Next -->
+          <div class="card-grid">
+            <section class="card stat-card">
+              <div class="sc-head">
+                <span class="sc-label">Past Due Activities</span>
+                <span class="sc-icon" style="background:var(--danger-bg);color:var(--danger-solid);"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
+              </div>
+              <div class="sc-value">7</div>
+              <div class="sc-delta is-down"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 17h6v-6"/><path d="m22 17-8.5-8.5-5 5L2 7"/></svg> Oldest overdue by 4 days</div>
+            </section>
+
+            <section class="card stat-card">
+              <div class="sc-head">
+                <span class="sc-label">Prospects w/o Next Activity</span>
+                <div class="toggle-group">
+                  <button class="toggle is-on">Without Next</button>
+                  <button class="toggle">With Next</button>
+                </div>
+              </div>
+              <div class="sc-value">11</div>
+              <div class="sc-delta"><span style="color:var(--fg-low);">117 of 128 prospects have a next step</span></div>
+            </section>
+
+            <section class="card stat-card">
+              <div class="sc-head">
+                <span class="sc-label">Referrers w/o Next Activity</span>
+                <span class="sc-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-9.33-5"/><path d="M13.56 11.747a6 6 0 0 1-6.812 3.815"/><path d="m16 12 5-5"/><path d="m19 15-5-5"/><path d="m21 9-4-4"/><circle cx="6" cy="18" r="3"/></svg></span>
+              </div>
+              <div class="sc-value">4</div>
+              <div class="sc-delta"><span style="color:var(--fg-low);">Out of 32 active referrers</span></div>
+            </section>
+          </div>
+
+          <!-- Top Inquiries + MIs/MOs -->
+          <div class="split-2">
+            <section class="card">
+              <div class="panel-head">
+                <div>
+                  <div class="panel-title">Top Inquiries</div>
+                  <div class="panel-sub">Ranked by engagement score</div>
+                </div>
+              </div>
+
+              <div class="inquiry-row">
+                <span class="avatar c1">EM</span>
+                <div class="inquiry-text">
+                  <div class="inquiry-name">Eleanor Marsh</div>
+                  <div class="inquiry-meta">Willow Springs &middot; Tour scheduled Aug 13</div>
+                </div>
+                <span class="inquiry-score"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/></svg> 92</span>
+              </div>
+              <div class="inquiry-row">
+                <span class="avatar c2">RG</span>
+                <div class="inquiry-text">
+                  <div class="inquiry-name">Robert Ghosh</div>
+                  <div class="inquiry-meta">Cedar Point &middot; Application in review</div>
+                </div>
+                <span class="inquiry-score"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/></svg> 88</span>
+              </div>
+              <div class="inquiry-row">
+                <span class="avatar c3">PN</span>
+                <div class="inquiry-text">
+                  <div class="inquiry-name">Priya Nair</div>
+                  <div class="inquiry-meta">Oakhaven Terrace &middot; Called back, awaiting reply</div>
+                </div>
+                <span class="inquiry-score"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/></svg> 81</span>
+              </div>
+              <div class="inquiry-row">
+                <span class="avatar c4">TW</span>
+                <div class="inquiry-text">
+                  <div class="inquiry-name">Thomas Wexler</div>
+                  <div class="inquiry-meta">Willow Springs &middot; Tour completed Aug 9</div>
+                </div>
+                <span class="inquiry-score"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/></svg> 77</span>
+              </div>
+              <div class="inquiry-row">
+                <span class="avatar c5">SK</span>
+                <div class="inquiry-text">
+                  <div class="inquiry-name">Sarah Kessler</div>
+                  <div class="inquiry-meta">Birchwood Manor &middot; New inquiry, unassigned</div>
+                </div>
+                <span class="inquiry-score"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/></svg> 74</span>
+              </div>
+            </section>
+
+            <section class="card">
+              <div class="panel-head" style="flex-direction:column;align-items:flex-start;gap:var(--space-3);">
+                <div class="panel-title">MIs/MOs This Month</div>
+                <div class="toggle-group">
+                  <button class="toggle is-on">Counts</button>
+                  <button class="toggle">Scheduled</button>
+                  <button class="toggle">Awaiting Move-In</button>
+                </div>
+              </div>
+
+              <div style="display:flex;gap:var(--space-6);">
+                <div class="mini-stat">
+                  <span class="ms-value">9</span>
+                  <span class="ms-sub">Move-ins</span>
+                </div>
+                <div class="mini-stat">
+                  <span class="ms-value">4</span>
+                  <span class="ms-sub">Move-outs</span>
+                </div>
+              </div>
+
+              <div style="margin-top:var(--space-4);padding-top:var(--space-4);border-top:var(--stroke-thin) solid var(--border-subtle);">
+                <div class="data-list">
+                  <span class="dl-label">Scheduled</span><span class="dl-value">6</span>
+                  <span class="dl-label">Awaiting move-in</span><span class="dl-value">3</span>
+                  <span class="dl-label">Net absorption</span><span class="dl-value">+5 units</span>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- Activities vs Goal -->
+          <section class="card">
+            <div class="panel-head">
+              <div class="panel-title">Activities vs Goal (MTD)</div>
+            </div>
+
+            <div class="split-even">
+              <div>
+                <div class="goal-block">
+                  <div class="goal-head">
+                    <span class="goal-title">Prospects</span>
+                    <span class="goal-nums">112 / 150</span>
+                  </div>
+                  <div class="progress"><div class="progress-fill" style="width:74.6%;"></div></div>
+                  <div style="margin-top:var(--space-2);">
+                    <span class="badge is-warning">74.6% of goal</span>
+                  </div>
+                </div>
+                <p style="margin-top:var(--space-3);font-size:var(--fs-1);color:var(--fg-low);">Email tasks are tracked separately and not counted here.</p>
+              </div>
+              <div>
+                <div class="goal-block">
+                  <div class="goal-head">
+                    <span class="goal-title">Referrers</span>
+                    <span class="goal-nums">51 / 60</span>
+                  </div>
+                  <div class="progress"><div class="progress-fill" style="width:85%;"></div></div>
+                  <div style="margin-top:var(--space-2);">
+                    <span class="badge is-success">85% of goal</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+        </div>
+      </div>
+
+      <footer class="app-footer">
+        Copyright 2026 <a href="#">Skypoint</a>. All rights reserved.
+      </footer>
+    </main>
+
+  </div>
+
+  <script>
+    (function () {
+      var btn = document.querySelector('[data-theme-toggle]');
+      if (btn) btn.addEventListener('click', function () {
+        var h = document.documentElement;
+        h.setAttribute('data-theme', h.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+      });
+
+      // Lightweight, presentational-only interactions for the toggle groups and segmented control.
+      document.querySelectorAll('.toggle-group').forEach(function (group) {
+        group.querySelectorAll('.toggle').forEach(function (t) {
+          t.addEventListener('click', function () {
+            group.querySelectorAll('.toggle').forEach(function (o) { o.classList.remove('is-on'); });
+            t.classList.add('is-on');
+          });
+        });
+      });
+      document.querySelectorAll('.segmented[role="tablist"]').forEach(function (group) {
+        group.querySelectorAll('.segmented-item').forEach(function (t) {
+          t.addEventListener('click', function () {
+            group.querySelectorAll('.segmented-item').forEach(function (o) {
+              o.classList.remove('is-active'); o.setAttribute('aria-selected', 'false');
+            });
+            t.classList.add('is-active'); t.setAttribute('aria-selected', 'true');
+          });
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
