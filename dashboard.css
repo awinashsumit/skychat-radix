@@ -7,6 +7,31 @@
 @import url("./tokens.css?v=2");
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ============================================================
+   NATIVE BUTTON RESET - do not remove
+   A <button> arrives with an outset border, centred text and its own font.
+   Everything in this system draws its edge with an INSET box-shadow, so the
+   native border lands on top of that ring as a dark 3D edge. It reads as a
+   stray drop shadow and it is the single most common defect in this codebase.
+
+   This is an ELEMENT selector on purpose. The same bug was fixed four times as
+   a list of class names (.dropdown, then .radio-card, then a shared allowlist,
+   then .q-mark) and it came back every time, because a list has to be
+   remembered whenever a new component is written and an element rule does not.
+
+   Every property here is the weakest possible specificity, so any component
+   class overrides it without effort.
+   ============================================================ */
+button {
+  border: 0;
+  background: transparent;
+  font-family: var(--font-base);
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+  text-align: left;
+}
 html, body { height: 100%; }
 body {
   font-family: var(--font-base);
@@ -19,6 +44,44 @@ body {
   text-rendering: optimizeLegibility;
 }
 a { color: inherit; }
+
+/* ============================================================
+   Components that may be built from an <a> or a <div role="button"> rather
+   than a real <button>. They get no native button chrome, but they still need
+   the font and alignment stated, and they need the ANCHOR underline killed:
+   a link styled as a button arrives underlined, which is how "Create course"
+   shipped with a line through it.
+
+   `.btn` is in this list because a button that navigates should be an <a>, and
+   the design system should not punish that choice.
+   Real <button> chrome is handled by the element reset at the top of the file.
+   ============================================================ */
+.btn, .nav-item, .list-item, .tree-item, .radio-card, .mail-item, .pane-folder,
+.dropdown, .tag, .tag-dismiss, .step, .attn-item, .accordion-header {
+  border: 0;
+  font-family: var(--font-base);
+  text-align: left;
+  text-decoration: none;
+}
+
+/* ============================================================
+   [hidden] must actually hide.
+
+   `[hidden] { display: none }` is a user-agent rule, which sits at the very
+   bottom of the cascade. Almost every component below sets its own `display`,
+   and any author declaration beats the UA one, so `el.hidden = true` on a
+   .btn, .tag, .dropdown-menu, .overlay or .callout does nothing at all.
+
+   This was hit four separate times before it was fixed here: a shadow button
+   that would not go away, a scope menu that would not close, and most recently
+   an .overlay that covered a whole page and swallowed every click. Each time
+   the fix was a per-page list of "classes that need the guard", and each time
+   the next page forgot one.
+
+   One rule, at source, so no page has to remember. !important is correct here:
+   nothing should ever out-rank an explicit request to hide an element.
+   ============================================================ */
+[hidden] { display: none !important; }
 
 /* ---- App shell: header on top, sidebar + content below ---- */
 .app-shell {
@@ -251,8 +314,14 @@ a { color: inherit; }
 .select { appearance: none; padding-right: var(--space-5); }
 
 /* Spin button */
-.spin-button { display: inline-flex; align-items: stretch; box-shadow: inset 0 0 0 1px var(--border-ui); border-radius: var(--radius-2); background: var(--color-surface); }
-.spin-button .input { box-shadow: none; border-radius: var(--radius-2) 0 0 var(--radius-2); }
+/* Same trap as the money field: an inset ring on this container is painted
+   beneath the opaque input and steppers, so it has to be an overlay. */
+.spin-button { position: relative; display: inline-flex; align-items: stretch; border-radius: var(--radius-2); background: var(--color-surface); }
+.spin-button::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; box-shadow: inset 0 0 0 1px var(--border-ui); }
+.spin-button:focus-within::after { box-shadow: inset 0 0 0 1px var(--accent-8); }
+/* Same trap as the money field: .input is width:100%, which inside a flex row
+   resolves to the whole group's width and overflows past the steppers. */
+.spin-button .input { box-shadow: none; flex: 1; width: auto; min-width: 0; border-radius: var(--radius-2) 0 0 var(--radius-2); }
 .spin-button .steppers { display: flex; flex-direction: column; }
 .spin-button .steppers button { flex: 1; width: 24px; border: 0; background: transparent; color: var(--fg-low); cursor: pointer; }
 .spin-button .steppers button:hover { background: var(--gray-3); }
@@ -284,7 +353,7 @@ a { color: inherit; }
 
 /* Tabs */
 .tabs { display: flex; gap: var(--space-1); border-bottom: var(--stroke-thin) solid var(--border-subtle); }
-.tab { position: relative; padding: var(--space-2) var(--space-3); background: transparent; border: 0; cursor: pointer; font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-low); }
+.tab { position: relative; padding: var(--space-2) var(--space-3); background: transparent; border: 0; cursor: pointer; font-family: var(--font-base); font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-low); }
 .tab:hover { color: var(--fg-high); }
 .tab.is-active { color: var(--fg-high); }
 .tab.is-active::after { content: ""; position: absolute; left: var(--space-3); right: var(--space-3); bottom: -1px; height: 2px; border-radius: var(--radius-full); background: var(--accent-9); }
@@ -381,7 +450,12 @@ a { color: inherit; }
 .info-btn:hover { background: var(--gray-3); color: var(--fg-low); }
 
 /* Dropdown menu (Select / Dropdown Menu surface) */
-.dropdown { display: inline-flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-width: 180px; height: 32px; padding: 0 var(--space-2) 0 var(--space-3); background: var(--color-surface); box-shadow: inset 0 0 0 1px var(--border-ui); border-radius: var(--radius-2); color: var(--fg-high); font-size: var(--fs-2); cursor: pointer; }
+/* Safe on a <button>, which is what a menu trigger should be: `border: 0` kills the
+   UA's outset button chrome (which otherwise renders a dark 3D edge over the inset
+   ring) and `font-family` is restated because a button does not inherit it. Without
+   these the component only looked right on a <span>, which is not focusable. */
+.dropdown { display: inline-flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-width: 180px; height: 32px; padding: 0 var(--space-2) 0 var(--space-3); background: var(--color-surface); border: 0; box-shadow: inset 0 0 0 1px var(--border-ui); border-radius: var(--radius-2); color: var(--fg-high); font-family: var(--font-base); font-size: var(--fs-2); line-height: var(--lh-2); text-align: left; cursor: pointer; }
+.dropdown:focus-visible { outline: none; box-shadow: inset 0 0 0 1px var(--accent-8), 0 0 0 2px var(--color-page), 0 0 0 4px var(--focus-ring); }
 .dropdown:hover { background: var(--gray-2); }
 .dropdown:focus-within, .dropdown.is-focus { box-shadow: inset 0 0 0 1px var(--accent-8); outline: none; }
 .dropdown .dropdown-chevron { width: 16px; height: 16px; color: var(--fg-subtle); transition: transform .12s; }
@@ -401,19 +475,30 @@ a { color: inherit; }
    gray-2 row hover, 40px header / 48px body rows (the §4 literal).
    Pair with .table-toolbar above and .pagination below.
    ============================================================ */
+/* Tables breathe. Three things do the work, and none of them is decoration:
+
+   The header is a tinted band, not white. It is the one grey left in the app,
+   and it earns it: it is a legend inside a white card rather than a page
+   background, so it separates the labels from the data without a heavy rule.
+
+   Rows are 64px, not 48px. Almost every cell here carries two lines, a name
+   and an email or a title and a category, and 48px left them touching. Height
+   is the cheapest legibility there is.
+
+   Padding is 24px, matching the card gutter. A table inset less than the card
+   around it reads as cramped no matter how tall the rows are. */
 .table-wrap { width: 100%; overflow-x: auto; border-radius: var(--radius-4); border: var(--stroke-thin) solid var(--border-subtle); background: var(--color-panel-solid); }
 .table { width: 100%; border-collapse: collapse; font-size: var(--fs-2); }
-.table thead th { position: sticky; top: 0; z-index: 1; background: var(--gray-2); text-align: left; font-weight: var(--weight-medium); color: var(--fg-low); padding: 0 var(--space-4); height: 40px; border-bottom: var(--stroke-thin) solid var(--border-subtle); white-space: nowrap; }
+.table thead th { position: sticky; top: 0; z-index: 1; background: var(--gray-2); text-align: left; font-size: var(--fs-1); font-weight: var(--weight-semibold); letter-spacing: .05em; text-transform: uppercase; color: var(--fg-low); padding: 0 var(--space-5); height: 48px; border-bottom: var(--stroke-thin) solid var(--border-subtle); white-space: nowrap; }
 .table thead th.is-numeric { text-align: right; }
-.table tbody td { height: 48px; padding: 0 var(--space-4); color: var(--table-fg); font-weight: var(--weight-regular); border-bottom: var(--stroke-thin) solid var(--border-subtle); vertical-align: middle; }
+.table tbody td { height: 64px; padding: var(--space-3) var(--space-5); color: var(--table-fg); font-weight: var(--weight-regular); border-bottom: var(--stroke-thin) solid var(--border-subtle); vertical-align: middle; }
 .table tbody td.is-numeric { text-align: right; font-variant-numeric: tabular-nums; color: var(--table-fg); }
 .table tbody tr:last-child td { border-bottom: 0; }
 .table tbody tr:hover td { background: var(--row-accent); }
 .table tbody tr.is-selected td { background: var(--row-accent); }
 .table tbody tr[data-href] { cursor: pointer; }   /* clickable rows (wire with the row-click snippet) */
 .table .cell-strong { font-weight: var(--weight-regular); color: var(--table-fg); }
-.table .cell-sub { color: var(--fg-subtle); }
-.table .cell-sub { color: var(--fg-low); font-size: var(--fs-1); }
+.table .cell-sub { color: var(--fg-low); font-size: var(--fs-1); margin-top: 3px; }
 .table .cell-person { display: flex; align-items: center; gap: var(--space-3); }
 .table-toolbar { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-4); }
 .table-toolbar .toolbar-spacer { flex: 1; }
@@ -453,8 +538,11 @@ a { color: inherit; }
 .radio-card { display: block; padding: var(--space-4); border-radius: var(--radius-4); background: var(--color-panel-solid); box-shadow: inset 0 0 0 1px var(--border-ui); cursor: pointer; }
 .radio-card:hover { box-shadow: inset 0 0 0 1px var(--border-strong); }
 .radio-card.is-selected { box-shadow: inset 0 0 0 2px var(--accent-9); }
-.radio-card .rc-title { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
-.radio-card .rc-sub { font-size: var(--fs-1); color: var(--fg-low); margin-top: 2px; }
+/* display:block is load-bearing. Two inline spans render side by side, so the
+   title and subtitle run together as "From a documentUpload a policy". This is
+   the exact failure rules.md §14 warns about, and the component itself had it. */
+.radio-card .rc-title { display: block; font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+.radio-card .rc-sub { display: block; font-size: var(--fs-1); color: var(--fg-low); margin-top: 2px; }
 
 /* Alert Dialog - destructive confirm (narrower than Dialog) */
 .alert-dialog { width: min(460px, 92vw); background: var(--color-panel-solid); border-radius: var(--radius-5); box-shadow: var(--shadow-5); padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-3); }
@@ -518,6 +606,8 @@ a { color: inherit; }
 .split-2 { display: grid; grid-template-columns: 2fr 1fr; gap: var(--space-4); align-items: start; }
 .split-even { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); align-items: start; }
 .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: var(--space-4); }
+.stack-3 { display: flex; flex-direction: column; gap: var(--space-3); }
+.stack-4 { display: flex; flex-direction: column; gap: var(--space-4); }
 .stack-5 { display: flex; flex-direction: column; gap: var(--space-5); }
 @media (max-width: 1024px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } .split-2, .split-even { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .kpi-row { grid-template-columns: 1fr; } .card-grid { grid-template-columns: 1fr; } }
@@ -534,6 +624,45 @@ a { color: inherit; }
 .stat-card .sc-spark { margin-top: var(--space-1); height: 40px; }
 .stat-card .sc-spark svg { width: 100%; height: 100%; display: block; }
 
+/* ============================================================
+   KPI cards.
+
+   Label, then value, then what changed. That order is deliberate: a
+   number means nothing until you know what it counts, so the eye should
+   not land on "1,984" before it lands on "Total enrollments".
+
+   The restraint is the design. No coloured edge, no tinted icon tile, no
+   four accent colours across four cards that are not four kinds of thing.
+   Colour appears on exactly one line, the last one, where a direction or
+   a warning genuinely carries meaning. An icon beside "Total courses"
+   tells the reader nothing the label has not already said.
+
+   Lived in two page stylesheets before it lived here, which is how the
+   two copies drifted apart in padding, icon size and label case.
+   ============================================================ */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--space-4); }
+.kpi {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  padding: var(--space-5); border-radius: var(--radius-4); text-align: left;
+  background: var(--color-panel-solid); box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+.kpi-l { font-size: var(--fs-2); color: var(--fg-low); }
+.kpi-v {
+  font-size: var(--fs-8); line-height: 1; letter-spacing: var(--ls-8);
+  font-weight: var(--weight-bold); color: var(--fg-high); font-variant-numeric: tabular-nums;
+}
+.kpi-n { font-size: var(--fs-1); color: var(--fg-low); }
+.kpi-n.is-warn { color: var(--warning-text); }
+.kpi-n.is-bad  { color: var(--danger-text); }
+/* The only colour on the card, and only when it points somewhere */
+.kpi-d { display: inline-flex; align-items: center; gap: 3px; font-weight: var(--weight-medium); }
+.kpi-d.is-up   { color: var(--success-text); }
+.kpi-d.is-down { color: var(--danger-text); }
+/* A card that filters the table below it earns a pointer and a ring */
+.kpi.is-filter { cursor: pointer; width: 100%; }
+.kpi.is-filter:hover { box-shadow: inset 0 0 0 1px var(--border-strong); }
+.kpi.is-on { background: var(--accent-2); box-shadow: inset 0 0 0 1px var(--accent-8); }
+
 /* Card with a titled header (panel) */
 .panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-4); }
 .panel-title { font-size: var(--fs-4); font-weight: var(--weight-bold); color: var(--fg-high); }
@@ -542,7 +671,8 @@ a { color: inherit; }
 /* ============================================================
    TABLE ENHANCEMENTS (select, sortable, status) - see layout.md
    ============================================================ */
-.table .col-check { width: 44px; text-align: center; }
+/* The 24px gutter would be wider than this column, so it opts out of it */
+.table .col-check { width: 52px; text-align: center; padding-left: var(--space-4); padding-right: 0; }
 .table th.is-sortable { cursor: pointer; user-select: none; }
 .table th.is-sortable:hover { color: var(--fg-high); }
 .table th .th-sort { display: inline-flex; vertical-align: middle; margin-left: 4px; color: var(--fg-subtle); }
@@ -671,7 +801,7 @@ a { color: inherit; }
 .filter-bar .spacer { flex: 1; }
 
 /* ---- Summary strip (compact key/value quad on a gray surface) */
-.summary-strip { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--space-4); background: var(--gray-2); border-radius: var(--radius-4); padding: var(--space-4); }
+.summary-strip { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--space-4); background: var(--color-panel-solid); box-shadow: inset 0 0 0 1px var(--border-subtle); border-radius: var(--radius-4); padding: var(--space-4); }
 .summary-strip .ss-label { font-size: var(--fs-1); color: var(--fg-low); }
 .summary-strip .ss-value { font-size: var(--fs-3); font-weight: var(--weight-medium); color: var(--fg-high); margin-top: 2px; }
 
@@ -694,8 +824,201 @@ details.collapse > summary .sm-chev { margin-left: auto; color: var(--fg-subtle)
 details.collapse[open] > summary .sm-chev { transform: rotate(180deg); }
 details.collapse .collapse-body { padding: var(--space-3); font-size: var(--fs-2); color: var(--fg-low); }
 
+/* ============================================================
+   STEPPER - a multi-step task with a real order to it.
+   Use ONLY when later steps genuinely depend on earlier ones. A long
+   form sliced into pages is not a stepper; use sections or tabs.
+   A stepper cannot express a loop (approve / send back), so pair it
+   with a status for anything that can move backwards.
+   Markup: .stepper > button.step > (.step-dot, .step-text > .step-label + .step-sub)
+   ============================================================ */
+.stepper { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; }
+.step {
+  position: relative; display: flex; flex-direction: column; align-items: center;
+  gap: var(--space-2); padding: 0 var(--space-2); background: transparent; border: 0;
+  font-family: var(--font-base); text-align: center; cursor: default;
+}
+/* Connector runs from the previous dot to this one, behind both */
+.step::before {
+  content: ""; position: absolute; top: 13px; right: 50%; width: 100%; height: 2px;
+  background: var(--gray-5);
+}
+.step:first-child::before { display: none; }
+.step.is-done::before, .step.is-current::before { background: var(--accent-9); }
+.step-dot {
+  position: relative; z-index: 1; width: 28px; height: 28px; border-radius: var(--radius-full);
+  display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+  background: var(--color-panel-solid); box-shadow: inset 0 0 0 2px var(--gray-6);
+  color: var(--fg-subtle); font-size: var(--fs-1); font-weight: var(--weight-medium);
+}
+.step-dot svg { width: 16px; height: 16px; }
+.step.is-done .step-dot { background: var(--accent-9); color: var(--accent-contrast); box-shadow: none; }
+.step.is-current .step-dot { box-shadow: inset 0 0 0 2px var(--accent-9); color: var(--accent-11); }
+.step-text { display: flex; flex-direction: column; gap: 2px; }
+.step-label { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-low); }
+.step-sub { font-size: var(--fs-1); color: var(--fg-subtle); }
+.step.is-current .step-label { color: var(--fg-high); }
+/* Only completed steps are navigable, so the affordance appears with the ability */
+.step.is-nav { cursor: pointer; }
+.step.is-nav:hover .step-label { color: var(--fg-high); text-decoration: underline; }
+.step:focus-visible { outline: none; }
+.step:focus-visible .step-dot { box-shadow: inset 0 0 0 2px var(--accent-9), 0 0 0 3px var(--focus-ring); }
+@media (max-width: 768px) {
+  .stepper { grid-auto-flow: row; grid-auto-columns: auto; gap: var(--space-3); }
+  .step { flex-direction: row; gap: var(--space-3); text-align: left; }
+  .step::before { display: none; }
+  .step-text { align-items: flex-start; }
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
   .skeleton::after { display: none; }
 }
+
+/* KPI strip: one bordered band of figures, with dividers between the cells
+   rather than a box around each. Lived in reports.html and was reached for by
+   surveys.html, which is the definition of a shared component.
+   The cell count is set inline by the caller, so the two-column fallback has
+   to out-specify it. */
+.kstrip { display: grid; border-radius: var(--radius-4); overflow: hidden;
+  background: var(--color-panel-solid); box-shadow: inset 0 0 0 1px var(--border-subtle); }
+.kstrip + .rtabs { margin-top: var(--space-5); }
+.kcell { padding: var(--space-5) var(--space-4); text-align: center; }
+.kcell + .kcell { box-shadow: inset 1px 0 0 var(--border-subtle); }
+.kcell b { display: block; font-size: var(--fs-7); line-height: 1; font-weight: var(--weight-bold);
+  color: var(--fg-high); font-variant-numeric: tabular-nums; }
+.kcell span { display: block; font-size: var(--fs-2); color: var(--fg-low); margin-top: var(--space-2); }
+@media (max-width: 900px) {
+  .kstrip[style] { grid-template-columns: repeat(2, 1fr) !important; }
+  .kcell + .kcell { box-shadow: none; }
+  .kcell:nth-child(2n) { box-shadow: inset 1px 0 0 var(--border-subtle); }
+}
+
+/* Who am I looking as. Three roles see three different products out of one
+   codebase, so the switch lives in the shell rather than on any screen, and
+   picking one takes you to that role's home rather than silently re-scoping
+   the page you happen to be on. */
+.app-header .header-user { cursor: pointer; border: 0; background: transparent; padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-3); font-family: var(--font-base); text-align: left; }
+.app-header .header-user:hover { background: rgba(255,255,255,.08); }
+.app-header:not(.is-dark) .header-user:hover { background: var(--gray-3); }
+.header-wrap { position: relative; }
+.view-as { position: absolute; right: 0; top: calc(100% + var(--space-2)); z-index: 70; min-width: 244px;
+  padding: var(--space-3); border-radius: var(--radius-4); background: var(--color-panel-solid);
+  box-shadow: var(--shadow-4), inset 0 0 0 1px var(--border-subtle); }
+.view-as-t { padding: var(--space-2) var(--space-3) var(--space-3); font-size: var(--fs-1);
+  font-weight: var(--weight-semibold); letter-spacing: .08em; text-transform: uppercase; color: var(--fg-subtle); }
+.view-as a { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3);
+  border-radius: var(--radius-3); text-decoration: none; color: var(--fg-high); font-size: var(--fs-3); }
+.view-as a:hover { background: var(--gray-3); }
+.view-as a[aria-current="true"] { font-weight: var(--weight-medium); }
+.view-as .vr { width: 18px; height: 18px; flex: 0 0 auto; border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--border-strong); position: relative; }
+.view-as a[aria-current="true"] .vr { box-shadow: inset 0 0 0 1.5px var(--accent-9); }
+.view-as a[aria-current="true"] .vr::after { content: ""; position: absolute; inset: 4px;
+  border-radius: 50%; background: var(--accent-9); }
+.view-as .vw { flex: 1; min-width: 0; }
+.view-as .vw span { display: block; font-size: var(--fs-1); color: var(--fg-low); }
+/* Sign out is not a view, so it does not get a radio dot and it sits below a
+   rule -- otherwise it reads as a fourth role you could be looking as. */
+.view-as .vs { margin: var(--space-2) calc(var(--space-3) * -1) 0;
+  border-top: 1px solid var(--border-subtle); padding-top: var(--space-2);
+  padding-left: var(--space-3); padding-right: var(--space-3); }
+.view-as .vs a { gap: var(--space-3); color: var(--fg-low); }
+.view-as .vs svg { flex: 0 0 auto; }
+
+/* App shell odds and ends. Every skyLearn page carried its own identical
+   copy of these six; they belong to the shell, so they belong here. */
+.hdr-search { flex: 1; max-width: 420px; margin: 0 var(--space-5); }
+.hu-id { display: flex; flex-direction: column; line-height: 1.25; }
+.hu-role { font-size: var(--fs-1); }
+.nav-tail { margin-top: auto; }
+.app-header.is-dark .hu-name { color: #fff; font-weight: var(--weight-medium); }
+.pt-num { font-weight: var(--weight-semibold); }
+
+/* Visually hidden, still announced. Thirteen pages had their own identical
+   copy of this before it was hoisted; charts.js emits it too. */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; padding: 0; margin: -1px; }
+
+/* ============================================================
+   CHARTS
+   A small, shared set. Every one of them encodes magnitude as
+   shade of one hue (--seq-1..6), never as a set of unrelated
+   colours: a reader who cannot tell red from green can still
+   read "darker means more". Markup comes from charts.js, so the
+   two stay in step -- see CHARTS.md.
+
+   Pair with .card. Sizes come from the wrapper, not the SVG:
+   every chart is viewBox-driven and scales to its container.
+   ============================================================ */
+.chart { width: 100%; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart-head { display: flex; align-items: flex-start; gap: var(--space-3); margin-bottom: var(--space-5); }
+.chart-title { flex: 1; min-width: 0; font-size: var(--fs-3); font-weight: var(--weight-semibold); color: var(--fg-high); }
+.chart-sub { display: block; margin-top: var(--space-1); font-size: var(--fs-2); font-weight: var(--weight-regular); color: var(--fg-low); }
+
+/* Axes and grid. Dashed, subtle, behind everything. */
+.chart .grid-line { stroke: var(--border-subtle); stroke-dasharray: 2 4; }
+.chart .axis-text { font-size: 11px; fill: var(--fg-subtle); }
+.chart .target-line { stroke: var(--fg-subtle); stroke-width: 1; stroke-dasharray: 5 4; }
+.chart .target-text { font-size: 11px; fill: var(--fg-low); font-weight: var(--weight-medium); }
+
+/* --- Area: one series, gradient fade, hover column + dot --- */
+.chart .area-fill { stroke: none; }   /* gradient id is per-chart, set inline by charts.js */
+.chart .area-line { fill: none; stroke: var(--seq-5); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .area-band { fill: var(--seq-2); opacity: 0; }
+.chart .area-hit { fill: transparent; cursor: pointer; }
+.chart .area-hit:hover + .area-band, .chart .area-band.is-on { opacity: .55; }
+.chart .area-dot { fill: var(--color-panel-solid); stroke: var(--seq-5); stroke-width: 3; opacity: 0; }
+.chart .area-dot.is-on { opacity: 1; }
+
+/* --- Heatmap: the shade IS the value --- */
+.heat { display: grid; gap: 3px; }
+.heat-cell { border-radius: var(--radius-1); aspect-ratio: 1.35; min-height: 18px; }
+.heat-row-label, .heat-col-label { font-size: var(--fs-1); color: var(--fg-subtle); display: flex; align-items: center; }
+.heat-col-label { justify-content: center; }
+.heat-wrap { display: grid; grid-template-columns: auto 1fr; gap: var(--space-3); align-items: center; }
+
+/* The scale legend: the ramp itself, with its thresholds under it. */
+.seq-scale { margin-top: var(--space-4); }
+.seq-bar { display: grid; height: 6px; border-radius: var(--radius-full); overflow: hidden; }
+.seq-ticks { display: flex; justify-content: space-between; margin-top: var(--space-2); font-size: var(--fs-1); color: var(--fg-subtle); }
+
+/* --- Donut: a hole big enough to hold the answer --- */
+.donut { position: relative; width: 100%; max-width: 240px; margin: 0 auto; }
+.donut circle { fill: none; stroke-width: 18; stroke-linecap: butt; }
+.donut .donut-track { stroke: var(--seq-1); }
+.donut-centre { position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: var(--space-1); text-align: center; }
+.donut-v { font-size: var(--fs-7); line-height: 1; font-weight: var(--weight-bold);
+  color: var(--fg-high); font-variant-numeric: tabular-nums; }
+.donut-l { font-size: var(--fs-2); color: var(--fg-low); }
+
+/* Series legend: swatch, name, value. Reads as a list, not a key. */
+.series { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-5); }
+.series-row { display: flex; align-items: center; gap: var(--space-3); font-size: var(--fs-2); }
+.series-sw { width: 12px; height: 12px; border-radius: var(--radius-1); flex: 0 0 auto; }
+.series-n { flex: 1; min-width: 0; color: var(--fg-high); }
+.series-v { color: var(--fg-low); font-variant-numeric: tabular-nums; }
+
+/* --- Bars: horizontal, ranked, shade carries rank --- */
+.bars { display: flex; flex-direction: column; gap: var(--space-4); }
+.bar-row { display: grid; grid-template-columns: 150px 1fr auto; gap: var(--space-4); align-items: center; font-size: var(--fs-2); }
+.bar-n { color: var(--fg-high); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-track { height: 10px; border-radius: var(--radius-full); background: var(--seq-1); overflow: hidden; }
+.bar-fill { display: block; height: 100%; border-radius: var(--radius-full); }
+.bar-v { color: var(--fg-low); font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) { .bar-row { grid-template-columns: 110px 1fr auto; } }
+
+/* --- Tooltip, shared by every chart --- */
+.chart-tip { position: absolute; z-index: 5; pointer-events: none; min-width: 128px;
+  padding: var(--space-3) var(--space-4); border-radius: var(--radius-3);
+  background: var(--color-panel-solid); box-shadow: var(--shadow-3);
+  font-size: var(--fs-2); transform: translate(-50%, -120%); opacity: 0; transition: opacity .12s ease; }
+.chart-tip.is-on { opacity: 1; }
+.chart-tip b { display: block; font-weight: var(--weight-semibold); color: var(--fg-high); }
+.chart-tip span { color: var(--fg-low); }
+.chart-tip em { font-style: normal; font-weight: var(--weight-semibold); color: var(--seq-5); }
+.chart-frame { position: relative; }

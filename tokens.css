@@ -81,6 +81,19 @@
   --accent-contrast:#2a1c00;          /* text on solid amber (amber-9 is light) */
   --accent-surface:#fefbe9cc;          /* soft translucent accent fill */
 
+  /* Sequential ramp, for charts.
+     The 12-step accent scale cannot do this job: it is tuned for UI states,
+     not for encoding magnitude, and it is not monotonic in contrast --
+     accent-9 (1.79:1 on white) is LIGHTER than accent-8 (2.20:1), so a
+     reader could not tell which shade means "more". These six steps hold the
+     brand hue and climb steadily, 1.09 -> 6.68 against white, so shade alone
+     reads as order. Use --seq-6 behind white text; below that, use dark text. */
+  --seq-1:#fff4dc; --seq-2:#ffe2a8; --seq-3:#ffc65c;
+  --seq-4:#f5a300; --seq-5:#c47400; --seq-6:#8a4d00;
+  --seq-empty:var(--gray-3);          /* no data, which is not the same as zero */
+  --seq-on-dark:#ffffff;              /* text on --seq-5 and --seq-6 */
+  --seq-on-light:#4f3422;             /* text on --seq-1 .. --seq-4 */
+
   /* Red - Danger */
   --red-1:#fffcfc; --red-2:#fff7f7; --red-3:#feebec; --red-4:#ffdbdc;
   --red-5:#ffcdce; --red-6:#fdbdbe; --red-7:#f4a9aa; --red-8:#eb8e90;
@@ -102,7 +115,7 @@
   --blue-9:#0090ff; --blue-10:#0588f0; --blue-11:#0d74ce; --blue-12:#113264;
 
   /* ---- Semantic surfaces ---- */
-  --color-page: var(--gray-2);          /* app canvas */
+  --color-page: #ffffff;                /* app canvas, white; panels are told apart by their hairline, not by a tint */
   --color-panel-solid: #ffffff;         /* cards / panels */
   --color-panel-translucent: rgba(255,255,255,.7);
   --color-surface: #ffffff;             /* inputs, raised UI */
@@ -165,6 +178,14 @@
   --accent-9:#ffb31c; --accent-10:#ffc53d; --accent-11:#ffca16; --accent-12:#ffe7b3;
   --accent-contrast:#2a1c00;
   --accent-surface:#2d220bcc;
+
+  /* Dark theme: the ramp climbs away from the page instead of towards it,
+     so the same "darker means more" reading becomes "brighter means more". */
+  --seq-1:#3a2a08; --seq-2:#5c4109; --seq-3:#8a6208;
+  --seq-4:#c08a10; --seq-5:#ffb31c; --seq-6:#ffd479;
+  --seq-empty:var(--gray-3);
+  --seq-on-dark:#2a1c00;
+  --seq-on-light:#ffe7b3;
 
   --red-1:#191111; --red-2:#201314; --red-3:#3b1219; --red-4:#500f1c;
   --red-5:#611623; --red-6:#72232d; --red-7:#8c333a; --red-8:#b54548;

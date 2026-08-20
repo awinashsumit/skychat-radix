@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<!--
+  The chart set, on one page.
+  Every chart the apps are allowed to draw, with the code that draws it.
+  Open this before inventing a new one.
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Charts &middot; Skypoint design system</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="tokens.css?v=102" />
+<link rel="stylesheet" href="dashboard.css?v=102" />
+<style>
+  body { background: var(--color-page); }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: var(--space-7) var(--space-6) var(--space-9); }
+  .top { display: flex; align-items: flex-start; gap: var(--space-4); margin-bottom: var(--space-7); }
+  .top-t { flex: 1; min-width: 0; }
+  .top h1 { font-size: var(--fs-7); line-height: var(--lh-7); font-weight: var(--weight-bold); }
+  .top p { margin-top: var(--space-2); font-size: var(--fs-3); color: var(--fg-low); max-width: 62ch; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); }
+  .grid .wide { grid-column: 1 / -1; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  .sec { margin: var(--space-8) 0 var(--space-5); font-size: var(--fs-1); font-weight: var(--weight-semibold);
+    letter-spacing: .1em; text-transform: uppercase; color: var(--fg-subtle); }
+  .swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--space-3); }
+  .sw { border-radius: var(--radius-3); overflow: hidden; box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .sw-c { height: 62px; }
+  .sw-m { padding: var(--space-3); font-size: var(--fs-1); color: var(--fg-low); }
+  .sw-m b { display: block; color: var(--fg-high); font-weight: var(--weight-semibold); }
+  code { font-family: var(--font-mono, ui-monospace, monospace); font-size: var(--fs-2);
+    background: var(--gray-3); border-radius: var(--radius-2); padding: 1px 5px; color: var(--fg-high); }
+  pre { margin-top: var(--space-4); padding: var(--space-4); border-radius: var(--radius-3);
+    background: var(--gray-2); box-shadow: inset 0 0 0 1px var(--border-subtle);
+    font-family: var(--font-mono, ui-monospace, monospace); font-size: var(--fs-1);
+    color: var(--fg-low); overflow-x: auto; }
+  .note { margin-top: var(--space-4); padding: var(--space-4); border-radius: var(--radius-3);
+    background: var(--warning-bg); color: var(--warning-text); font-size: var(--fs-2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="top-t">
+      <h1>Charts</h1>
+      <p>Four shapes, one hue. Magnitude is always carried by shade of the brand amber, so the
+        charts stay on brand and stay readable for anyone who cannot separate hues. Markup comes
+        from <code>charts.js</code>, styling from <code>dashboard.css</code>, palette from
+        <code>tokens.css</code>.</p>
+    </div>
+    <button class="btn btn-surface" id="themeBtn">Toggle theme</button>
+  </div>
+
+  <div class="sec">The ramp</div>
+  <div class="card" style="padding:var(--space-5);">
+    <div class="swatches" id="swatches"></div>
+    <div class="note">The 12-step accent scale cannot do this job. It is tuned for UI states and is
+      not monotonic in contrast &mdash; <code>--accent-9</code> is lighter than
+      <code>--accent-8</code> &mdash; so a reader could not tell which shade means more. These six
+      climb steadily in both themes.</div>
+  </div>
+
+  <div class="sec">Charts</div>
+  <div class="grid">
+    <section class="card wide" style="padding:var(--space-5);">
+      <div class="chart-head"><div class="chart-title">Area
+        <span class="chart-sub">One series over time. Hover for the number.</span></div></div>
+      <div id="c-area" data-unit="active learners"></div>
+      <pre>Chart.area({ labels, values, valueLabel: 'Active learners' })</pre>
+    </section>
+
+    <section class="card wide" style="padding:var(--space-5);">
+      <div class="chart-head"><div class="chart-title">Area, with a target
+        <span class="chart-sub">A baseline above zero, only because the reader knows the scale.</span></div></div>
+      <div id="c-target" data-unit="% compliant"></div>
+      <pre>Chart.area({ labels, values, min: 80, max: 100, target: 95 })</pre>
+    </section>
+
+    <section class="card wide" style="padding:var(--space-5);">
+      <div class="chart-head"><div class="chart-title">Heatmap
+        <span class="chart-sub">Two categories, one value. The shade is the whole message.</span></div></div>
+      <div id="c-heat"></div>
+      <pre>Chart.heatmap({ rows, cols, values })   // null cell = no data, not zero</pre>
+    </section>
+
+    <section class="card" style="padding:var(--space-5);">
+      <div class="chart-head"><div class="chart-title">Donut
+        <span class="chart-sub">Parts of one whole. Three or four slices, never nine.</span></div></div>
+      <div id="c-donut"></div>
+      <pre>Chart.donut({ segments, label: 'Total learners' })</pre>
+    </section>
+
+    <section class="card" style="padding:var(--space-5);">
+      <div class="chart-head"><div class="chart-title">Bars
+        <span class="chart-sub">Ranked. Sorting plus length answers &ldquo;where is it worst&rdquo;.</span></div></div>
+      <div id="c-bars"></div>
+      <pre>Chart.bars({ items: [{ n, v, label }] })</pre>
+    </section>
+  </div>
+
+  <div class="sec">When not to use the ramp</div>
+  <div class="card" style="padding:var(--space-5);">
+    <p style="font-size:var(--fs-3);color:var(--fg-low);">The ramp encodes <b>ordered</b> magnitude.
+      For unordered categories &mdash; Desktop against Mobile, one course against another &mdash;
+      there is no &ldquo;more&rdquo;, so shade would imply a ranking that does not exist. Use the
+      categorical palette <code>--chart-1</code> &hellip; <code>--chart-8</code> for those, and keep
+      it to four or fewer.</p>
+  </div>
+</div>
+
+<script src="charts.js?v=102"></script>
+<script>
+const $ = id => document.getElementById(id);
+
+$('swatches').innerHTML = [1,2,3,4,5,6].map(i =>
+  '<div class="sw"><div class="sw-c" style="background:var(--seq-'+i+');"></div>' +
+  '<div class="sw-m"><b>--seq-'+i+'</b>'+(i <= 4 ? 'dark text' : 'white text')+'</div></div>').join('');
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+$('c-area').innerHTML = Chart.area({
+  labels: MONTHS,
+  values: [1240, 1180, 1520, 1410, 2210, 1890, 1760, 2040, 2380, 2260, 2510, 2740],
+  valueLabel: 'Active learners', alt: 'Active learners by month'
+});
+
+$('c-target').innerHTML = Chart.area({
+  labels: ['Wk 1','Wk 2','Wk 3','Wk 4','Wk 5','Wk 6','Wk 7','Wk 8'],
+  values: [86, 88, 87, 90, 91, 89, 93, 95],
+  min: 80, max: 100, target: 95, targetLabel: 'Target 95%',
+  valueLabel: 'Compliance rate', alt: 'Compliance rate against target'
+});
+
+const HOURS = ['12am','2am','4am','6am','8am','10am','12pm','2pm','4pm','6pm','8pm','10pm'];
+const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+/* Shift work, so the peaks sit at handover rather than at nine in the morning. */
+const HEAT = DAYS.map((d, r) => HOURS.map((h, c) => {
+  if (r === 0 && c > 9) return null;                  /* the system is down for maintenance */
+  const shift = [3, 8, 14, 22, 46, 61, 58, 40, 33, 52, 44, 12][c];
+  const weekend = (r === 0 || r === 6) ? 0.45 : 1;
+  return Math.round(shift * weekend * (0.8 + ((r * 7 + c) % 5) / 10) * 12);
+}));
+$('c-heat').innerHTML = Chart.heatmap({ rows: DAYS, cols: HOURS, values: HEAT });
+
+$('c-donut').innerHTML = Chart.donut({
+  label: 'Total learners',
+  segments: [{ n:'Up to date', v:412 }, { n:'In progress', v:118 }, { n:'Overdue', v:44 }]
+});
+
+$('c-bars').innerHTML = Chart.bars({
+  items: [
+    { n:'Lakeside Manor', v:0,  label:'0%' },
+    { n:'Cedar Ridge',    v:58, label:'58%' },
+    { n:'Willow Creek',   v:71, label:'71%' },
+    { n:'Harbour House',  v:83, label:'83%' },
+    { n:'Oakfield Park',  v:96, label:'96%' }
+  ], max: 100
+});
+
+Chart.bind(document);
+
+$('themeBtn').addEventListener('click', () => {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+});
+</script>
+</body>
+</html>
