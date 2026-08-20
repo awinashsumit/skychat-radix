@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<!--
+  skyLearn - Sign in, Radix flavour.
+
+  Rebuilt from the supplied screen. Four things in it did not belong here:
+  "wirh" twice, another product's name in the small print, a sign-UP heading
+  above a sign-IN button, and a gmail example address on a workforce where
+  all forty-four people use firstname.lastname@skypoint.ai.
+
+  Google and Apple are gone too. Apple ID is a consumer credential; a
+  senior-living operator signs staff in with the organisation account IT
+  already controls and can revoke the day somebody leaves.
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sign in &middot; skyLearn</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../tokens.css?v=102" />
+<link rel="stylesheet" href="../dashboard.css?v=102" />
+<style>
+  body { background: var(--color-page); }
+  .wrap { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; }
+  @media (max-width: 900px) { .wrap { grid-template-columns: 1fr; } .side { display: none; } }
+
+  .form-col { display: flex; align-items: center; justify-content: center; padding: var(--space-7) var(--space-6); }
+  .form { width: 100%; max-width: 380px; }
+
+  .brand-row { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-8); }
+  .brand-row span { font-size: var(--fs-5); font-weight: var(--weight-bold); color: var(--fg-high); letter-spacing: -.01em; }
+
+  .form h1 { font-size: var(--fs-7); line-height: var(--lh-7); font-weight: var(--weight-bold); color: var(--fg-high); }
+  .form .sub { margin-top: var(--space-3); font-size: var(--fs-3); line-height: 1.55; color: var(--fg-low); }
+
+  .fields { margin-top: var(--space-7); display: flex; flex-direction: column; gap: var(--space-5); }
+  .field-label { display: block; margin-bottom: var(--space-2); }
+  .input { min-height: 44px; padding: 0 var(--space-4); }
+  .pw-wrap { position: relative; }
+  .pw-wrap .input { padding-right: 46px; }
+  .pw-eye { position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    width: 34px; height: 34px; border: 0; border-radius: var(--radius-2); cursor: pointer;
+    background: transparent; color: var(--fg-low); display: flex; align-items: center; justify-content: center; }
+  .pw-eye:hover { background: var(--gray-3); color: var(--fg-high); }
+  .forgot { display: block; margin-top: var(--space-2); text-align: right;
+    font-size: var(--fs-2); color: var(--accent-11); text-decoration: none; }
+  .forgot:hover { text-decoration: underline; }
+
+  .go { width: 100%; justify-content: center; min-height: 44px; margin-top: var(--space-6); }
+  .err { margin-top: var(--space-4); padding: var(--space-3) var(--space-4); border-radius: var(--radius-3);
+    background: var(--danger-bg); color: var(--danger-text); font-size: var(--fs-2); line-height: 1.5; }
+
+  .or { display: flex; align-items: center; gap: var(--space-4); margin: var(--space-6) 0; }
+  .or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--border-subtle); }
+  .or span { font-size: var(--fs-2); color: var(--fg-subtle); }
+
+  .sso { width: 100%; justify-content: center; min-height: 44px; }
+  .sso-w { margin-top: var(--space-3); font-size: var(--fs-1); color: var(--fg-low); line-height: 1.6; }
+
+  .small { margin-top: var(--space-7); font-size: var(--fs-1); color: var(--fg-subtle); line-height: 1.7; }
+  .small a { color: var(--fg-low); }
+
+  /* The demo accounts. This is a prototype, so rather than a password box
+     that accepts anything, the three roles are on the page and picking one
+     is the sign-in. */
+  .who { margin-top: var(--space-6); padding: var(--space-4); border-radius: var(--radius-3);
+    background: var(--gray-2); box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .who-t { font-size: var(--fs-1); font-weight: var(--weight-semibold); letter-spacing: .07em;
+    text-transform: uppercase; color: var(--fg-subtle); margin-bottom: var(--space-3); }
+  .who-l { display: flex; flex-direction: column; gap: var(--space-2); }
+  .wb { display: grid; grid-template-columns: 32px 1fr auto; gap: var(--space-3); align-items: center;
+    padding: var(--space-3); border: 0; border-radius: var(--radius-3); cursor: pointer;
+    background: var(--color-panel-solid); box-shadow: inset 0 0 0 1px var(--border-subtle);
+    font-family: var(--font-base); text-align: left; }
+  .wb:hover { box-shadow: inset 0 0 0 1px var(--border-strong); }
+  .wb-av { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-size: var(--fs-1); font-weight: var(--weight-bold); color: #fff; }
+  .wb-t b { display: block; font-size: var(--fs-2); font-weight: var(--weight-semibold); color: var(--fg-high); }
+  .wb-t span { display: block; font-size: var(--fs-1); color: var(--fg-low); }
+  .wb-go { color: var(--fg-subtle); }
+
+  /* No stock photography. The panel is the brand and one true sentence about
+     what the product is for.
+
+     The panel is the supplied render, full bleed. It sets its own colour, so
+     nothing here reads from the sequential ramp any more -- and it does not
+     flip with the theme, which is why the copy is white on a scrim rather than
+     a ramp token: the picture stays light in dark mode, so a theme-aware text
+     colour would be wrong half the time.
+
+     --seq-1 is still the background under the image. It is the closest colour
+     in the palette to the render's own wall, so the split second before the
+     JPEG paints is a warm panel rather than a white flash. */
+  .side { position: relative; overflow: hidden; background: var(--seq-1); }
+  .side img { position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; object-position: 58% 42%; }
+  /* Measured against the render itself, at four viewport shapes, because
+     object-fit: cover moves the crop and you cannot know what lands behind a
+     given word. The first attempt faded from 82% to nothing by 56% up the
+     panel; that put the heading over the brightly lit desk at 3.64:1 on a
+     700x800 panel, because the scrim had already thinned to about half by the
+     height the heading sits at.
+
+     Holding ~82% flat through the whole copy band and only then fading gives
+     9.82:1 at the worst point across all four shapes. It still clears by 68%,
+     so the wall display -- the reason for using this picture -- is untouched. */
+  .side-s { position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(to top, rgba(38,24,8,.84) 0%, rgba(38,24,8,.82) 32%,
+      rgba(38,24,8,.42) 48%, rgba(38,24,8,0) 68%); }
+  .side-t { position: absolute; left: var(--space-8); right: var(--space-8);
+    bottom: calc(var(--space-8) + var(--space-7)); max-width: 30ch; color: #fff; }
+  .side-t b { display: block; font-size: var(--fs-8); line-height: var(--lh-8);
+    font-weight: var(--weight-bold); }
+  .side-t p { margin-top: var(--space-4); font-size: var(--fs-4); line-height: 1.55; }
+  /* No opacity on this one. It is already the quiet line; fading it further
+     would drop a caption that has to hold 4.5:1 below it. */
+  .side-f { position: absolute; left: var(--space-8); bottom: var(--space-8); right: var(--space-8);
+    font-size: var(--fs-2); color: rgba(255,255,255,.86); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="form-col">
+    <div class="form">
+      <div class="brand-row">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect width="24" height="24" rx="6" fill="var(--accent-9)"/>
+          <text x="12" y="16.5" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-contrast)" font-family="Inter, sans-serif">S</text>
+        </svg>
+        <span>skyLearn</span>
+      </div>
+
+      <h1>Sign in</h1>
+      <p class="sub">Your training, your certificates and what is due next.</p>
+
+      <div class="fields">
+        <div class="field">
+          <label class="field-label" for="email">Work email</label>
+          <input class="input" id="email" type="email" autocomplete="username"
+                 placeholder="firstname.lastname@skypoint.ai" />
+        </div>
+        <div class="field">
+          <label class="field-label" for="pw">Password</label>
+          <div class="pw-wrap">
+            <input class="input" id="pw" type="password" autocomplete="current-password" placeholder="Your password" />
+            <button class="pw-eye" id="eye" type="button" aria-label="Show password" aria-pressed="false">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <a class="forgot" href="#" id="forgot">Forgotten your password?</a>
+        </div>
+      </div>
+
+      <button class="btn btn-solid go" id="signin">Sign in</button>
+      <div id="err"></div>
+
+      <div class="or"><span>or</span></div>
+
+      <button class="btn btn-surface sso" id="sso">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+        Continue with your Skypoint account
+      </button>
+      <p class="sso-w">Single sign-on through the account your organisation already manages, so
+        access ends the day somebody leaves.</p>
+
+      <div class="who">
+        <div class="who-t">Or look around as</div>
+        <div class="who-l" id="whoList"></div>
+      </div>
+
+      <p class="small">skyLearn is a Skypoint product. By signing in you agree to the
+        <a href="#">Terms of Service</a> and the <a href="#">Privacy Policy</a>.</p>
+    </div>
+  </div>
+
+  <div class="side">
+    <img src="assets/signin.jpg?v=102" alt="A nurse at a desk reviewing her training record on a wall display" />
+    <div class="side-s"></div>
+    <div class="side-t">
+      <b>Training that has to hold up</b>
+      <p>Every course, certificate and competency check for your communities, in the order a
+        surveyor asks about them.</p>
+    </div>
+    <div class="side-f">Six communities &middot; 44 people &middot; hours counted where the state counts hours</div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+/* Three roles, three destinations. A password box that accepts anything is a
+   worse demo than saying plainly which of the three you are looking as, and
+   it matches the View as switcher inside the app. */
+const ROLES = [
+  { n:'Sumit Awinash',  r:'Administrator',      w:'Everything, across all six communities', to:'index.html',  c:'var(--blue-9)',  i:'SA' },
+  { n:'Greta Lindqvist', r:'LPN, instructor',   w:'Your courses, learners and sessions',    to:'teach.html',  c:'var(--green-9)', i:'GL' },
+  { n:'Dana Whitfield',  r:'CNA, Lakeside Manor', w:'What you have to do, and by when',     to:'learn.html',  c:'var(--accent-9)', i:'DW' }
+];
+const CHEV = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
+
+$('whoList').innerHTML = ROLES.map(function (x, k) {
+  return '<button class="wb" data-to="' + x.to + '">' +
+    '<span class="wb-av" style="background:' + x.c + ';' +
+      (x.c.indexOf('accent') > 0 ? 'color:var(--accent-contrast);' : '') + '">' + x.i + '</span>' +
+    '<span class="wb-t"><b>' + x.n + '</b><span>' + x.r + ' &middot; ' + x.w + '</span></span>' +
+    '<span class="wb-go">' + CHEV + '</span></button>';
+}).join('');
+
+document.querySelectorAll('[data-to]').forEach(b => b.onclick = () => { location.href = b.dataset.to; });
+
+/* Show and hide, with the control saying which it will do. */
+$('eye').addEventListener('click', () => {
+  const pw = $('pw'), on = pw.type === 'password';
+  pw.type = on ? 'text' : 'password';
+  $('eye').setAttribute('aria-pressed', String(on));
+  $('eye').setAttribute('aria-label', on ? 'Hide password' : 'Show password');
+});
+
+/* One message, saying what to do about it, rather than "invalid credentials". */
+function fail(msg) { $('err').innerHTML = '<div class="err">' + msg + '</div>'; }
+
+$('signin').addEventListener('click', () => {
+  const e = $('email').value.trim(), p = $('pw').value;
+  if (!e && !p) return fail('Enter your work email and password, or pick one of the three below to look around.');
+  if (!e)       return fail('Enter your work email &mdash; the address your rota and payslips go to.');
+  if (e.indexOf('@') < 0) return fail('That does not look like an email address.');
+  if (!p)       return fail('Enter your password.');
+  fail('This prototype has no sign-in behind it. Pick one of the three below to look around.');
+});
+
+$('forgot').addEventListener('click', e => {
+  e.preventDefault();
+  fail('Your administrator resets it &mdash; there is no self-service reset, because the account is your organisation&rsquo;s, not yours.');
+});
+$('sso').addEventListener('click', () => {
+  fail('Single sign-on is not wired up in this prototype. Pick one of the three below to look around.');
+});
+</script>
+</body>
+</html>

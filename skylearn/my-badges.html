@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<!--
+  skyLearn - Badges and leaderboard, Radix flavour.
+  The learner half of Recognition. CFG, periodPts, withTier, upToDate and
+  behind() are copied verbatim from recognition.html rather than reinvented:
+  the first version of this screen made up its own badge ladder and its own
+  points formula, so the two halves of one system disagreed.
+  See LEARNER-IA.md.
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>skyLearn &middot; My learning</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../tokens.css?v=102" />
+<link rel="stylesheet" href="../dashboard.css?v=102" />
+<style>
+  .hello { font-size: var(--fs-7); line-height: var(--lh-7); font-weight: var(--weight-bold); color: var(--fg-high); }
+  .hello-s { margin-top: var(--space-3); font-size: var(--fs-4); line-height: 1.5; color: var(--fg-low); max-width: 64ch; }
+  .hello-s b { font-weight: var(--weight-semibold); color: var(--fg-high); }
+
+  .rtabs { display: flex; gap: var(--space-1); border-bottom: var(--stroke-thin) solid var(--border-subtle);
+    margin: var(--space-6) 0 var(--space-5); }
+  .rtab { height: 42px; padding: 0 var(--space-4); border: 0; background: transparent; cursor: pointer;
+    font-family: var(--font-base); font-size: var(--fs-3); color: var(--fg-low); border-bottom: 2px solid transparent; }
+  .rtab:hover { color: var(--fg-high); }
+  .rtab.is-on { color: var(--fg-high); font-weight: var(--weight-semibold); border-bottom-color: var(--accent-9); }
+
+  .sec-h { display: flex; align-items: baseline; gap: var(--space-4); margin: var(--space-6) 0 var(--space-3); }
+  .sec-h h2 { flex: 1; min-width: 0; font-size: var(--fs-4); line-height: var(--lh-4);
+    font-weight: var(--weight-semibold); color: var(--fg-high); }
+  .sec-h span { font-size: var(--fs-2); color: var(--fg-low); }
+  .sec-w { font-size: var(--fs-2); color: var(--fg-low); margin-bottom: var(--space-4); max-width: 70ch; line-height: 1.6; }
+
+  /* The three achievement badges, exactly the three Recognition defines. */
+  .ach { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: var(--space-4); }
+  .ac { padding: var(--space-5); border-radius: var(--radius-4); background: var(--color-panel-solid);
+    box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .ac.is-got { background: var(--accent-2); box-shadow: inset 0 0 0 1px var(--accent-6); }
+  .ac-m { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; background: var(--gray-3); color: var(--fg-subtle); margin-bottom: var(--space-3); }
+  .ac.is-got .ac-m { background: var(--accent-9); color: var(--accent-contrast); }
+  .ac-n { font-size: var(--fs-3); font-weight: var(--weight-semibold); color: var(--fg-high); }
+  .ac.is-got .ac-n { color: var(--accent-11); }
+  .ac-w { margin-top: var(--space-2); font-size: var(--fs-2); color: var(--fg-low); line-height: 1.55; }
+  .ac-s { margin-top: var(--space-3); font-size: var(--fs-1); color: var(--fg-subtle); }
+
+  /* Course badges: the same PNG Recognition uses, on the same faint card. */
+  .cb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(176px, 1fr)); gap: var(--space-4); }
+  .cb { display: flex; flex-direction: column; align-items: center; gap: var(--space-3);
+    padding: var(--space-4); border-radius: 12px; background: rgba(0,0,0,.05); }
+  :root[data-theme="dark"] .cb { background: rgba(255,255,255,.06); }
+  .cb.is-locked { opacity: .45; }
+  .cb-art { width: 100%; max-width: 132px; height: auto; display: block; }
+  .cb-plate { width: 100%; padding: var(--space-3) var(--space-2); border-radius: 8px; background: #fff;
+    text-align: center; font-size: var(--fs-2); font-weight: var(--weight-semibold); color: #1b1b1b; }
+  .cb-w { font-size: var(--fs-1); color: var(--fg-low); }
+
+  /* Leaderboard, the same board the administrator sees. */
+  .lb { display: flex; flex-direction: column; }
+  .lb-r { display: grid; grid-template-columns: 46px 1fr auto auto; gap: var(--space-4); align-items: center;
+    padding: var(--space-4) var(--space-5); border-bottom: var(--stroke-thin) solid var(--border-subtle); }
+  .lb-r:last-child { border-bottom: 0; }
+  .lb-r.is-me { background: var(--accent-2); }
+  .lb-m { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-size: var(--fs-2); font-weight: var(--weight-bold); }
+  .lb-m.g { background: #FFAA04; color: #4a2c00; }
+  .lb-m.s { background: #C9CDD2; color: #33383d; }
+  .lb-m.b { background: #E08A46; color: #4a2400; }
+  .lb-m.n { background: transparent; color: var(--fg-subtle); font-weight: var(--weight-medium); }
+  .lb-n { min-width: 0; font-size: var(--fs-3); color: var(--fg-high);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lb-n span { display: block; font-size: var(--fs-1); color: var(--fg-low); }
+  .lb-v { font-size: var(--fs-3); font-weight: var(--weight-semibold); color: var(--fg-high);
+    font-variant-numeric: tabular-nums; min-width: 44px; text-align: right; }
+  .lb-s { font-size: var(--fs-2); white-space: nowrap; }
+  .lb-s.ok  { color: var(--success-text); }
+  .lb-s.bad { color: var(--warning-text); }
+  @media (max-width: 720px) { .lb-r { grid-template-columns: 40px 1fr auto; } .lb-s { display: none; } }
+
+  .note { padding: var(--space-4) var(--space-5); border-radius: var(--radius-3);
+    background: var(--gray-2); box-shadow: inset 0 0 0 1px var(--border-subtle);
+    font-size: var(--fs-2); color: var(--fg-low); line-height: 1.6; margin-top: var(--space-5); }
+
+  .toast-stack { position: fixed; left: 50%; bottom: var(--space-6); transform: translateX(-50%);
+    z-index: 80; display: flex; flex-direction: column; gap: var(--space-3); }
+  .toast { min-width: 280px; max-width: 460px; padding: var(--space-4) var(--space-5);
+    border-radius: var(--radius-3); background: var(--gray-12); color: var(--gray-1); box-shadow: var(--shadow-4); }
+  .toast-title { font-size: var(--fs-2); font-weight: var(--weight-semibold); }
+  .toast-body { margin-top: var(--space-1); font-size: var(--fs-2); opacity: .82; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header is-dark">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect width="24" height="24" rx="6" fill="var(--accent-9)"/><text x="12" y="16.5" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-contrast)">S</text></svg>
+      <span>skyLearn</span>
+    </div>
+    <div class="search hdr-search">
+      <span class="search-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+      <label class="sr-only" for="q">Search</label>
+      <input class="input" id="q" type="search" placeholder="Search courses and learners" autocomplete="off" />
+    </div>
+    <div class="header-right">
+      <span class="presence"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg><span><strong class="pt-num">4</strong> points</span></span>
+      <button class="icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="ic-badge">3</span></button>
+      <button class="icon-btn" id="themeBtn" aria-label="Switch to dark theme"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+      <span class="divider-v"></span>
+      <span class="header-wrap">
+        <button class="header-user" id="viewAsBtn" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar c3" id="meAv">DW</span>
+          <span class="hu-id"><span class="hu-name" id="meName">Dana Whitfield</span><span class="hu-role" id="meRole">CNA, Lakeside Manor</span></span>
+        </button>
+        <div class="view-as" id="viewAs" role="menu" hidden>
+          <div class="view-as-t">View as</div>
+          <a href="index.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Administrator<span>Everything, across all six communities</span></span></a>
+          <a href="teach.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Instructor<span>Your courses, learners and sessions</span></span></a>
+          <a href="learn.html" role="menuitem" aria-current="true"><span class="vr"></span>
+            <span class="vw">Learner<span>What you have to do, and by when</span></span></a>
+          <div class="view-as-t" style="margin-top:var(--space-2);">Which learner</div>
+          <div id="whoList"></div>
+          <div class="vs">
+            <a href="signin.html" role="menuitem">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
+              Sign out</a>
+          </div>
+        </div>
+      </span>
+    </div>
+  </header>
+
+  <nav class="app-sidebar" aria-label="Primary">
+    <button class="sidebar-toggle" id="railBtn" aria-label="Collapse navigation"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>
+    <a class="nav-item" href="learn.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg><span class="nav-label">Dashboard</span></a>
+    <a class="nav-item" href="my-courses.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg><span class="nav-label">My courses</span></a>
+    <a class="nav-item" href="catalog.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg><span class="nav-label">Catalogue</span></a>
+    <a class="nav-item" href="my-certs.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg><span class="nav-label">Certificates</span></a>
+    <a class="nav-item is-active" href="my-badges.html" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0z"/></svg><span class="nav-label">Badges</span></a>
+    <a class="nav-item" href="my-record.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M9 13h6"/><path d="M9 17h3"/></svg><span class="nav-label">My record</span></a>
+    <a class="nav-item" href="my-sessions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg><span class="nav-label">Sessions</span></a>
+    <a class="nav-item" href="coach.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg><span class="nav-label">Ask the coach</span></a>
+    <a class="nav-item nav-tail" href="#"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="nav-label">Help and support</span></a>
+  </nav>
+
+  <main class="app-content">
+    <div class="breadcrumbs"><a href="learn.html">Home</a><span class="sep"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span><span class="current">Badges</span></div>
+    <div class="content-body">
+      <div id="view"></div>
+    </div>
+  </main>
+</div>
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+
+<script>
+/* ==============================================================
+   The learner half of Recognition.
+
+   Everything below the line is copied from recognition.html rather
+   than written again: the point rules, how a period score is worked
+   out, the three badges, the two course badges and the medal rule.
+   The first version of this screen invented its own nine-badge
+   ladder and its own points formula, so the two halves of one
+   system disagreed about what a badge was and what a point was
+   worth. One system, seen from two sides.
+   ============================================================== */
+const IRREGULAR = { person:'people' };
+const plural = (n, w) => n + ' ' + (n === 1 ? w : (IRREGULAR[w] || w + 's'));
+const PASS = 75;
+
+const RECRAW = `Dana Whitfield|CNA|Lakeside Manor|12|9|2|1|72/68/61
+Rosalind Vega|CNA|Lakeside Manor|12|11|0|1|81/77/70
+Marcus Ellery|Med Tech|Northgate|14|11|1|0|79/74/68
+Aurelie Bonnet|CNA|Northgate|12|10|0|1|76/71/64
+Piotr Zawadzki|Caregiver|Northgate|10|10|0|0|85/80/74
+Desmond Achebe|Caregiver|Lakeside Manor|10|8|1|0|74/70/63
+Imani Sowande|LPN|Willow Creek|15|15|0|0|90/86/79
+Yusuf Demirci|Caregiver|Willow Creek|10|9|1|0|77/73/66
+Theo Brannigan|Caregiver|Sunrise Terrace|10|4|1|0|-
+Fenella Wick|LPN|Sunrise Terrace|15|7|1|0|-
+Nadia Kerr|CNA|Harborview|12|6|0|0|-
+Oren Kaplan|Med Tech|Harborview|14|14|0|0|88/83/77
+Callum Reyes|Med Tech|Cedar Ridge|14|13|0|0|86/81/75
+Greta Lindqvist|CNA|Cedar Ridge|12|12|0|0|89/85/78
+Ines Halvorsen|CNA|Cedar Ridge|12|12|0|0|91/87/80
+Tomas Ruiz|Caregiver|Cedar Ridge|10|10|0|0|84/79/73
+Priya Raghavan|LPN|Cedar Ridge|15|13|0|0|87/82/76
+Bea Ferreira|CNA|Harborview|12|12|0|0|83/78/72
+Idris Mensah|Caregiver|Harborview|10|9|0|1|75/70/64
+Lena Vogt|CNA|Harborview|12|7|0|0|70/66/59
+Sofia Grandi|LPN|Willow Creek|15|14|0|0|88/84/77
+Hamid Nazari|Caregiver|Willow Creek|10|10|0|0|82/78/71
+Ruth Okonkwo|CNA|Willow Creek|12|12|0|0|90/86/80
+Malik Osei|Med Tech|Willow Creek|14|12|1|0|78/74/67
+Clara Bianchi|CNA|Sunrise Terrace|12|11|0|0|80/76/69
+Jonas Aalto|Caregiver|Sunrise Terrace|10|10|0|0|86/82/75
+Mira Solberg|LPN|Sunrise Terrace|15|12|0|0|84/80/73
+Ade Balogun|CNA|Northgate|12|10|1|0|76/72/65
+Freya Lindholm|Caregiver|Northgate|10|5|0|0|-
+Rafael Duarte|Med Tech|Northgate|14|13|0|0|85/81/74
+Zainab Farah|CNA|Lakeside Manor|12|6|0|0|-
+Otto Reinhardt|Caregiver|Lakeside Manor|10|9|1|0|73/69/62
+Silvia Marchetti|LPN|Lakeside Manor|15|12|1|0|81/77/70
+Kwame Boateng|CNA|Lakeside Manor|12|5|0|0|68/64/57
+Elena Petrova|CNA|Cedar Ridge|12|12|0|0|92/88/81
+Noor Haddad|Caregiver|Cedar Ridge|10|10|0|0|87/83/76
+Bram de Vries|Med Tech|Harborview|14|14|0|0|89/85/78
+Aiko Tanaka|CNA|Harborview|12|11|0|0|82/78/71
+Miguel Santos|Caregiver|Willow Creek|10|10|0|0|85/80/74
+Hana Novak|CNA|Sunrise Terrace|12|10|0|0|79/75/68
+Grace Mbeki|Housekeeping|Cedar Ridge|4|4|0|0|-
+Viktor Novikov|Housekeeping|Northgate|4|3|0|0|-
+Tara Sullivan|Administrator|Cedar Ridge|6|6|0|0|88/84/77
+Owen Fitzgerald|Administrator|Harborview|6|5|0|0|86/82/75`;
+
+const CFG = {
+  on: true,
+  rules: [
+    { k:'ontime', n:'Finished a required course before it was due', p:10, on:true,
+      w:'The behaviour the whole product exists to produce.' },
+    { k:'late',   n:'Finished a required course after it was due',  p:2,  on:true,
+      w:'Still worth credit. Worth less than on time, or on time means nothing.' },
+    { k:'comp',   n:'Passed a competency check at ' + PASS + ' or above', p:15, on:true,
+      w:'Competency, not completion, is what this product sells.' },
+    { k:'ilt',    n:'Attended an instructor-led session', p:15, on:true,
+      w:'The hardest thing to get people to do, and the only proof for hands-on skills.' },
+    { k:'renew',  n:'Renewed a certification before it lapsed', p:20, on:true,
+      w:'A lapsed certificate stops somebody working unsupervised.' }
+  ],
+  /* Three badges, three different questions. The set before this had six,
+     and Sumit spotted the problem in it by eye:
+
+       "On time, every time" and "First year done" awarded to the same 16
+       people and always would. `overdue` counts what is currently late, so
+       anybody who finished their set has zero by definition. Two rules
+       that can never disagree are one badge written twice.
+
+       "Steady" was (nothing overdue) AND (nothing lapsed), and the second
+       half is exactly the "Current" badge. A compound of two others.
+
+       "Nearly there" went to 33 people, 17 of whom had not finished. It
+       was a badge for almost doing the thing.
+
+     What is left asks: did you finish what you must, are your credentials
+     in date, and can you actually do the job. Nothing here is another way
+     of counting courses, because the required set resets every year: a
+     ladder needs a number that keeps climbing, and this one does not. */
+  badges: [
+    { k:'complete',  n:'Set complete', w:'Finished every required course for the year.',
+      holds: p => p.done >= p.req },
+    { k:'current',   n:'All current', w:'No lapsed certification.',
+      holds: p => p.expired === 0 },
+    { k:'competent', n:'Competent', w:'All three competency domains at ' + PASS + ' or above.',
+      holds: p => !!p.comp && p.comp.every(v => v >= PASS) }
+  ],
+  /* One badge per course, given automatically to everyone who completes
+     it. Not configured here: it is not a rule anyone tunes, it is a
+     record of a fact. The two below use the same completion rosters as
+     the Learners and Assign screens (`ALREADY`, by roster index), so a
+     count here matches the count there rather than inventing a second
+     answer to "who finished this course". A real build reads this off
+     enrollment records; there are only two courses with that record in
+     this prototype, so there are only two course badges. */
+  courseBadges: [
+    { course:'Preventing Falls in Senior Living', cat:'Safety and health', tone:'blue',
+      ic:'shield', holders:[1,4,6,11,13,14,17,22,34,36] },
+    { course:'HIPAA Privacy and Security', cat:'Compliance', tone:'purple',
+      ic:'lock', holders:[0,2,3,5,7,12,15,20] }
+  ]
+};
+
+function periodPts(p) {
+  const courses = Math.round(p.done / 4);
+  const late = Math.min(p.overdue, courses);
+  return (courses - late) * val('ontime') + late * val('late') +
+         (p.comp && p.comp.every(v => v >= PASS) ? val('comp') : 0) +
+         (p.expired === 0 ? val('renew') : 0);
+}
+const upToDate = p => p.done >= p.req && p.overdue === 0 && p.expired === 0;
+function behind(p) {
+  return [p.done < p.req ? plural(p.req - p.done, 'course') + ' outstanding' : '',
+          p.overdue ? plural(p.overdue, 'course') + ' overdue' : '',
+          p.expired ? plural(p.expired, 'certificate') + ' lapsed' : ''].filter(Boolean).join(', ');
+}
+function withTier(rows) {
+  let tier = 0, prev = null;
+  return rows.map(r => { if (r.pts !== prev) { tier++; prev = r.pts; } return Object.assign({ tier:tier }, r); });
+}
+
+
+/* The roster recognition.html uses, in its own eight-field shape.
+   name|role|community|required|done|overdue|expired|competency
+   Asserted equal to learners.html on every shared field, all 44 rows. */
+const PEOPLE = RECRAW.split('\n').map(function (l, i) {
+  const f = l.split('|');
+  return { i:i, n:f[0], role:f[1], comm:f[2], req:+f[3], done:+f[4],
+           overdue:+f[5], expired:+f[6],
+           comp: f[7] === '-' ? null : f[7].split('/').map(Number) };
+});
+
+/* Which of the five states each demo learner is in, so the View as menu
+   keeps working. Derived from the same fields recognition.html uses. */
+const STATES = [
+  { k:'lapsed', l:'Certificate lapsed', f: p => p.expired > 0 },
+  { k:'late',   l:'Something late',     f: p => !p.expired && p.overdue > 0 },
+  { k:'todo',   l:'Courses to do',      f: p => !p.expired && !p.overdue && p.done < p.req },
+  { k:'top',    l:'Holds a medal',      f: p => false },
+  { k:'clear',  l:'Nothing outstanding',f: p => p.done >= p.req && !p.overdue && !p.expired }
+];
+const WHO = {};
+STATES.forEach(s => { WHO[s.k] = PEOPLE.filter(s.f)[0]; });
+/* The medal holder is whoever actually tops the board, not a guess. */
+WHO.top = null;
+
+const $   = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const IC = {
+  award:'<path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/>',
+  lock:'<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'
+};
+const ic = (n, s) => '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" fill="none" stroke="currentColor" ' +
+  'stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+IC[n]+'</svg>';
+function toast(a, b) {
+  const el = document.createElement('div'); el.className = 'toast';
+  el.innerHTML = '<div><div class="toast-title">'+esc(a)+'</div>' +
+    (b ? '<div class="toast-body">'+esc(b)+'</div>' : '')+'</div>';
+  $('toasts').appendChild(el); setTimeout(() => el.remove(), 4600);
+}
+const val = k => (CFG.rules.filter(r => r.k === k)[0] || { p:0 }).p;
+
+function ranked() {
+  return withTier(PEOPLE.map(p => ({ p:p, pts:periodPts(p) })).sort((a, b) => b.pts - a.pts));
+}
+const S = { who:'lapsed', tab:'badges' };
+</script>
+
+<script>
+function render() {
+  const rows = ranked();
+  WHO.top = rows[0].p;
+  const me = WHO[S.who] || rows[0].p;
+  const mine = rows.filter(r => r.p.i === me.i)[0];
+
+  const got = CFG.badges.filter(b => b.holds(me));
+  const myCourse = CFG.courseBadges.filter(b => b.holders.indexOf(me.i) >= 0);
+
+  const tabs = '<div class="rtabs" role="tablist">' +
+    [['badges','Badges'], ['board','Leaderboard']].map(x =>
+      '<button class="rtab' + (S.tab === x[0] ? ' is-on' : '') + '" role="tab" ' +
+      'aria-selected="' + (S.tab === x[0]) + '" data-t="' + x[0] + '">' + x[1] + '</button>').join('') + '</div>';
+
+  let body;
+  if (S.tab === 'badges') {
+    body =
+      '<div class="sec-h"><h2>Course badges</h2><span>' + myCourse.length + ' of ' +
+        CFG.courseBadges.length + '</span></div>' +
+      '<p class="sec-w">The same badge for every course, given automatically when you finish it. ' +
+        'Nothing to aim for and nothing to tune &mdash; it is a record that you did it.</p>' +
+      '<div class="cb-grid">' + CFG.courseBadges.map(function (b) {
+        const has = b.holders.indexOf(me.i) >= 0;
+        return '<div class="cb' + (has ? '' : ' is-locked') + '">' +
+          '<img class="cb-art" src="assets/course-badge.png" alt="" />' +
+          '<span class="cb-plate">' + esc(b.course) + '</span>' +
+          '<span class="cb-w">' + (has ? 'You hold this' : 'Finish the course to earn it') +
+            ' &middot; ' + b.holders.length + ' of ' + PEOPLE.length + ' hold it</span>' +
+        '</div>';
+      }).join('') + '</div>' +
+
+      '<div class="sec-h"><h2>Achievements</h2><span>' + got.length + ' of ' + CFG.badges.length + '</span></div>' +
+      '<p class="sec-w">Three badges, three different questions: did you finish what you must, ' +
+        'are your credentials in date, and can you do the job.</p>' +
+      '<div class="ach">' + CFG.badges.map(function (b) {
+        const has = b.holds(me);
+        const n = PEOPLE.filter(b.holds).length;
+        return '<div class="ac' + (has ? ' is-got' : '') + '">' +
+          '<span class="ac-m">' + ic(has ? 'award' : 'lock', 20) + '</span>' +
+          '<div class="ac-n">' + esc(b.n) + '</div>' +
+          '<div class="ac-w">' + esc(b.w) + '</div>' +
+          '<div class="ac-s">' + (has ? 'You hold this. ' : '') + n + ' of ' + PEOPLE.length + ' hold it</div>' +
+        '</div>';
+      }).join('') + '</div>' +
+
+      '<div class="note">These are the badges your administrator sees on the Recognition screen. ' +
+        'Same three achievements, same course badge, same holders &mdash; one system, two sides of it.</div>';
+  } else {
+    const top = rows.slice(0, 10);
+    const inTop = top.filter(r => r.p.i === me.i).length > 0;
+    body =
+      '<p class="sec-w">A rolling 90 days, so somebody who joined in March can still win it. ' +
+        'Gold goes to everybody on the top score, silver to everybody on the next, bronze to the one after that.</p>' +
+      '<div class="card" style="padding:0;overflow:hidden;"><div class="lb">' +
+        top.concat(inTop ? [] : [mine]).map(function (r) {
+          const p = r.p, ok = upToDate(p), why = behind(p);
+          return '<div class="lb-r' + (p.i === me.i ? ' is-me' : '') + '">' +
+            '<span class="lb-m ' + (r.tier <= 3 ? ['g','s','b'][r.tier - 1] : 'n') + '">' +
+              (r.tier <= 3 ? '' : r.tier) + '</span>' +
+            '<span class="lb-n">' + esc(p.n) + '<span>' + esc(p.role) + ', ' + esc(p.comm) + '</span></span>' +
+            '<span class="lb-v">' + r.pts + '</span>' +
+            '<span class="lb-s ' + (ok ? 'ok' : 'bad') + '">' + (ok ? 'Up to date' : esc(why)) + '</span>' +
+          '</div>';
+        }).join('') + '</div></div>' +
+      '<div class="note">Points come from ' + CFG.rules.filter(r => r.on).length + ' rules: ' +
+        CFG.rules.filter(r => r.on).map(r => esc(r.n.toLowerCase()) + ' (' + r.p + ')').join(', ') + '. ' +
+        'Your administrator sets them; this is what they produced.</div>';
+  }
+
+  $('view').innerHTML =
+    '<div class="hello">Badges</div>' +
+    '<div class="hello-s">You hold <b>' + (got.length + myCourse.length) + '</b> badge' +
+      (got.length + myCourse.length === 1 ? '' : 's') + ' and you are <b>' +
+      (mine.tier <= 3 ? ['first','second','third'][mine.tier - 1] : mine.tier + 'th') +
+      '</b> on the board with <b>' + mine.pts + '</b> points over 90 days.</div>' +
+    tabs + body;
+
+  wire();
+}
+
+function wire() {
+  $('view').querySelectorAll('[data-t]').forEach(b => b.onclick = () => { S.tab = b.dataset.t; render(); });
+}
+
+function renderWho() {
+  const list = $('whoList');
+  if (!list) return;
+  list.innerHTML = STATES.filter(s => WHO[s.k]).map(function (s) {
+    const p = WHO[s.k];
+    return '<a href="#" role="menuitem" data-who="' + s.k + '" aria-current="' + (s.k === S.who) + '">' +
+      '<span class="vr"></span><span class="vw">' + esc(p.n) + '<span>' + esc(s.l.toLowerCase()) + '</span></span></a>';
+  }).join('');
+  list.querySelectorAll('[data-who]').forEach(a => a.onclick = e => {
+    e.preventDefault(); e.stopPropagation();
+    S.who = a.dataset.who;
+    $('viewAs').hidden = true;
+    $('viewAsBtn').setAttribute('aria-expanded', 'false');
+    renderMe(); renderWho(); render();
+  });
+}
+function renderMe() {
+  const p = WHO[S.who] || PEOPLE[0];
+  $('meAv').textContent   = p.n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  $('meName').textContent = p.n;
+  $('meRole').textContent = p.role + ', ' + p.comm;
+}
+
+const viewAsBtn = document.getElementById('viewAsBtn');
+if (viewAsBtn) {
+  const menu = document.getElementById('viewAs');
+  viewAsBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = !menu.hidden;
+    menu.hidden = open;
+    viewAsBtn.setAttribute('aria-expanded', String(!open));
+  });
+  document.addEventListener('click', () => {
+    if (!menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+}
+const railBtn = document.getElementById('railBtn');
+if (railBtn) {
+  railBtn.addEventListener('click', () => {
+    const shell = document.querySelector('.app-shell');
+    const side  = document.querySelector('.app-sidebar');
+    const on = shell.style.gridTemplateColumns === '0px 1fr';
+    shell.style.gridTemplateColumns = on ? '256px 1fr' : '0px 1fr';
+    if (side) side.style.visibility = on ? 'visible' : 'hidden';
+    railBtn.setAttribute('aria-label', on ? 'Collapse navigation' : 'Expand navigation');
+  });
+}
+$('themeBtn').addEventListener('click', () => {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+});
+
+renderMe(); renderWho(); render();
+</script>
+</body>
+</html>

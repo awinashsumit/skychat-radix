@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<!--
+  skyLearn - Course and lesson player, Radix flavour.
+
+  The live player lists twenty-one units for a seven-lesson course, because it
+  splits every lesson into three rows -- the reading, "- Video", and " Quiz" --
+  with the same title on each. course-create.html does not author it that way:
+  a module is one lesson holding its reading, its video and the questions that
+  check it. This puts the outline back to what was written.
+  See LEARNER-IA.md.
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>skyLearn &middot; My learning</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../tokens.css?v=102" />
+<link rel="stylesheet" href="../dashboard.css?v=102" />
+<style>
+  /* ---- Course landing ---- */
+  .hero { display: grid; grid-template-columns: 320px 1fr; gap: var(--space-6); align-items: start; }
+  @media (max-width: 900px) { .hero { grid-template-columns: 1fr; } }
+  .hero-art { aspect-ratio: 16 / 10; border-radius: var(--radius-4); display: flex;
+    align-items: center; justify-content: center; }
+  .hero-art.h1 { background: var(--seq-3); } .hero-art.h2 { background: var(--blue-4); }
+  .hero-art.h3 { background: var(--green-4); } .hero-art.h4 { background: var(--seq-2); }
+  .hero-art.h5 { background: var(--blue-3); } .hero-art.h6 { background: var(--green-3); }
+  .hero-art.h7 { background: var(--seq-4); } .hero-art.h8 { background: var(--blue-5); }
+  .hero-art .ic { width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; background: rgba(255,255,255,.9); color: var(--gray-12); }
+  .hero-cta { margin-top: var(--space-4); }
+  .hero-cta .btn { width: 100%; justify-content: center; }
+  .hero-t h1 { font-size: var(--fs-7); line-height: var(--lh-7); font-weight: var(--weight-bold); color: var(--fg-high); }
+  .hero-m { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap;
+    margin-top: var(--space-4); font-size: var(--fs-2); color: var(--fg-low); }
+  .hero-m span { display: inline-flex; align-items: center; gap: var(--space-2); }
+  /* The whole description, not three lines and a "Read more". It is four
+     sentences; hiding one of them buys nothing. */
+  .hero-d { margin-top: var(--space-4); font-size: var(--fs-3); line-height: 1.65; color: var(--fg-low); max-width: 68ch; }
+  .hero-bar { margin-top: var(--space-5); }
+  .hero-bar .lbl { display: flex; justify-content: space-between; font-size: var(--fs-2);
+    color: var(--fg-low); margin-bottom: var(--space-2); }
+  .track { height: 8px; border-radius: var(--radius-full); background: var(--gray-3); overflow: hidden; }
+  .track i { display: block; height: 100%; border-radius: var(--radius-full); background: var(--seq-5); }
+
+  .sec-h { display: flex; align-items: baseline; gap: var(--space-4); margin: var(--space-7) 0 var(--space-4); }
+  .sec-h h2 { flex: 1; min-width: 0; font-size: var(--fs-5); line-height: var(--lh-5);
+    font-weight: var(--weight-semibold); color: var(--fg-high); }
+  .sec-h span { font-size: var(--fs-2); color: var(--fg-low); }
+  .grp { font-size: var(--fs-1); font-weight: var(--weight-semibold); letter-spacing: .09em;
+    text-transform: uppercase; color: var(--fg-subtle); margin: var(--space-6) 0 var(--space-3); }
+
+  /* One row per lesson, saying what is in it rather than splitting it into
+     three rows that repeat the title. */
+  .les { display: grid; grid-template-columns: 34px 1fr auto; gap: var(--space-4); align-items: center;
+    width: 100%; text-align: left; padding: var(--space-4) var(--space-5); border: 0;
+    border-radius: var(--radius-4); background: var(--color-panel-solid); cursor: pointer;
+    box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .les + .les { margin-top: var(--space-3); }
+  .les:hover { box-shadow: inset 0 0 0 1px var(--border-strong); }
+  .les[disabled] { cursor: default; opacity: .55; }
+  .les-n { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-size: var(--fs-1); font-weight: var(--weight-semibold);
+    background: var(--gray-3); color: var(--fg-low); }
+  .les.is-done .les-n { background: var(--success-solid); color: #fff; }
+  .les.is-now  .les-n { background: var(--accent-9); color: var(--accent-contrast); }
+  .les-t { min-width: 0; }
+  .les-t b { display: block; font-size: var(--fs-3); font-weight: var(--weight-semibold); color: var(--fg-high); }
+  .les-t span { display: block; margin-top: 3px; font-size: var(--fs-2); color: var(--fg-low); }
+  .les-r { font-size: var(--fs-2); color: var(--fg-low); white-space: nowrap; }
+
+  /* ---- Player ---- */
+  .play { display: grid; grid-template-columns: 288px 1fr; gap: var(--space-6); align-items: start; }
+  @media (max-width: 1000px) { .play { grid-template-columns: 1fr; } }
+  .rail { position: sticky; top: var(--space-5); padding: var(--space-5); border-radius: var(--radius-4);
+    background: var(--color-panel-solid); box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .rail-h b { display: block; font-size: var(--fs-3); font-weight: var(--weight-semibold); color: var(--fg-high); }
+  .rail-h span { display: block; margin-top: var(--space-2); font-size: var(--fs-2); color: var(--fg-low); }
+  .rail-l { margin-top: var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); }
+  .rl { display: grid; grid-template-columns: 22px 1fr; gap: var(--space-3); align-items: center;
+    padding: var(--space-3); border: 0; border-radius: var(--radius-3); background: transparent;
+    text-align: left; cursor: pointer; font-family: var(--font-base); font-size: var(--fs-2); color: var(--fg-low); }
+  .rl:hover { background: var(--gray-2); color: var(--fg-high); }
+  .rl.is-now { background: var(--accent-2); color: var(--fg-high); font-weight: var(--weight-medium); }
+  .rl[disabled] { cursor: default; opacity: .5; }
+  .rl-i { width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; background: var(--gray-4); color: var(--fg-subtle); }
+  .rl.is-done .rl-i { background: var(--success-solid); color: #fff; }
+  .rl.is-now .rl-i { background: var(--accent-9); color: var(--accent-contrast); }
+
+  .pane { padding: var(--space-7); border-radius: var(--radius-4); background: var(--color-panel-solid);
+    box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .pane h1 { font-size: var(--fs-6); line-height: var(--lh-6); font-weight: var(--weight-bold); color: var(--fg-high); }
+  .pane h3 { margin-top: var(--space-6); font-size: var(--fs-4); line-height: var(--lh-4);
+    font-weight: var(--weight-semibold); color: var(--fg-high); }
+  .pane p { margin-top: var(--space-3); font-size: var(--fs-3); line-height: 1.7; color: var(--fg-high); max-width: 68ch; }
+  .pane ul { margin-top: var(--space-3); padding-left: var(--space-5); }
+  .pane li { margin-bottom: var(--space-2); font-size: var(--fs-3); line-height: 1.65; color: var(--fg-high); }
+
+  /* Objectives at the top, as what you will be able to do. The live player
+     put them under a heading that said "Lesson Complete". */
+  .obj { padding: var(--space-5); border-radius: var(--radius-3); background: var(--gray-2);
+    box-shadow: inset 0 0 0 1px var(--border-subtle); margin-top: var(--space-5); }
+  .obj b { font-size: var(--fs-2); font-weight: var(--weight-semibold); color: var(--fg-high); }
+  .obj ul { margin-top: var(--space-3); padding-left: var(--space-5); }
+  .obj li { font-size: var(--fs-2); line-height: 1.6; color: var(--fg-low); margin-bottom: var(--space-1); }
+
+  .call { margin-top: var(--space-5); padding: var(--space-4) var(--space-5); border-radius: var(--radius-3);
+    background: var(--accent-2); border-left: 3px solid var(--accent-9);
+    font-size: var(--fs-3); line-height: 1.6; color: var(--fg-high); }
+
+  .vid { margin-top: var(--space-5); aspect-ratio: 16 / 9; border-radius: var(--radius-3);
+    display: flex; align-items: center; justify-content: center; gap: var(--space-3);
+    background: var(--gray-3); color: var(--fg-low); font-size: var(--fs-2); }
+
+  /* The check, in the lesson it checks rather than as a separate unit. */
+  .q { margin-top: var(--space-5); padding: var(--space-5); border-radius: var(--radius-3);
+    background: var(--gray-2); box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .q + .q { margin-top: var(--space-4); }
+  .q-t { font-size: var(--fs-3); font-weight: var(--weight-semibold); color: var(--fg-high); }
+  .opts { margin-top: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+  .opt { display: grid; grid-template-columns: 20px 1fr; gap: var(--space-3); align-items: start;
+    padding: var(--space-3) var(--space-4); border: 0; border-radius: var(--radius-3);
+    background: var(--color-panel-solid); box-shadow: inset 0 0 0 1px var(--border-subtle);
+    cursor: pointer; text-align: left; font-family: var(--font-base); font-size: var(--fs-3);
+    line-height: 1.5; color: var(--fg-high); }
+  .opt:hover { box-shadow: inset 0 0 0 1px var(--border-strong); }
+  .opt-r { width: 18px; height: 18px; border-radius: 50%; margin-top: 2px;
+    box-shadow: inset 0 0 0 1.5px var(--border-strong); position: relative; }
+  .opt.is-pick .opt-r { box-shadow: inset 0 0 0 1.5px var(--accent-9); }
+  .opt.is-pick .opt-r::after { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--accent-9); }
+  .opt.is-right { box-shadow: inset 0 0 0 1px var(--success-border); background: var(--success-bg); }
+  .opt.is-wrong { box-shadow: inset 0 0 0 1px var(--danger-border); background: var(--danger-bg); }
+  .q-fb { margin-top: var(--space-3); font-size: var(--fs-2); line-height: 1.6; }
+  .q-fb.ok  { color: var(--success-text); }
+  .q-fb.bad { color: var(--danger-text); }
+
+  .foot { position: sticky; bottom: 0; margin-top: var(--space-6); padding: var(--space-4) 0;
+    display: flex; align-items: center; gap: var(--space-3); background: var(--color-page); }
+  .foot .sp { flex: 1; }
+  .foot-n { font-size: var(--fs-2); color: var(--fg-low); }
+
+  .toast-stack { position: fixed; left: 50%; bottom: var(--space-6); transform: translateX(-50%);
+    z-index: 80; display: flex; flex-direction: column; gap: var(--space-3); }
+  .toast { min-width: 280px; max-width: 460px; padding: var(--space-4) var(--space-5);
+    border-radius: var(--radius-3); background: var(--gray-12); color: var(--gray-1); box-shadow: var(--shadow-4); }
+  .toast-title { font-size: var(--fs-2); font-weight: var(--weight-semibold); }
+  .toast-body { margin-top: var(--space-1); font-size: var(--fs-2); opacity: .82; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header is-dark">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect width="24" height="24" rx="6" fill="var(--accent-9)"/><text x="12" y="16.5" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-contrast)">S</text></svg>
+      <span>skyLearn</span>
+    </div>
+    <div class="search hdr-search">
+      <span class="search-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+      <label class="sr-only" for="q">Search</label>
+      <input class="input" id="q" type="search" placeholder="Search courses and learners" autocomplete="off" />
+    </div>
+    <div class="header-right">
+      <span class="presence"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg><span><strong class="pt-num">4</strong> points</span></span>
+      <button class="icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="ic-badge">3</span></button>
+      <button class="icon-btn" id="themeBtn" aria-label="Switch to dark theme"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+      <span class="divider-v"></span>
+      <span class="header-wrap">
+        <button class="header-user" id="viewAsBtn" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar c3" id="meAv">DW</span>
+          <span class="hu-id"><span class="hu-name" id="meName">Dana Whitfield</span><span class="hu-role" id="meRole">CNA, Lakeside Manor</span></span>
+        </button>
+        <div class="view-as" id="viewAs" role="menu" hidden>
+          <div class="view-as-t">View as</div>
+          <a href="index.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Administrator<span>Everything, across all six communities</span></span></a>
+          <a href="teach.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Instructor<span>Your courses, learners and sessions</span></span></a>
+          <a href="learn.html" role="menuitem" aria-current="true"><span class="vr"></span>
+            <span class="vw">Learner<span>What you have to do, and by when</span></span></a>
+          <div class="view-as-t" style="margin-top:var(--space-2);">Which learner</div>
+          <div id="whoList"></div>
+          <div class="vs">
+            <a href="signin.html" role="menuitem">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
+              Sign out</a>
+          </div>
+        </div>
+      </span>
+    </div>
+  </header>
+
+  <nav class="app-sidebar" aria-label="Primary">
+    <button class="sidebar-toggle" id="railBtn" aria-label="Collapse navigation"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>
+    <a class="nav-item" href="learn.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg><span class="nav-label">Dashboard</span></a>
+    <a class="nav-item is-active" href="my-courses.html" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg><span class="nav-label">My courses</span></a>
+    <a class="nav-item" href="catalog.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg><span class="nav-label">Catalogue</span></a>
+    <a class="nav-item" href="my-certs.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg><span class="nav-label">Certificates</span></a>
+    <a class="nav-item" href="my-badges.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0z"/></svg><span class="nav-label">Badges</span></a>
+    <a class="nav-item" href="my-record.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M9 13h6"/><path d="M9 17h3"/></svg><span class="nav-label">My record</span></a>
+    <a class="nav-item" href="my-sessions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg><span class="nav-label">Sessions</span></a>
+    <a class="nav-item" href="coach.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg><span class="nav-label">Ask the coach</span></a>
+    <a class="nav-item nav-tail" href="#"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="nav-label">Help and support</span></a>
+  </nav>
+
+  <main class="app-content">
+    <div class="breadcrumbs"><a href="learn.html">Home</a><span class="sep"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span><a href="my-courses.html">My courses</a><span class="sep"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span><span class="current" id="crumb">Course</span></div>
+    <div class="content-body">
+      <div id="view"></div>
+    </div>
+  </main>
+</div>
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+
+<script>
+const RAW = `Dana Whitfield|CNA|Lakeside Manor|12|9|2|1|1|72/68/61|1
+Rosalind Vega|CNA|Lakeside Manor|12|11|0|0|1|81/77/70|2
+Marcus Ellery|Med Tech|Northgate|14|11|1|2|0|79/74/68|1
+Aurelie Bonnet|CNA|Northgate|12|10|0|1|1|76/71/64|4
+Piotr Zawadzki|Caregiver|Northgate|10|10|0|0|0|85/80/74|1
+Desmond Achebe|Caregiver|Lakeside Manor|10|8|1|0|0|74/70/63|3
+Imani Sowande|LPN|Willow Creek|15|15|0|1|0|90/86/79|1
+Yusuf Demirci|Caregiver|Willow Creek|10|9|1|0|0|77/73/66|2
+Theo Brannigan|Caregiver|Sunrise Terrace|10|4|1|0|0|-|1
+Fenella Wick|LPN|Sunrise Terrace|15|7|1|0|0|-|1
+Nadia Kerr|CNA|Harborview|12|6|0|0|0|-|2
+Oren Kaplan|Med Tech|Harborview|14|14|0|0|0|88/83/77|1
+Callum Reyes|Med Tech|Cedar Ridge|14|13|0|1|0|86/81/75|1
+Greta Lindqvist|CNA|Cedar Ridge|12|12|0|0|0|89/85/78|1
+Ines Halvorsen|CNA|Cedar Ridge|12|12|0|0|0|91/87/80|2
+Tomas Ruiz|Caregiver|Cedar Ridge|10|10|0|0|0|84/79/73|3
+Priya Raghavan|LPN|Cedar Ridge|15|13|0|0|0|87/82/76|46
+Bea Ferreira|CNA|Harborview|12|12|0|1|0|83/78/72|1
+Idris Mensah|Caregiver|Harborview|10|9|0|0|1|75/70/64|5
+Lena Vogt|CNA|Harborview|12|7|0|0|0|70/66/59|203
+Sofia Grandi|LPN|Willow Creek|15|14|0|0|0|88/84/77|1
+Hamid Nazari|Caregiver|Willow Creek|10|10|0|0|0|82/78/71|2
+Ruth Okonkwo|CNA|Willow Creek|12|12|0|0|0|90/86/80|1
+Malik Osei|Med Tech|Willow Creek|14|12|1|0|0|78/74/67|4
+Clara Bianchi|CNA|Sunrise Terrace|12|11|0|1|0|80/76/69|1
+Jonas Aalto|Caregiver|Sunrise Terrace|10|10|0|0|0|86/82/75|2
+Mira Solberg|LPN|Sunrise Terrace|15|12|0|0|0|84/80/73|38
+Ade Balogun|CNA|Northgate|12|10|1|0|0|76/72/65|3
+Freya Lindholm|Caregiver|Northgate|10|5|0|0|0|-|1
+Rafael Duarte|Med Tech|Northgate|14|13|0|0|0|85/81/74|1
+Zainab Farah|CNA|Lakeside Manor|12|6|0|0|0|-|2
+Otto Reinhardt|Caregiver|Lakeside Manor|10|9|1|0|0|73/69/62|6
+Silvia Marchetti|LPN|Lakeside Manor|15|12|1|1|0|81/77/70|2
+Kwame Boateng|CNA|Lakeside Manor|12|5|0|0|0|68/64/57|187
+Elena Petrova|CNA|Cedar Ridge|12|12|0|0|0|92/88/81|1
+Noor Haddad|Caregiver|Cedar Ridge|10|10|0|0|0|87/83/76|1
+Bram de Vries|Med Tech|Harborview|14|14|0|0|0|89/85/78|2
+Aiko Tanaka|CNA|Harborview|12|11|0|1|0|82/78/71|1
+Miguel Santos|Caregiver|Willow Creek|10|10|0|0|0|85/80/74|3
+Hana Novak|CNA|Sunrise Terrace|12|10|0|0|0|79/75/68|1
+Grace Mbeki|Housekeeping|Cedar Ridge|4|4|0|0|0|-|2
+Viktor Novikov|Housekeeping|Northgate|4|3|0|0|0|-|5
+Tara Sullivan|Administrator|Cedar Ridge|6|6|0|0|0|88/84/77|1
+Owen Fitzgerald|Administrator|Harborview|6|5|0|0|0|86/82/75|2`;
+const PEOPLE = RAW.split('\n').map(function (l, i) {
+  const f = l.split('|');
+  return { i:i, n:f[0], first:f[0].split(' ')[0], role:f[1], comm:f[2],
+           req:+f[3], done:+f[4], od:+f[5], exg:+f[6], exp:+f[7],
+           comp: f[8] === '-' ? null : f[8].split('/').map(Number), seen:+f[9] };
+});
+function stateOf(p) {
+  if (p.exp)          return 'lapsed';
+  if (p.od)           return 'late';
+  if (p.done < p.req) return 'todo';
+  if (p.exg)          return 'expiring';
+  return 'clear';
+}
+const STATES = [
+  { k:'lapsed', l:'Certificate lapsed' }, { k:'late', l:'Something late' },
+  { k:'todo', l:'Courses to do' }, { k:'expiring', l:'Certificate expiring' },
+  { k:'clear', l:'Nothing outstanding' }
+];
+const WHO = {};
+STATES.forEach(s => { WHO[s.k] = PEOPLE.filter(x => stateOf(x) === s.k)[0]; });
+
+const CATALOG = [
+  { n:'Safe Resident Handling', mins:35, cert:true, renew:12, hue:1,
+    ls:['Before you move anyone','Choosing the right aid','Two-person transfers','When to stop'] },
+  { n:'Preventing Falls in Senior Living', mins:22, hue:2,
+    ls:['Why people fall','The walk-round','Footwear and floors','After a fall'] },
+  { n:'Abuse Prevention', mins:18, cert:true, renew:24, hue:3,
+    ls:['What counts as abuse','Spotting the signs','Reporting it'] },
+  { n:'Infection Prevention', mins:24, cert:true, renew:12, hue:4,
+    ls:['Hand hygiene','Gloves and aprons','Isolation rooms','Cleaning as you go'] },
+  { n:'Resident Rights', mins:25, hue:5,
+    ls:['Dignity and choice','Privacy','Complaints','Advocacy'] },
+  { n:'Nutrition and Hydration', mins:15, hue:6,
+    ls:['Spotting dehydration','Modified diets','Mealtime help'] },
+  { n:'Skin Integrity', mins:20, hue:7,
+    ls:['Pressure areas','Repositioning','What to report'] },
+  { n:'Dementia Care Essentials', mins:28, hue:8,
+    ls:['What is happening','Communication','Sundowning','Families'] },
+  { n:'Emergency Preparedness', mins:26, hue:1,
+    ls:['Fire','Evacuation','Missing resident','After the event'] },
+  { n:'HIPAA and Data Security', mins:19, cert:true, renew:12, hue:2,
+    ls:['What is protected','Talking about residents','When it goes wrong'] },
+  { n:'Communication', mins:16, hue:3,
+    ls:['Handover','Difficult conversations','Writing it down'] },
+  { n:'CPR and First Aid', mins:40, cert:true, renew:24, hue:4,
+    ls:['Recognising arrest','Compressions','The defibrillator','Choking'] }
+,
+  { n:'Medication Administration', mins:32, cert:true, renew:12, hue:5,
+    ls:['The five rights','Controlled drugs','Refusals','Recording it'] },
+  { n:'Wound Care Basics', mins:23, hue:6,
+    ls:['What you may do','Spotting infection','Reporting'] },
+  { n:'Delegation and Supervision', mins:21, hue:7,
+    ls:['What can be delegated','Checking back','Accountability'] },
+  { n:'End of Life Care', mins:30, hue:8,
+    ls:['Recognising the change','Comfort','Families','Afterwards'] }
+];
+
+/* Every course this person is on: the ones finished, and the ones not.
+   Stride 5 is coprime with the twelve courses, so nobody is assigned the
+   same course twice -- stride 3 shares a factor and did exactly that. */
+function coursesFor(p) {
+  const out = [];
+  for (let k = 0; k < p.req; k++) {
+    const c = CATALOG[(p.i * 5 + k * 5) % CATALOG.length];
+    const finished = k >= (p.req - p.done) ? false : true;   /* placeholder, set below */
+    out.push({ n:c.n, mins:c.mins, cert:!!c.cert, hue:c.hue, ls:c.ls, k:k });
+  }
+  /* The first p.done are complete; the rest are outstanding, and the first
+     p.od of those are late. Derived from the roster so the counts can never
+     drift from what every other screen shows. */
+  const need = p.req - p.done;
+  return out.map(function (c, k) {
+    if (k >= need) {
+      return Object.assign(c, { state:'done', at:c.ls.length, left:0,
+        on:'2026-0' + (1 + (k % 7)) + '-' + (10 + ((p.i + k) % 18)) });
+    }
+    const at = (p.i + k * 3) % (c.ls.length + 1);
+    const isLate = k < p.od;
+    return Object.assign(c, {
+      state: at > 0 ? 'doing' : 'new',
+      at: at >= c.ls.length ? c.ls.length - 1 : at,
+      left: Math.max(4, Math.round(c.mins * (1 - at / (c.ls.length + 1)))),
+      late: isLate ? 2 + ((p.i + k) % 19) : 0,
+      due:  isLate ? 0 : 6 + ((p.i + k * 7) % 26)
+    });
+  });
+}
+
+
+const $   = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const IC = {
+  play:'<path d="M6 3.5v17a1 1 0 0 0 1.5.87l14-8.5a1 1 0 0 0 0-1.74l-14-8.5A1 1 0 0 0 6 3.5z" fill="currentColor" stroke="none"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>',
+  lock:'<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  clock:'<path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/>',
+  book:'<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
+  film:'<path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/>',
+  award:'<path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/>',
+  left:'<path d="m15 18-6-6 6-6"/>', right:'<path d="m9 18 6-6-6-6"/>'
+};
+const ic = (n, s) => '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" fill="none" stroke="currentColor" ' +
+  'stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+IC[n]+'</svg>';
+function toast(a, b) {
+  const el = document.createElement('div'); el.className = 'toast';
+  el.innerHTML = '<div><div class="toast-title">'+esc(a)+'</div>' +
+    (b ? '<div class="toast-body">'+esc(b)+'</div>' : '')+'</div>';
+  $('toasts').appendChild(el); setTimeout(() => el.remove(), 4600);
+}
+const S = { who:'lapsed', mode:'outline', at:0, done:[], pick:{}, checked:false };
+</script>
+<script>
+/* ==============================================================
+   The course, written the way course-create.html authors it: a
+   lesson is ONE thing holding its reading, its video and the
+   questions that check it.
+
+   The live player splits every lesson into three rows -- the
+   reading, "- Video" and " Quiz" -- each carrying the same title
+   with a suffix. That is how a seven-lesson course comes to list
+   twenty-one units, and why the outline is three times longer than
+   the course.
+
+   The prose is the same material the AI coach answers from, so
+   somebody who asks the coach and somebody who reads the lesson
+   are told the same thing rather than two versions of it.
+   ============================================================== */
+const COURSE = {
+  n:'Safe Resident Handling', hue:1, mins:35, cert:true, renew:12,
+  desc:'How to move somebody safely with the equipment you actually have, and how to tell when a ' +
+       'transfer should not go ahead. Written for direct care staff on shift rather than for a ' +
+       'classroom. Everything in it is what a surveyor expects you to be able to show, and what the ' +
+       'incident reports here keep coming back to.',
+  groups:[
+    { n:'Before the transfer',  ls:[0, 1] },
+    { n:'Doing it safely',      ls:[2] },
+    { n:'Knowing when to stop', ls:[3] }
+  ],
+  lessons:[
+    { t:'Before you move anyone', mins:8, video:true,
+      obj:['Find what the care plan says about how this resident transfers',
+           'Check the route, the brakes and the resident before you touch them'],
+      body:[
+        { p:'The care plan is the first thing, every time. It says how this resident transfers and ' +
+             'whether that has changed since yesterday, and it changes more often than people expect.' },
+        { h:'Before you touch them' },
+        { ul:['Read the care plan, including anything added on the last shift',
+              'Clear the route and put the brakes on',
+              'Tell them what you are about to do, and wait for an answer'] },
+        { call:'A transfer that has changed since your last shift is the commonest way somebody gets ' +
+               'hurt. The plan is where that change is written down.' }
+      ],
+      qs:[ { q:'What is the first thing you do before a transfer?',
+             o:['Fetch the hoist', 'Read the care plan', 'Call for a second person', 'Lower the bed'],
+             a:1, why:'The plan says how this resident transfers today, which may not be how they transferred last week.' } ] },
+
+    { t:'Choosing the right aid', mins:9, video:true,
+      obj:['Match a sling to the resident rather than to the hoist',
+           'Take unsafe equipment out of service and say so'],
+      body:[
+        { p:'Match the sling to the resident, not to the hoist. Check the label for the size and the ' +
+             'safe working load, and look at the stitching and the loops before every single use.' },
+        { h:'When to stop using a piece of equipment' },
+        { ul:['The label is missing, or you cannot read it',
+              'Any stitching is frayed, or a loop is stretched',
+              'The safe working load is below the resident&rsquo;s weight'] },
+        { call:'If the label is missing or unreadable, take it out of service and tell maintenance. ' +
+               'Not once more because you are in a hurry.' }
+      ],
+      qs:[ { q:'A sling&rsquo;s label is worn and you cannot read the safe working load. What do you do?',
+             o:['Use it, the size looks right', 'Use it once and report it afterwards',
+                'Take it out of service and tell maintenance', 'Ask whether it has been fine before'],
+             a:2, why:'Without the load you cannot know it is safe, and one more use is how it fails.' } ] },
+
+    { t:'Two-person transfers', mins:10, video:true,
+      obj:['Know which transfers need two people, and what each of you is doing',
+           'Know what to do when there is nobody else on the floor'],
+      body:[
+        { p:'A full hoist transfer is always two people. One operates the hoist, one stays with the ' +
+             'resident. The second person is not there to help lift; they are there so that somebody ' +
+             'is watching the resident the whole way through.' },
+        { h:'If you are on your own' },
+        { p:'Wait. A transfer done alone is the commonest way both of you get hurt, and it is what ' +
+             'turns a routine move into an incident report. Nothing on the schedule is worth it.' },
+        { call:'If there is nobody else on the floor, the transfer waits. Tell the nurse in charge ' +
+               'rather than working around it.' }
+      ],
+      qs:[ { q:'You are alone on the floor and a resident needs a full hoist transfer. What do you do?',
+             o:['Do it carefully on your own', 'Wait, and tell the nurse in charge',
+                'Ask the resident to help', 'Use a smaller sling so it is easier'],
+             a:1, why:'A hoist transfer is always two people. Waiting is the correct answer, not the cautious one.' },
+           { q:'What is the second person for?',
+             o:['Taking some of the weight', 'Operating the controls',
+                'Staying with the resident', 'Writing up the notes'],
+             a:2, why:'One operates the hoist; the other watches the resident throughout.' } ] },
+
+    { t:'When to stop', mins:8, video:false,
+      obj:['Recognise the three situations where you stop mid-transfer',
+           'Get the resident to a safe position before anything else'],
+      body:[
+        { p:'Stop if the resident says stop. Stop if they become agitated part-way through. Stop if ' +
+             'anything about the equipment feels wrong, even if you cannot say why.' },
+        { h:'What stopping looks like' },
+        { ul:['Lower them back to a safe position first',
+              'Do not leave them suspended while you think about it',
+              'Try again later, or with more help'] },
+        { call:'Nothing about the schedule is worth a fall. Stopping is a decision you are expected to ' +
+               'make, not one you need permission for.' }
+      ],
+      qs:[ { q:'A resident becomes agitated half way through a hoist transfer. What do you do first?',
+             o:['Finish quickly to get it over with', 'Lower them back to a safe position',
+                'Leave them and fetch help', 'Carry on, reassuring them'],
+             a:1, why:'Get them safe first. Everything else follows from that.' } ] }
+  ]
+};
+
+/* Where this learner is in it. A lesson is done when its questions have all
+   been answered correctly -- there is no separate quiz to pass, because the
+   questions belong to the lesson. */
+function progress() {
+  return { done: S.done.length, total: COURSE.lessons.length,
+           pct: Math.round(S.done.length / COURSE.lessons.length * 100) };
+}
+const isDone   = i => S.done.indexOf(i) >= 0;
+/* Linear, but only one step ahead: you can always open the next one. Locking
+   everything after it is what produced the "complete the previous lessons"
+   tooltip on a row four lessons away. */
+const isOpen   = i => i === 0 || isDone(i - 1) || isDone(i);
+const lessonOf = i => COURSE.lessons[i];
+const totalMins = COURSE.lessons.reduce((n, l) => n + l.mins, 0);
+</script>
+<script>
+/* ==============================================================
+   Outline
+   ============================================================== */
+function tOutline() {
+  const pr = progress();
+  const mine = coursesFor(WHO[S.who]).filter(c => c.n === COURSE.n)[0];
+  const cta = pr.done === 0 ? 'Start' : pr.done === pr.total ? 'Review it' : 'Continue';
+  const go  = pr.done === pr.total ? 0 : pr.done;
+
+  return '<div class="hero">' +
+    '<div><div class="hero-art h' + COURSE.hue + '"><span class="ic">' + ic('play', 22) + '</span></div>' +
+      '<div class="hero-cta"><button class="btn btn-solid" data-go="' + go + '">' + cta + '</button></div>' +
+      (mine && mine.late
+        ? '<p class="foot-n" style="margin-top:var(--space-3);color:var(--danger-text);">' +
+          mine.late + ' days late</p>' : '') +
+    '</div>' +
+    '<div class="hero-t"><h1>' + esc(COURSE.n) + '</h1>' +
+      '<div class="hero-m">' +
+        '<span>' + ic('clock', 14) + totalMins + ' minutes</span>' +
+        '<span>' + ic('book', 14) + COURSE.lessons.length + ' lessons</span>' +
+        (COURSE.cert ? '<span>' + ic('award', 14) + 'certificate, renews every ' + COURSE.renew + ' months</span>' : '') +
+        '<span>Do it in your own time</span>' +
+      '</div>' +
+      /* Four sentences. "Read more" on four sentences saves nothing and costs
+         a click, so the description is simply here. */
+      '<p class="hero-d">' + esc(COURSE.desc) + '</p>' +
+      (pr.done
+        ? '<div class="hero-bar"><div class="lbl"><span>' + pr.done + ' of ' + pr.total + ' lessons done</span>' +
+          '<span>' + pr.pct + '%</span></div>' +
+          '<div class="track"><i style="width:' + pr.pct + '%;"></i></div></div>'
+        : '') +
+    '</div></div>' +
+
+    '<div class="sec-h"><h2>What is in it</h2><span>' + COURSE.lessons.length + ' lessons, ' +
+      totalMins + ' minutes</span></div>' +
+
+    COURSE.groups.map(function (g) {
+      return '<div class="grp">' + esc(g.n) + '</div>' + g.ls.map(function (i) {
+        const l = lessonOf(i), done = isDone(i), open = isOpen(i);
+        const parts = ['reading'].concat(l.video ? ['video'] : [])
+          .concat([l.qs.length + ' question' + (l.qs.length === 1 ? '' : 's')]);
+        return '<button class="les' + (done ? ' is-done' : open ? ' is-now' : '') + '"' +
+          (open ? ' data-go="' + i + '"' : ' disabled aria-disabled="true"') + '>' +
+          '<span class="les-n">' + (done ? ic('check', 13) : open ? (i + 1) : ic('lock', 12)) + '</span>' +
+          '<span class="les-t"><b>' + esc(l.t) + '</b>' +
+            '<span>' + parts.join(' &middot; ') + '</span></span>' +
+          '<span class="les-r">' + (done ? 'Done' : l.mins + ' min') + '</span>' +
+        '</button>';
+      }).join('');
+    }).join('');
+}
+
+/* ==============================================================
+   Lesson
+   ============================================================== */
+function blockHtml(b) {
+  if (b.h)    return '<h3>' + esc(b.h) + '</h3>';
+  if (b.p)    return '<p>' + b.p + '</p>';
+  if (b.ul)   return '<ul>' + b.ul.map(x => '<li>' + x + '</li>').join('') + '</ul>';
+  if (b.call) return '<div class="call">' + b.call + '</div>';
+  return '';
+}
+
+function qHtml(l, i, qi) {
+  const q = l.qs[qi], key = i + ':' + qi, pick = S.pick[key];
+  const shown = S.checked && pick !== undefined;
+  return '<div class="q"><div class="q-t">' + q.q + '</div>' +
+    '<div class="opts">' + q.o.map(function (o, oi) {
+      let cls = '';
+      if (shown && oi === q.a) cls = ' is-right';
+      else if (shown && oi === pick) cls = ' is-wrong';
+      else if (pick === oi) cls = ' is-pick';
+      return '<button class="opt' + cls + '" data-pick="' + key + ':' + oi + '">' +
+        '<span class="opt-r"></span><span>' + o + '</span></button>';
+    }).join('') + '</div>' +
+    (shown
+      ? '<div class="q-fb ' + (pick === q.a ? 'ok' : 'bad') + '">' +
+        (pick === q.a ? 'Right. ' : 'Not quite. ') + esc(q.why) + '</div>'
+      : '') +
+  '</div>';
+}
+
+function tLesson() {
+  const i = S.at, l = lessonOf(i), pr = progress();
+  const answered = l.qs.every((q, qi) => S.pick[i + ':' + qi] !== undefined);
+  const allRight = l.qs.every((q, qi) => S.pick[i + ':' + qi] === q.a);
+
+  const rail = '<div class="rail"><div class="rail-h"><b>' + esc(COURSE.n) + '</b>' +
+      '<span>' + pr.done + ' of ' + pr.total + ' lessons done</span>' +
+      '<div class="track" style="margin-top:var(--space-3);"><i style="width:' + pr.pct + '%;"></i></div></div>' +
+    '<div class="rail-l">' + COURSE.lessons.map(function (x, k) {
+      const done = isDone(k), open = isOpen(k);
+      return '<button class="rl' + (k === i ? ' is-now' : '') + (done ? ' is-done' : '') + '"' +
+        (open ? ' data-go="' + k + '"' : ' disabled aria-disabled="true" title="Finish the one before this to open it"') + '>' +
+        '<span class="rl-i">' + (done ? ic('check', 11) : open ? (k + 1) : ic('lock', 10)) + '</span>' +
+        '<span>' + esc(x.t) + '</span></button>';
+    }).join('') + '</div></div>';
+
+  const pane = '<div><div class="pane">' +
+      '<h1>' + esc(l.t) + '</h1>' +
+      /* Objectives at the top, phrased as what you will be able to do. The
+         live player put these under a heading reading "Lesson Complete". */
+      '<div class="obj"><b>After this lesson you will be able to</b>' +
+        '<ul>' + l.obj.map(o => '<li>' + esc(o) + '</li>').join('') + '</ul></div>' +
+      l.body.map(blockHtml).join('') +
+      (l.video ? '<div class="vid">' + ic('film', 20) + ' Watch, ' + Math.max(2, Math.round(l.mins / 3)) + ' minutes</div>' : '') +
+      '<h3>Check you have it</h3>' +
+      '<p style="font-size:var(--fs-2);color:var(--fg-low);">' + l.qs.length + ' question' +
+        (l.qs.length === 1 ? '' : 's') + '. Every one has to be right &mdash; you can try again.</p>' +
+      l.qs.map((q, qi) => qHtml(l, i, qi)).join('') +
+    '</div>' +
+
+    '<div class="foot">' +
+      '<button class="btn btn-surface" data-go="' + (i - 1) + '"' + (i === 0 ? ' disabled' : '') + '>' +
+        ic('left', 15) + ' Previous</button>' +
+      (isDone(i)
+        ? '<span class="foot-n">' + ic('check', 14) + ' Done</span>'
+        : !S.checked
+          ? '<button class="btn btn-solid" id="checkBtn"' + (answered ? '' : ' disabled') + '>' +
+            (answered ? 'Check my answers' : 'Answer ' + l.qs.length + ' question' + (l.qs.length === 1 ? '' : 's') + ' to finish') + '</button>'
+          : allRight
+            ? '<button class="btn btn-solid" id="doneBtn">Mark this lesson done</button>'
+            : '<button class="btn btn-solid" id="retryBtn">Try those again</button>') +
+      '<span class="sp"></span>' +
+      '<button class="btn btn-surface" data-go="' + (i + 1) + '"' +
+        (i + 1 >= COURSE.lessons.length || !isOpen(i + 1) ? ' disabled' : '') + '>Next ' + ic('right', 15) + '</button>' +
+    '</div></div>';
+
+  return '<div class="play">' + rail + pane + '</div>';
+}
+
+function render() {
+  $('crumb').textContent = S.mode === 'outline' ? COURSE.n : lessonOf(S.at).t;
+  $('view').innerHTML = S.mode === 'outline' ? tOutline() : tLesson();
+  wire();
+}
+
+function wire() {
+  const v = $('view');
+  v.querySelectorAll('[data-go]').forEach(b => b.onclick = () => {
+    const k = +b.dataset.go;
+    if (k < 0 || k >= COURSE.lessons.length || !isOpen(k)) return;
+    S.at = k; S.mode = 'lesson'; S.checked = false; render();
+    if (typeof window.scrollTo === 'function') window.scrollTo(0, 0);
+  });
+  v.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => {
+    if (S.checked) return;
+    const parts = b.dataset.pick.split(':');
+    S.pick[parts[0] + ':' + parts[1]] = +parts[2];
+    render();
+  });
+  const chk = $('checkBtn');
+  if (chk) chk.onclick = () => { S.checked = true; render(); };
+  const rty = $('retryBtn');
+  if (rty) rty.onclick = () => {
+    const l = lessonOf(S.at);
+    l.qs.forEach((q, qi) => { if (S.pick[S.at + ':' + qi] !== q.a) delete S.pick[S.at + ':' + qi]; });
+    S.checked = false; render();
+  };
+  const dn = $('doneBtn');
+  if (dn) dn.onclick = () => {
+    if (!isDone(S.at)) S.done.push(S.at);
+    const pr = progress();
+    S.checked = false;
+    if (S.at + 1 < COURSE.lessons.length) { S.at += 1; render(); }
+    else { S.mode = 'outline'; render(); }
+    toast(pr.done === pr.total ? 'Course finished' : 'Lesson done',
+      pr.done === pr.total
+        ? 'Your ' + COURSE.n + ' certificate is issued, and renews in ' + COURSE.renew + ' months.'
+        : pr.done + ' of ' + pr.total + ' done. It saves where you got to.');
+  };
+}
+
+function renderWho() {
+  const list = $('whoList');
+  if (!list) return;
+  list.innerHTML = STATES.map(function (s) {
+    const p = WHO[s.k];
+    return '<a href="#" role="menuitem" data-who="' + s.k + '" aria-current="' + (s.k === S.who) + '">' +
+      '<span class="vr"></span><span class="vw">' + esc(p.n) + '<span>' + esc(s.l.toLowerCase()) + '</span></span></a>';
+  }).join('');
+  list.querySelectorAll('[data-who]').forEach(a => a.onclick = e => {
+    e.preventDefault(); e.stopPropagation();
+    S.who = a.dataset.who; S.mode = 'outline'; S.at = 0; S.done = []; S.pick = {}; S.checked = false;
+    $('viewAs').hidden = true;
+    $('viewAsBtn').setAttribute('aria-expanded', 'false');
+    renderMe(); renderWho(); render();
+  });
+}
+function renderMe() {
+  const p = WHO[S.who];
+  $('meAv').textContent   = p.n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  $('meName').textContent = p.n;
+  $('meRole').textContent = p.role + ', ' + p.comm;
+}
+
+const viewAsBtn = document.getElementById('viewAsBtn');
+if (viewAsBtn) {
+  const menu = document.getElementById('viewAs');
+  viewAsBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = !menu.hidden;
+    menu.hidden = open;
+    viewAsBtn.setAttribute('aria-expanded', String(!open));
+  });
+  document.addEventListener('click', () => {
+    if (!menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+}
+const railBtn = document.getElementById('railBtn');
+if (railBtn) {
+  railBtn.addEventListener('click', () => {
+    const shell = document.querySelector('.app-shell');
+    const side  = document.querySelector('.app-sidebar');
+    const on = shell.style.gridTemplateColumns === '0px 1fr';
+    shell.style.gridTemplateColumns = on ? '256px 1fr' : '0px 1fr';
+    if (side) side.style.visibility = on ? 'visible' : 'hidden';
+    railBtn.setAttribute('aria-label', on ? 'Collapse navigation' : 'Expand navigation');
+  });
+}
+$('themeBtn').addEventListener('click', () => {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+});
+
+renderMe(); renderWho(); render();
+</script>
+</body>
+</html>

@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<!--
+  skyLearn - Automations, Radix flavour.
+  Not a rule engine. The app already decides who must do what, declaratively,
+  in Groups; this decides who gets TOLD when they have not. See AUTOMATIONS-IA.md.
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>skyLearn &middot; Automations</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../tokens.css?v=102" />
+<link rel="stylesheet" href="../dashboard.css?v=102" />
+<style>
+  .ph-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-5); flex-wrap: wrap; }
+  .ph-text { flex: 1; min-width: 0; }
+  .ph-acts { display: flex; gap: var(--space-3); flex: 0 0 auto; margin-left: auto; }
+  .tally { font-size: var(--fs-2); color: var(--fg-low); }
+
+  .rtabs { display: flex; align-items: stretch; gap: var(--space-1); overflow-x: auto;
+    border-bottom: var(--stroke-thin) solid var(--border-subtle); margin-bottom: var(--space-5); }
+  .rtab { display: inline-flex; align-items: center; height: 42px; padding: 0 var(--space-3);
+    border: 0; background: transparent; cursor: pointer; white-space: nowrap;
+    font-family: var(--font-base); font-size: var(--fs-3); color: var(--fg-low);
+    border-bottom: 2px solid transparent; }
+  .rtab:hover { color: var(--fg-high); }
+  .rtab.is-on { color: var(--fg-high); font-weight: var(--weight-semibold); border-bottom-color: var(--accent-9); }
+
+  /* ---- A rule, as a card. The ladder is the point, so it gets the space. ---- */
+  .rules { display: flex; flex-direction: column; gap: var(--space-4); }
+  .rule { display: grid; grid-template-columns: 1fr auto; gap: var(--space-4) var(--space-5);
+    padding: var(--space-5); border-radius: var(--radius-4); background: var(--color-panel-solid);
+    box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .rule.is-off { background: var(--gray-2); }
+  .rule.is-off .rule-n, .rule.is-off .step-w { color: var(--fg-low); }
+  .rule-hd { min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+  .rule-n { font-size: var(--fs-4); line-height: var(--lh-4); font-weight: var(--weight-semibold); color: var(--fg-high); }
+  .rule-w { font-size: var(--fs-2); color: var(--fg-low); }
+  .rule-w b { font-weight: var(--weight-semibold); color: var(--fg-high); }
+  .rule-side { display: flex; align-items: flex-start; gap: var(--space-3); flex: 0 0 auto; }
+
+  /* The ladder: what happens, and how long after. Drawn left to right so the
+     delay between steps is a distance you can see rather than a number you
+     have to hold in your head. */
+  .ladder { grid-column: 1 / -1; display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; }
+  .step { position: relative; display: flex; flex-direction: column; gap: 2px;
+    padding: var(--space-3) var(--space-5) var(--space-3) 0; min-width: 168px; }
+  .step + .step { padding-left: var(--space-5); }
+  .step + .step::before { content: ""; position: absolute; left: 0; top: 50%;
+    width: 1px; height: 26px; margin-top: -13px; background: var(--border-subtle); }
+  .step-d { display: flex; align-items: center; gap: var(--space-2);
+    font-size: var(--fs-1); font-weight: var(--weight-semibold); letter-spacing: .04em;
+    text-transform: uppercase; color: var(--fg-subtle); }
+  .step-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent-9); flex: 0 0 auto; }
+  .step.is-esc .step-dot { background: var(--danger-solid); }
+  .step-w { font-size: var(--fs-2); color: var(--fg-high); }
+  .step-w b { font-weight: var(--weight-semibold); }
+
+  /* Reach: the number the current screen never showed you before you saved. */
+  .reach { display: flex; align-items: baseline; gap: var(--space-2); white-space: nowrap; }
+  .reach-v { font-size: var(--fs-6); line-height: 1; font-weight: var(--weight-bold);
+    color: var(--fg-high); font-variant-numeric: tabular-nums; }
+  .reach-l { font-size: var(--fs-2); color: var(--fg-low); }
+  .reach.is-zero .reach-v { color: var(--fg-subtle); }
+
+  /* Switch */
+  .sw { position: relative; width: 40px; height: 22px; flex: 0 0 auto; border: 0; padding: 0;
+    border-radius: var(--radius-full); cursor: pointer; background: var(--gray-6);
+    transition: background .15s ease; }
+  .sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px;
+    border-radius: 50%; background: #ffffff; transition: transform .15s ease; }
+  .sw[aria-checked="true"] { background: var(--accent-9); }
+  .sw[aria-checked="true"]::after { transform: translateX(18px); }
+  .sw:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+  .tr-sec-h { margin: var(--space-6) 0 var(--space-4); font-size: var(--fs-1);
+    font-weight: var(--weight-semibold); letter-spacing: .1em; text-transform: uppercase;
+    color: var(--fg-subtle); }
+
+  /* ---- Activity ---- */
+  .acts { display: flex; flex-direction: column; }
+  .act { display: grid; grid-template-columns: 108px 1fr auto; gap: var(--space-4);
+    align-items: baseline; padding: var(--space-4) 0;
+    border-bottom: var(--stroke-thin) solid var(--border-subtle); font-size: var(--fs-2); }
+  .act:last-child { border-bottom: 0; }
+  .act-w { color: var(--fg-subtle); }
+  .act-t { color: var(--fg-high); min-width: 0; }
+  .act-t b { font-weight: var(--weight-semibold); }
+  .act-t i { font-style: normal; color: var(--fg-low); }
+
+  /* ---- Dialog ---- */
+  .ov { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center;
+    justify-content: center; padding: var(--space-5); background: rgba(0,0,0,.45); }
+  .dlg { width: min(720px, 100%); max-height: 90vh; overflow-y: auto; border-radius: var(--radius-5);
+    background: var(--color-panel-solid); box-shadow: var(--shadow-5); }
+  .dlg-h { display: flex; align-items: flex-start; gap: var(--space-4);
+    padding: var(--space-5) var(--space-6); border-bottom: var(--stroke-thin) solid var(--border-subtle); }
+  .dlg-h h2 { flex: 1; min-width: 0; font-size: var(--fs-5); line-height: var(--lh-5); font-weight: var(--weight-bold); }
+  .dlg-b { padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-5); }
+  .dlg-f { display: flex; align-items: center; gap: var(--space-3);
+    padding: var(--space-5) var(--space-6); border-top: var(--stroke-thin) solid var(--border-subtle); }
+  .dlg-f .sp { flex: 1; }
+
+  .field { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+  .field-label { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+  .field-hint { font-size: var(--fs-1); color: var(--fg-low); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+  @media (max-width: 620px) { .two { grid-template-columns: 1fr; } }
+
+  /* The step editor */
+  .steps-e { display: flex; flex-direction: column; gap: var(--space-3); }
+  .step-e { display: grid; grid-template-columns: 96px 1fr auto; gap: var(--space-3); align-items: center; }
+  .step-e .select, .step-e .input { min-width: 0; }
+
+  /* The preview. The whole reason this dialog is different from the old one. */
+  .prev { padding: var(--space-4) var(--space-5); border-radius: var(--radius-3);
+    background: var(--accent-2); box-shadow: inset 0 0 0 1px var(--accent-6); }
+  .prev-h { display: flex; align-items: baseline; gap: var(--space-2); font-size: var(--fs-2); color: var(--fg-high); }
+  .prev-h b { font-size: var(--fs-4); font-weight: var(--weight-bold); color: var(--accent-11);
+    font-variant-numeric: tabular-nums; }
+  .prev-w { margin-top: var(--space-2); font-size: var(--fs-1); color: var(--fg-low); line-height: 1.6; }
+  .prev.is-zero { background: var(--gray-2); box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .prev.is-zero .prev-h b { color: var(--fg-subtle); }
+
+  .toast-stack { position: fixed; left: 50%; bottom: var(--space-6); transform: translateX(-50%);
+    z-index: 80; display: flex; flex-direction: column; gap: var(--space-3); }
+  .toast { min-width: 280px; max-width: 420px; padding: var(--space-4) var(--space-5);
+    border-radius: var(--radius-3); background: var(--gray-12); color: var(--gray-1); box-shadow: var(--shadow-4); }
+  .toast-title { font-size: var(--fs-2); font-weight: var(--weight-semibold); }
+  .toast-body { margin-top: var(--space-1); font-size: var(--fs-2); opacity: .82; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header is-dark">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect width="24" height="24" rx="6" fill="var(--accent-9)"/><text x="12" y="16.5" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-contrast)">S</text></svg>
+      <span>skyLearn</span>
+    </div>
+    <div class="search hdr-search">
+      <span class="search-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+      <label class="sr-only" for="q">Search</label>
+      <input class="input" id="q" type="search" placeholder="Search courses and learners" autocomplete="off" />
+    </div>
+    <div class="header-right">
+      <span class="presence"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg><span><strong class="pt-num">4</strong> points</span></span>
+      <button class="icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="ic-badge">3</span></button>
+      <button class="icon-btn" id="themeBtn" aria-label="Switch to dark theme"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+      <span class="divider-v"></span>
+      <span class="header-wrap">
+        <button class="header-user" id="viewAsBtn" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar c6">SA</span>
+          <span class="hu-id"><span class="hu-name">Sumit Awinash</span><span class="hu-role">Administrator</span></span>
+        </button>
+        <div class="view-as" id="viewAs" role="menu" hidden>
+          <div class="view-as-t">View as</div>
+          <a href="index.html" role="menuitem" aria-current="true"><span class="vr"></span>
+            <span class="vw">Administrator<span>Everything, across all six communities</span></span></a>
+          <a href="teach.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Instructor<span>Your courses, learners and sessions</span></span></a>
+          <a href="learn.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Learner<span>What you have to do, and by when</span></span></a>
+          <div class="vs">
+            <a href="signin.html" role="menuitem">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
+              Sign out</a>
+          </div>
+        </div>
+      </span>
+    </div>
+  </header>
+
+  <nav class="app-sidebar" aria-label="Primary">
+    <button class="sidebar-toggle" id="railBtn" aria-label="Collapse navigation"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>
+    <a class="nav-item" href="index.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg><span class="nav-label">Dashboard</span></a>
+    <a class="nav-item" href="courses.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg><span class="nav-label">Courses</span></a>
+    <a class="nav-item" href="learners.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg><span class="nav-label">Learners</span></a>
+    <a class="nav-item" href="certificate.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg><span class="nav-label">Certifications</span></a>
+    <a class="nav-item" href="sessions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg><span class="nav-label">Sessions</span></a>
+    <a class="nav-item" href="groups.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg><span class="nav-label">Groups</span></a>
+    <a class="nav-item" href="recognition.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0z"/></svg><span class="nav-label">Recognition</span></a>
+    <a class="nav-item" href="discussions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6V2H8"/><path d="m8 18-4 4V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2Z"/><path d="M2 12h2"/><path d="M9 11v2"/><path d="M15 11v2"/><path d="M20 12h2"/></svg><span class="nav-label">Discussions</span></a>
+    <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span class="nav-label">Reports</span></a>
+    <a class="nav-item is-active" href="automations.html" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/><path d="m2 2 20 20"/></svg><span class="nav-label">Automations</span></a>
+    <a class="nav-item" href="surveys.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/><rect x="3" y="4" width="18" height="16" rx="2"/></svg><span class="nav-label">Surveys</span></a>
+    <a class="nav-item" href="grading.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="m9 11-1.5 1.5L9 14"/><path d="M16 16h-4"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg><span class="nav-label">Grading Hub</span></a>
+    <a class="nav-item" href="files.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span class="nav-label">Reference library</span></a>
+    <a class="nav-item nav-tail" href="#"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="nav-label">Help and support</span></a>
+  </nav>
+
+  <main class="app-content">
+    <div class="breadcrumbs"><a href="index.html">Home</a><span class="sep"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span><span class="current">Automations</span></div>
+    <div class="content-body">
+      <header class="page-header ph-row">
+        <div class="ph-text"><h1>Automations</h1>
+          <p>Nobody is told they are behind unless something tells them. This is that something.</p></div>
+        <div class="ph-acts"><button class="btn btn-solid" id="newBtn">New rule</button></div>
+      </header>
+      <div id="view"></div>
+    </div>
+  </main>
+</div>
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+<div id="modal"></div>
+<script>
+/* ==============================================================
+   The same 44 people every other screen uses, in the same format,
+   so a rule's reach is the roster's truth and not a second guess.
+   name|role|community|required|done|overdue|expiring|expired|competency|weeks since seen
+   ============================================================== */
+const RAW = `Dana Whitfield|CNA|Lakeside Manor|12|9|2|1|1|72/68/61|1
+Rosalind Vega|CNA|Lakeside Manor|12|11|0|0|1|81/77/70|2
+Marcus Ellery|Med Tech|Northgate|14|11|1|2|0|79/74/68|1
+Aurelie Bonnet|CNA|Northgate|12|10|0|1|1|76/71/64|4
+Piotr Zawadzki|Caregiver|Northgate|10|10|0|0|0|85/80/74|1
+Desmond Achebe|Caregiver|Lakeside Manor|10|8|1|0|0|74/70/63|3
+Imani Sowande|LPN|Willow Creek|15|15|0|1|0|90/86/79|1
+Yusuf Demirci|Caregiver|Willow Creek|10|9|1|0|0|77/73/66|2
+Theo Brannigan|Caregiver|Sunrise Terrace|10|4|1|0|0|-|1
+Fenella Wick|LPN|Sunrise Terrace|15|7|1|0|0|-|1
+Nadia Kerr|CNA|Harborview|12|6|0|0|0|-|2
+Oren Kaplan|Med Tech|Harborview|14|14|0|0|0|88/83/77|1
+Callum Reyes|Med Tech|Cedar Ridge|14|13|0|1|0|86/81/75|1
+Greta Lindqvist|CNA|Cedar Ridge|12|12|0|0|0|89/85/78|1
+Ines Halvorsen|CNA|Cedar Ridge|12|12|0|0|0|91/87/80|2
+Tomas Ruiz|Caregiver|Cedar Ridge|10|10|0|0|0|84/79/73|3
+Priya Raghavan|LPN|Cedar Ridge|15|13|0|0|0|87/82/76|46
+Bea Ferreira|CNA|Harborview|12|12|0|1|0|83/78/72|1
+Idris Mensah|Caregiver|Harborview|10|9|0|0|1|75/70/64|5
+Lena Vogt|CNA|Harborview|12|7|0|0|0|70/66/59|203
+Sofia Grandi|LPN|Willow Creek|15|14|0|0|0|88/84/77|1
+Hamid Nazari|Caregiver|Willow Creek|10|10|0|0|0|82/78/71|2
+Ruth Okonkwo|CNA|Willow Creek|12|12|0|0|0|90/86/80|1
+Malik Osei|Med Tech|Willow Creek|14|12|1|0|0|78/74/67|4
+Clara Bianchi|CNA|Sunrise Terrace|12|11|0|1|0|80/76/69|1
+Jonas Aalto|Caregiver|Sunrise Terrace|10|10|0|0|0|86/82/75|2
+Mira Solberg|LPN|Sunrise Terrace|15|12|0|0|0|84/80/73|38
+Ade Balogun|CNA|Northgate|12|10|1|0|0|76/72/65|3
+Freya Lindholm|Caregiver|Northgate|10|5|0|0|0|-|1
+Rafael Duarte|Med Tech|Northgate|14|13|0|0|0|85/81/74|1
+Zainab Farah|CNA|Lakeside Manor|12|6|0|0|0|-|2
+Otto Reinhardt|Caregiver|Lakeside Manor|10|9|1|0|0|73/69/62|6
+Silvia Marchetti|LPN|Lakeside Manor|15|12|1|1|0|81/77/70|2
+Kwame Boateng|CNA|Lakeside Manor|12|5|0|0|0|68/64/57|187
+Elena Petrova|CNA|Cedar Ridge|12|12|0|0|0|92/88/81|1
+Noor Haddad|Caregiver|Cedar Ridge|10|10|0|0|0|87/83/76|1
+Bram de Vries|Med Tech|Harborview|14|14|0|0|0|89/85/78|2
+Aiko Tanaka|CNA|Harborview|12|11|0|1|0|82/78/71|1
+Miguel Santos|Caregiver|Willow Creek|10|10|0|0|0|85/80/74|3
+Hana Novak|CNA|Sunrise Terrace|12|10|0|0|0|79/75/68|1
+Grace Mbeki|Housekeeping|Cedar Ridge|4|4|0|0|0|-|2
+Viktor Novikov|Housekeeping|Northgate|4|3|0|0|0|-|5
+Tara Sullivan|Administrator|Cedar Ridge|6|6|0|0|0|88/84/77|1
+Owen Fitzgerald|Administrator|Harborview|6|5|0|0|0|86/82/75|2`;
+
+const PEOPLE = RAW.split('\n').map(function (l, i) {
+  const f = l.split('|');
+  return { i:i, n:f[0], role:f[1], comm:f[2], req:+f[3], done:+f[4],
+           overdue:+f[5], expiring:+f[6], expired:+f[7], seen:+f[9],
+           email: f[0].toLowerCase().replace(/[^a-z ]/g, '').replace(/ /g, '.') + '@skypoint.ai' };
+});
+function stateOf(p) {
+  if (p.expired)      return 'expired';
+  if (p.overdue)      return 'overdue';
+  if (p.done < p.req) return 'inprogress';
+  if (p.expiring)     return 'expiring';
+  return 'compliant';
+}
+const COMMS = ['All communities'].concat(Array.from(new Set(PEOPLE.map(p => p.comm))).sort());
+const ROLES = ['All roles'].concat(Array.from(new Set(PEOPLE.map(p => p.role))).sort());
+
+/* Ohio, Texas and Florida count compliance in HOURS, not courses, so a
+   reminder that says "3 courses outstanding" is the wrong sentence there. */
+const HOUR_STATES = { 'Lakeside Manor':'OH', 'Northgate':'TX', 'Willow Creek':'FL' };
+
+/* ==============================================================
+   What a rule can watch. Every one of these is a situation the app
+   already knows about and currently tells nobody.
+   ============================================================== */
+/* Every watch is defined through stateOf(), the same precedence the
+   Learners screen uses, for two reasons.
+
+   It reconciles: a rule can never claim somebody is overdue while the
+   learner record calls them lapsed.
+
+   And it guarantees no double-messaging. The watches are DISJOINT, so one
+   person falls into exactly one of them and gets one chain. Written the
+   obvious way -- overdue is `p.overdue > 0` -- somebody who is both lapsed
+   and overdue matched two rules and got told twice about one problem. The
+   per-rule cap cannot catch that, because it is one message from each of
+   two rules. */
+const WATCH = {
+  overdue:    { l:'Training is overdue',         match:p => stateOf(p) === 'overdue',
+                say:p => p.overdue + ' overdue' },
+  expired:    { l:'A certificate has lapsed',    match:p => stateOf(p) === 'expired',
+                say:p => p.expired + ' lapsed' },
+  expiring:   { l:'A certificate expires soon',  match:p => stateOf(p) === 'expiring',
+                say:p => p.expiring + ' expiring' },
+  notstarted: { l:'Assigned but never started',  match:p => stateOf(p) === 'inprogress' && p.seen >= 4,
+                say:p => (p.req - p.done) + ' outstanding' },
+  quiet:      { l:'Up to date but not logging in', match:p => stateOf(p) === 'compliant' && p.seen >= 4,
+                say:p => p.seen + ' weeks' },
+  digest:     { l:'On a schedule',               match:() => false, schedule:true },
+  after:      { l:'After a course is completed', match:() => false, sequence:true }
+};
+
+/* Who gets told. An escalation is only an escalation if it reaches
+   somebody other than the person who is already ignoring you. */
+const TELL = {
+  learner:  { l:'the learner',            esc:false },
+  manager:  { l:'their manager',          esc:true },
+  don:      { l:'the Director of Nursing', esc:true },
+  admin:    { l:'the administrator',      esc:true }
+};
+const HOW = { email:'by email', app:'in the app', both:'by email and in the app' };
+
+/* ==============================================================
+   Starter rules. The current screen says "create your first rule"
+   to an empty page, and after all this time it still has none.
+   These are the six gaps the research found, ready to switch on.
+   ============================================================== */
+const RULES = [
+  { id:'r1', name:'Chase overdue training', on:'overdue',
+    comm:'All communities', role:'All roles', cap:'weekly', live:true, sent:38,
+    steps:[ { d:0,  tell:'learner', how:'email' },
+            { d:7,  tell:'learner', how:'both' },
+            { d:14, tell:'manager', how:'email' } ] },
+
+  { id:'r2', name:'A lapsed certificate needs somebody to know', on:'expired',
+    comm:'All communities', role:'All roles', cap:'none', live:true, sent:11,
+    steps:[ { d:0, tell:'manager', how:'email' },
+            { d:0, tell:'don',     how:'email' },
+            { d:2, tell:'learner', how:'both' } ] },
+
+  { id:'r3', name:'Warn before a certificate lapses', on:'expiring',
+    comm:'All communities', role:'All roles', cap:'weekly', live:true, sent:6,
+    steps:[ { d:0,  tell:'learner', how:'email' },
+            { d:14, tell:'manager', how:'email' } ] },
+
+  { id:'r4', name:'Nudge people who never started', on:'notstarted',
+    comm:'All communities', role:'All roles', cap:'weekly', live:false, sent:0,
+    steps:[ { d:0, tell:'learner', how:'app' } ] },
+
+  { id:'r5', name:'Monthly compliance summary', on:'digest',
+    comm:'All communities', role:'All roles', cap:'none', live:false, sent:0,
+    when:'the 1st of each month',
+    steps:[ { d:0, tell:'don', how:'email' } ] },
+
+  { id:'r6', name:'Refresher after Dementia Care Essentials', on:'after',
+    comm:'All communities', role:'All roles', cap:'none', live:false, sent:0,
+    course:'Dementia Care Essentials', then:'Dementia Care: Advanced Practice', delay:90,
+    steps:[ { d:90, tell:'learner', how:'email' } ] },
+
+  { id:'r7', name:'Weekly check-in for quiet learners', on:'quiet',
+    comm:'All communities', role:'All roles', cap:'weekly', live:false, sent:0,
+    steps:[ { d:0, tell:'learner', how:'app' } ] }
+];
+
+/* Sent, not invented: the log is what the live rules would have produced. */
+const ACTIVITY = [
+  { w:'2 hours ago',  r:'r1', who:'Dana Whitfield',     tell:'learner', how:'email' },
+  { w:'2 hours ago',  r:'r1', who:'Tomas Ruiz',         tell:'learner', how:'email' },
+  { w:'Yesterday',    r:'r2', who:'Greta Lindqvist',    tell:'manager', how:'email' },
+  { w:'Yesterday',    r:'r2', who:'Greta Lindqvist',    tell:'don',     how:'email' },
+  { w:'Yesterday',    r:'r1', who:'Priya Raghavan',     tell:'learner', how:'both' },
+  { w:'2 days ago',   r:'r3', who:'Aurelie Bonnet',     tell:'learner', how:'email' },
+  { w:'2 days ago',   r:'r1', who:'Oren Kaplan',        tell:'manager', how:'email' },
+  { w:'3 days ago',   r:'r1', who:'Desmond Achebe',     tell:'learner', how:'email' },
+  { w:'4 days ago',   r:'r2', who:'Mira Solberg',       tell:'manager', how:'email' },
+  { w:'5 days ago',   r:'r3', who:'Yusuf Demirci',      tell:'learner', how:'email' },
+  { w:'Last week',    r:'r1', who:'Rosalind Vega',      tell:'learner', how:'email' },
+  { w:'Last week',    r:'r1', who:'Marcus Ellery',      tell:'learner', how:'both' }
+];
+
+const $   = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const S = { tab:'rules', draft:null };
+</script>
+<script>
+/* ==============================================================
+   Reach. The number the old dialog never showed you: how many real
+   people this rule is about to write to, before you save it.
+   ============================================================== */
+function reach(r) {
+  const w = WATCH[r.on];
+  if (!w || w.schedule) return null;                /* a digest goes to one desk, not a cohort */
+  if (w.sequence) return null;                      /* sequencing depends on future completions */
+  return PEOPLE.filter(p =>
+    (r.comm === 'All communities' || p.comm === r.comm) &&
+    (r.role === 'All roles'       || p.role === r.role) &&
+    w.match(p));
+}
+
+/* Ohio, Texas and Florida count hours. Saying "3 courses" to somebody
+   whose regulator counts hours is the wrong sentence, so the rule says
+   so where it applies. */
+function hourNote(r) {
+  const hits = (reach(r) || []).filter(p => HOUR_STATES[p.comm]);
+  if (!hits.length) return '';
+  const states = Array.from(new Set(hits.map(p => HOUR_STATES[p.comm]))).sort();
+  return hits.length + ' of them are in ' + states.join(', ') +
+    ', where the regulator counts hours rather than courses.';
+}
+
+const plural = (n, s, p) => n + ' ' + (n === 1 ? s : (p || s + 's'));
+const dayLabel = d => d === 0 ? 'Straight away' : 'Day ' + d;
+
+function ladder(r) {
+  return '<div class="ladder">' + r.steps.map(s => {
+    const t = TELL[s.tell];
+    return '<div class="step'+(t.esc ? ' is-esc' : '')+'">' +
+      '<span class="step-d"><i class="step-dot"></i>'+dayLabel(s.d)+'</span>' +
+      '<span class="step-w">Tell <b>'+t.l+'</b> '+HOW[s.how]+'</span></div>';
+  }).join('') + '</div>';
+}
+
+function watchLine(r) {
+  if (r.on === 'digest') return 'Sends <b>'+esc(r.when)+'</b>.';
+  if (r.on === 'after')  return 'When someone finishes <b>'+esc(r.course)+'</b>, schedules <b>' +
+    esc(r.then)+'</b> '+r.delay+' days later.';
+  let s = 'Watches for <b>'+WATCH[r.on].l.toLowerCase()+'</b>';
+  if (r.comm !== 'All communities') s += ' at <b>'+esc(r.comm)+'</b>';
+  if (r.role !== 'All roles')       s += ' among <b>'+esc(r.role)+'s</b>';
+  return s + '.' + (r.cap === 'weekly' ? ' At most one message per person per week.' : '');
+}
+
+function ruleCard(r) {
+  const hit = reach(r);
+  return '<article class="rule'+(r.live ? '' : ' is-off')+'" data-rule="'+r.id+'">' +
+    '<div class="rule-hd"><span class="rule-n">'+esc(r.name)+'</span>' +
+      '<span class="rule-w">'+watchLine(r)+'</span></div>' +
+    '<div class="rule-side">' +
+      (hit
+        ? '<span class="reach'+(hit.length ? '' : ' is-zero')+'">' +
+          '<span class="reach-v">'+hit.length+'</span>' +
+          '<span class="reach-l">'+(hit.length === 1 ? 'person' : 'people')+' right now</span></span>'
+        : '<span class="reach is-zero"><span class="reach-l">no one waiting</span></span>') +
+      '<button class="sw" role="switch" aria-checked="'+r.live+'" data-toggle="'+r.id+'" ' +
+        'aria-label="'+(r.live ? 'Turn off' : 'Turn on')+' '+esc(r.name)+'"></button>' +
+    '</div>' +
+    ladder(r) +
+    '</article>';
+}
+
+function tRules() {
+  const live = RULES.filter(r => r.live);
+  const off  = RULES.filter(r => !r.live);
+  const waiting = live.reduce((s, r) => s + ((reach(r) || []).length), 0);
+  const sent = RULES.reduce((s, r) => s + r.sent, 0);
+
+  return '<div class="table-toolbar">' +
+      '<span class="tally">' + (live.length
+        ? plural(live.length, 'rule') + ' running &middot; ' + plural(waiting, 'person', 'people') +
+          ' waiting on one &middot; ' + plural(sent, 'message') + ' sent this month'
+        : 'Nothing is running. Nobody is being told anything.') + '</span>' +
+    '</div>' +
+    '<div class="rules">' + live.map(ruleCard).join('') + '</div>' +
+    (off.length
+      ? '<div class="tr-sec-h">Not running</div><div class="rules">' + off.map(ruleCard).join('') + '</div>'
+      : '');
+}
+
+function tActivity() {
+  const byId = {};
+  RULES.forEach(r => { byId[r.id] = r.name; });
+  return '<div class="table-toolbar"><span class="tally">' +
+      plural(ACTIVITY.length, 'message') + ' in the last week</span></div>' +
+    '<div class="card" style="padding:0 var(--space-5);"><div class="acts">' +
+      ACTIVITY.map(a =>
+        '<div class="act"><span class="act-w">'+esc(a.w)+'</span>' +
+        '<span class="act-t">Told <b>'+esc(TELL[a.tell].l === 'the learner' ? a.who : TELL[a.tell].l)+'</b> ' +
+          (TELL[a.tell].l === 'the learner' ? '' : 'about <b>'+esc(a.who)+'</b> ') +
+          HOW[a.how]+' <i>&mdash; '+esc(byId[a.r])+'</i></span>' +
+        '<span class="act-w">'+esc(a.how === 'app' ? 'in app' : a.how === 'both' ? 'email + app' : 'email')+'</span></div>').join('') +
+    '</div></div>';
+}
+</script>
+<script>
+/* ==============================================================
+   The rule editor.
+
+   The old dialog had no labels, no conditions, no scope and no way
+   to see who it would reach. Every field here is labelled, the scope
+   is explicit, and the preview updates as you type -- because the
+   thing you are about to do is write to real people.
+   ============================================================== */
+const BLANK = { id:null, name:'', on:'overdue', comm:'All communities', role:'All roles',
+                cap:'weekly', live:false, sent:0,
+                steps:[{ d:0, tell:'learner', how:'email' }] };
+
+function preview(d) {
+  const w = WATCH[d.on];
+  if (w.schedule) return '<div class="prev"><div class="prev-h"><b>1</b> recipient</div>' +
+    '<div class="prev-w">A summary goes to one desk on a schedule. It does not write to learners.</div></div>';
+  if (w.sequence) return '<div class="prev"><div class="prev-h">Depends on future completions</div>' +
+    '<div class="prev-w">Nobody is waiting on this yet. It fires the next time somebody finishes the course.</div></div>';
+
+  const hit = reach(d);
+  const names = hit.slice(0, 6).map(x => x.n).join(', ');
+  return '<div class="prev'+(hit.length ? '' : ' is-zero')+'">' +
+    '<div class="prev-h"><b>'+hit.length+'</b> ' +
+      (hit.length === 1 ? 'person matches right now' : 'people match right now') + '</div>' +
+    '<div class="prev-w">' + (hit.length
+      ? esc(names) + (hit.length > 6 ? ' and ' + (hit.length - 6) + ' more' : '') + '. ' +
+        'Turning this on writes to ' + (hit.length === 1 ? 'them' : 'all of them') + ' straight away. ' +
+        hourNote(d)
+      : 'Nobody matches today, so nothing would be sent. The rule still runs as people fall into it.') +
+    '</div></div>';
+}
+
+function stepEditor(d) {
+  return '<div class="steps-e">' + d.steps.map(function (s, i) {
+    return '<div class="step-e">' +
+      '<label class="sr-only" for="sd'+i+'">Days after</label>' +
+      '<select class="select" id="sd'+i+'" data-step="'+i+'" data-k="d">' +
+        [0,1,2,3,7,14,21,30,60,90].map(v =>
+          '<option value="'+v+'"'+(v === s.d ? ' selected' : '')+'>'+(v === 0 ? 'Straight away' : 'Day ' + v)+'</option>').join('') +
+      '</select>' +
+      '<label class="sr-only" for="st'+i+'">Tell</label>' +
+      '<select class="select" id="st'+i+'" data-step="'+i+'" data-k="tell">' +
+        Object.keys(TELL).map(k =>
+          '<option value="'+k+'"'+(k === s.tell ? ' selected' : '')+'>Tell '+TELL[k].l+'</option>').join('') +
+      '</select>' +
+      '<button class="btn btn-ghost is-sm" data-drop="'+i+'"'+(d.steps.length < 2 ? ' disabled' : '')+
+        ' aria-label="Remove this step">Remove</button>' +
+    '</div>';
+  }).join('') + '</div>';
+}
+
+function dialog() {
+  const d = S.draft;
+  const w = WATCH[d.on];
+  return '<div class="ov" id="ov"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dlgT">' +
+    '<div class="dlg-h"><h2 id="dlgT">'+(d.id ? 'Edit rule' : 'New rule')+'</h2>' +
+      '<button class="btn btn-ghost is-sm" id="xBtn" aria-label="Close">Close</button></div>' +
+    '<div class="dlg-b">' +
+      '<div class="field"><label class="field-label" for="fName">Name</label>' +
+        '<input class="input" id="fName" value="'+esc(d.name)+'" placeholder="Chase overdue training" />' +
+        '<span class="field-hint">What this is for, in your words. It appears in the activity log.</span></div>' +
+
+      '<div class="field"><label class="field-label" for="fOn">What it watches for</label>' +
+        '<select class="select" id="fOn">' + Object.keys(WATCH).map(k =>
+          '<option value="'+k+'"'+(k === d.on ? ' selected' : '')+'>'+WATCH[k].l+'</option>').join('') +
+        '</select>' +
+        '<span class="field-hint">Assignment is set in <a class="link" href="groups.html">Groups</a>. ' +
+          'This decides who gets told about it.</span></div>' +
+
+      (w.schedule || w.sequence ? '' :
+        '<div class="two">' +
+          '<div class="field"><label class="field-label" for="fComm">Community</label>' +
+            '<select class="select" id="fComm">' + COMMS.map(c =>
+              '<option'+(c === d.comm ? ' selected' : '')+'>'+esc(c)+'</option>').join('') + '</select></div>' +
+          '<div class="field"><label class="field-label" for="fRole">Role</label>' +
+            '<select class="select" id="fRole">' + ROLES.map(r =>
+              '<option'+(r === d.role ? ' selected' : '')+'>'+esc(r)+'</option>').join('') + '</select></div>' +
+        '</div>') +
+
+      '<div class="field"><span class="field-label">Who gets told, and when</span>' +
+        stepEditor(d) +
+        '<button class="btn btn-surface is-sm" id="addStep" style="align-self:flex-start;">Add a step</button>' +
+        '<span class="field-hint">A step that reaches somebody other than the learner is an escalation, ' +
+          'and is marked in red on the card.</span></div>' +
+
+      '<div class="field"><label class="field-label" for="fCap">How often one person can be written to</label>' +
+        '<select class="select" id="fCap">' +
+          '<option value="weekly"'+(d.cap === 'weekly' ? ' selected' : '')+'>At most once a week</option>' +
+          '<option value="none"'+(d.cap === 'none' ? ' selected' : '')+'>No limit</option>' +
+        '</select>' +
+        '<span class="field-hint">Without a limit, somebody who is behind on six courses gets six messages.</span></div>' +
+
+      preview(d) +
+    '</div>' +
+    '<div class="dlg-f"><span class="sp"></span>' +
+      '<button class="btn btn-surface" id="cancelBtn">Cancel</button>' +
+      '<button class="btn btn-solid" id="saveBtn"'+(d.name.trim() ? '' : ' disabled')+'>' +
+        (d.id ? 'Save' : 'Create rule')+'</button></div>' +
+  '</div></div>';
+}
+</script>
+<script>
+/* ==============================================================
+   Render and wiring
+   ============================================================== */
+const TABS = [
+  { k:'rules',    n:'Rules',    fn:tRules,    count:() => RULES.length },
+  { k:'activity', n:'Activity', fn:tActivity, count:() => ACTIVITY.length }
+];
+
+function toast(title, body) {
+  const el = document.createElement('div'); el.className = 'toast';
+  el.innerHTML = '<div><div class="toast-title">'+esc(title)+'</div>' +
+    (body ? '<div class="toast-body">'+esc(body)+'</div>' : '')+'</div>';
+  $('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 4200);
+}
+
+function render() {
+  const cur = TABS.filter(x => x.k === S.tab)[0] || TABS[0];
+  $('view').innerHTML =
+    '<div class="rtabs" role="tablist">' + TABS.map(x =>
+      '<button class="rtab'+(x.k === cur.k ? ' is-on' : '')+'" role="tab" aria-selected="'+(x.k === cur.k)+'" ' +
+      'data-tab="'+x.k+'" aria-controls="panel">'+x.n+' ('+x.count()+')</button>').join('') +
+    '</div><div id="panel" role="tabpanel" tabindex="0">' + cur.fn() + '</div>';
+  $('modal').innerHTML = S.draft ? dialog() : '';
+  wire();
+}
+
+function readDraft() {
+  const d = S.draft; if (!d) return;
+  if ($('fName')) d.name = $('fName').value;
+  if ($('fComm')) d.comm = $('fComm').value;
+  if ($('fRole')) d.role = $('fRole').value;
+  if ($('fCap'))  d.cap  = $('fCap').value;
+}
+
+function wire() {
+  const v = $('view');
+  v.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { S.tab = b.dataset.tab; render(); });
+
+  v.querySelectorAll('[data-toggle]').forEach(b => b.onclick = () => {
+    const r = RULES.filter(x => x.id === b.dataset.toggle)[0];
+    r.live = !r.live;
+    const hit = reach(r);
+    render();
+    toast(r.live ? 'Running: ' + r.name : 'Stopped: ' + r.name,
+      r.live
+        ? (hit && hit.length ? hit.length + ' ' + (hit.length === 1 ? 'person is' : 'people are') +
+            ' waiting on this and will hear from it.' : 'Nobody matches today. It runs as people fall into it.')
+        : 'Nobody will be told about this until you turn it back on.');
+  });
+
+  v.querySelectorAll('.rule-hd').forEach(el => el.onclick = () => {
+    const id = el.parentElement.dataset.rule;
+    const r = RULES.filter(x => x.id === id)[0];
+    S.draft = JSON.parse(JSON.stringify(r));
+    render();
+  });
+
+  const m = $('modal');
+  const close = () => { S.draft = null; render(); };
+  if (m.querySelector('#xBtn'))      m.querySelector('#xBtn').onclick = close;
+  if (m.querySelector('#cancelBtn')) m.querySelector('#cancelBtn').onclick = close;
+  const ov = m.querySelector('#ov');
+  if (ov) ov.onclick = e => { if (e.target === ov) close(); };
+
+  const nm = m.querySelector('#fName');
+  if (nm) nm.oninput = () => {
+    S.draft.name = nm.value;
+    m.querySelector('#saveBtn').disabled = !nm.value.trim();
+  };
+  ['fOn','fComm','fRole','fCap'].forEach(id => {
+    const el = m.querySelector('#' + id);
+    if (!el) return;
+    el.onchange = () => {
+      readDraft();
+      if (id === 'fOn') S.draft.on = el.value;
+      render();
+      const again = m.querySelector('#' + id);
+      if (again) again.focus();
+    };
+  });
+  m.querySelectorAll('[data-step]').forEach(sel => sel.onchange = () => {
+    readDraft();
+    const s = S.draft.steps[+sel.dataset.step];
+    s[sel.dataset.k] = sel.dataset.k === 'd' ? +sel.value : sel.value;
+    S.draft.steps.sort((a, b) => a.d - b.d);
+    render();
+  });
+  m.querySelectorAll('[data-drop]').forEach(b => b.onclick = () => {
+    readDraft();
+    S.draft.steps.splice(+b.dataset.drop, 1);
+    render();
+  });
+  const add = m.querySelector('#addStep');
+  if (add) add.onclick = () => {
+    readDraft();
+    const last = S.draft.steps[S.draft.steps.length - 1];
+    S.draft.steps.push({ d: last.d + 7, tell: last.tell === 'learner' ? 'manager' : 'learner', how:'email' });
+    render();
+  };
+  const save = m.querySelector('#saveBtn');
+  if (save) save.onclick = () => {
+    readDraft();
+    const d = S.draft;
+    if (!d.name.trim()) return;
+    if (d.id) {
+      const i = RULES.findIndex(x => x.id === d.id);
+      RULES[i] = d;
+      S.draft = null; render();
+      toast('Saved', d.name + ' updated. It is ' + (d.live ? 'running.' : 'not running yet.'));
+    } else {
+      d.id = 'r' + (RULES.length + 1);
+      RULES.push(d);
+      S.draft = null; S.tab = 'rules'; render();
+      const hit = reach(d);
+      toast('Created', d.name + ' is off. Turn it on when you are ready' +
+        (hit && hit.length ? ' — ' + hit.length + ' would hear from it today.' : '.'));
+    }
+  };
+}
+
+$('newBtn').onclick = () => { S.draft = JSON.parse(JSON.stringify(BLANK)); render(); };
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && S.draft) { S.draft = null; render(); }
+});
+
+$('themeBtn').addEventListener('click', () => {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+  $('themeBtn').setAttribute('aria-label', dark ? 'Switch to dark theme' : 'Switch to light theme');
+});
+
+render();
+
+const viewAsBtn = document.getElementById('viewAsBtn');
+if (viewAsBtn) {
+  const menu = document.getElementById('viewAs');
+  viewAsBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = !menu.hidden;
+    menu.hidden = open;
+    viewAsBtn.setAttribute('aria-expanded', String(!open));
+  });
+  document.addEventListener('click', () => {
+    if (!menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+}
+
+/* Collapsing the rail is shell behaviour, so every page does it. It was
+   markup on twenty pages and wired on one, and standardising the nav dropped
+   the id the one handler depended on. */
+const railBtn = document.getElementById('railBtn');
+if (railBtn) {
+  railBtn.addEventListener('click', () => {
+    const shell = document.querySelector('.app-shell');
+    const side  = document.querySelector('.app-sidebar');
+    const on = shell.style.gridTemplateColumns === '0px 1fr';
+    shell.style.gridTemplateColumns = on ? '256px 1fr' : '0px 1fr';
+    if (side) side.style.visibility = on ? 'visible' : 'hidden';
+    railBtn.setAttribute('aria-label', on ? 'Collapse navigation' : 'Expand navigation');
+  });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<!--
+  skyLearn - My learning, Radix flavour.
+  The learner side. The admin dashboard answers "how are we doing"; this
+  answers "what do I have to do", which is a different screen, not a filtered
+  one. Read on a shared kiosk, on shift, in about four minutes. See LEARNER-IA.md.
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>skyLearn &middot; My learning</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../tokens.css?v=102" />
+<link rel="stylesheet" href="../dashboard.css?v=102" />
+<style>
+  /* The learner reads this standing up, on a shared machine, in the gap
+     between handover and a call bell. One answer at the top, the work under
+     it in minutes, and the encouragement at the bottom where it belongs.
+
+     Measured across the roster before any of it was drawn: 28 of 44 have
+     something outstanding, 10 something late, 4 a lapsed certificate, 14
+     nothing at all -- and 0 have an empty course list. The live screen's
+     empty state, "browse the catalog to enrol", is written for nobody here. */
+
+
+  .hello { font-size: var(--fs-7); line-height: var(--lh-7); font-weight: var(--weight-bold); color: var(--fg-high); }
+  .hello-s { margin-top: var(--space-3); font-size: var(--fs-4); line-height: 1.5; color: var(--fg-low); max-width: 56ch; }
+  .hello-s b { font-weight: var(--weight-semibold); color: var(--fg-high); }
+
+  /* The one thing with a same-day consequence.
+
+     This was a solid red panel with red heading, red body and a red icon --
+     four things shouting the same word. A standing state is not an emergency
+     siren: it is true all day and you have to be able to read the rest of the
+     page next to it. So the surface is the ordinary panel, the colour is a
+     single stripe down the edge plus the icon, and the words carry the
+     urgency instead of the fill. */
+  .stop { display: flex; gap: var(--space-4); align-items: flex-start;
+    padding: var(--space-5) var(--space-5) var(--space-5) var(--space-6);
+    margin: var(--space-5) 0; border-radius: var(--radius-4);
+    background: var(--color-panel-solid); box-shadow: inset 0 0 0 1px var(--border-subtle);
+    position: relative; overflow: hidden; }
+  .stop::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
+  .stop.is-stop::before { background: var(--danger-solid); }
+  .stop.is-warn::before { background: var(--warning-solid); }
+  .stop.is-good::before { background: var(--success-solid); }
+  .stop-ic { width: 32px; height: 32px; border-radius: var(--radius-3); flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center; }
+  .stop.is-stop .stop-ic { background: var(--danger-bg); color: var(--danger-text); }
+  .stop.is-warn .stop-ic { background: var(--warning-bg); color: var(--warning-text); }
+  .stop.is-good .stop-ic { background: var(--success-bg); color: var(--success-text); }
+  .stop-t { flex: 1; min-width: 0; }
+  .stop-t b { display: block; font-size: var(--fs-4); line-height: var(--lh-4);
+    font-weight: var(--weight-semibold); color: var(--fg-high); }
+  .stop-t p { margin-top: var(--space-2); font-size: var(--fs-3); line-height: 1.6; color: var(--fg-low); }
+  .stop-t p strong { font-weight: var(--weight-semibold); color: var(--fg-high); }
+  .stop-a { margin-top: var(--space-4); display: flex; gap: var(--space-3); flex-wrap: wrap; }
+
+
+  /* ---- Continue learning: the resume row, first thing after the greeting.
+     Getting back into a half-finished course is one tap and no decisions,
+     which is the whole reason it goes above everything else. ---- */
+  .row-h { display: flex; align-items: baseline; gap: var(--space-4); margin: var(--space-6) 0 var(--space-4); }
+  .row-h h2 { flex: 1; min-width: 0; font-size: var(--fs-5); line-height: var(--lh-5);
+    font-weight: var(--weight-semibold); color: var(--fg-high); }
+  .row-h a { font-size: var(--fs-2); color: var(--accent-11); text-decoration: none; font-weight: var(--weight-medium); }
+  .row-h a:hover { text-decoration: underline; }
+
+  .row-wrap { position: relative; }
+  .row { display: flex; gap: var(--space-4); overflow-x: auto; scroll-snap-type: x mandatory;
+    padding-bottom: var(--space-2); scroll-behavior: smooth; }
+  .row::-webkit-scrollbar { height: 6px; }
+  .row::-webkit-scrollbar-thumb { background: var(--gray-5); border-radius: var(--radius-full); }
+  .cc { flex: 0 0 356px; scroll-snap-align: start; display: grid; grid-template-columns: 132px 1fr;
+    border: 0; padding: 0; cursor: pointer; text-align: left; overflow: hidden;
+    border-radius: var(--radius-4); background: var(--color-panel-solid);
+    box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .cc:hover { box-shadow: inset 0 0 0 1px var(--border-strong); }
+  @media (max-width: 620px) { .cc { flex-basis: 300px; grid-template-columns: 104px 1fr; } }
+
+  /* No stock photography here, and none invented: a tinted panel with a play
+     control is honest about being a course rather than a video still. */
+  .cc-th { position: relative; display: flex; align-items: center; justify-content: center; }
+  .cc-th.h1 { background: var(--seq-3); } .cc-th.h2 { background: var(--blue-4); }
+  .cc-th.h3 { background: var(--green-4); } .cc-th.h4 { background: var(--seq-2); }
+  .cc-th.h5 { background: var(--blue-3); } .cc-th.h6 { background: var(--green-3); }
+  .cc-th.h7 { background: var(--seq-4); } .cc-th.h8 { background: var(--blue-5); }
+  .cc-play { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; background: rgba(255,255,255,.92); color: var(--gray-12); }
+  .cc-flag { position: absolute; left: var(--space-2); top: var(--space-2);
+    padding: 2px var(--space-2); border-radius: var(--radius-2);
+    background: var(--danger-solid); color: #fff; font-size: var(--fs-1); font-weight: var(--weight-medium); }
+
+  .cc-b { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-1);
+    min-width: 0; min-height: 116px; }
+  .cc-c { font-size: var(--fs-1); color: var(--fg-low);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cc-n { font-size: var(--fs-3); font-weight: var(--weight-semibold); color: var(--fg-high);
+    line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  /* One line, and it stays one line: "2 days late" wrapping onto its own row
+     made three cards three different heights. */
+  .cc-m { margin-top: auto; padding-top: var(--space-3); font-size: var(--fs-1); color: var(--fg-low);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cc-m b { font-weight: var(--weight-semibold); color: var(--danger-text); }
+  /* A span ignores height. This was 4px in the stylesheet and a rounded blob
+     spilling out of the card on screen -- the sixth time an inline element has
+     been handed a box in this project. */
+  .cc-bar { display: block; height: 4px; border-radius: var(--radius-full);
+    background: var(--gray-3); overflow: hidden; margin-top: var(--space-3); }
+  .cc-bar i { display: block; height: 100%; border-radius: var(--radius-full); background: var(--seq-5); }
+
+  .row-next { position: absolute; right: -8px; top: 50%; transform: translateY(-50%);
+    width: 40px; height: 40px; border: 0; border-radius: 50%; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--color-panel-solid); box-shadow: var(--shadow-3), inset 0 0 0 1px var(--border-subtle);
+    color: var(--fg-high); }
+  .row-next:hover { background: var(--gray-2); }
+
+  .sec-h { display: flex; align-items: baseline; gap: var(--space-4); margin: var(--space-7) 0 var(--space-4); }
+  .sec-h h2 { flex: 1; min-width: 0; font-size: var(--fs-5); line-height: var(--lh-5);
+    font-weight: var(--weight-semibold); color: var(--fg-high); }
+  .sec-h span { font-size: var(--fs-2); color: var(--fg-low); }
+
+  /* A course to do: name, why it matters, and how long. The minutes decide
+     whether it happens on this break or gets put off again. */
+  .todo { display: flex; flex-direction: column; gap: var(--space-3); }
+  .item { display: grid; grid-template-columns: 1fr auto; gap: var(--space-4) var(--space-5);
+    align-items: center; width: 100%; text-align: left; padding: var(--space-5);
+    border: 0; border-radius: var(--radius-4); cursor: pointer;
+    background: var(--color-panel-solid); box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .item:hover { box-shadow: inset 0 0 0 1px var(--border-strong); }
+  .item.is-late { box-shadow: inset 0 0 0 1px var(--danger-border); }
+  .item-t { min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+  .item-n { font-size: var(--fs-4); line-height: var(--lh-4); font-weight: var(--weight-semibold); color: var(--fg-high); }
+  .item-w { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
+    font-size: var(--fs-2); color: var(--fg-low); }
+  .item-w b { font-weight: var(--weight-semibold); color: var(--danger-text); }
+  .mins { display: inline-flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-full); background: var(--gray-3); color: var(--fg-high);
+    font-size: var(--fs-2); font-weight: var(--weight-medium); white-space: nowrap; }
+  @media (max-width: 620px) { .item { grid-template-columns: 1fr; } .item .btn { width: 100%; justify-content: center; } }
+
+  .when { display: flex; gap: var(--space-5); align-items: center; padding: var(--space-5);
+    border-radius: var(--radius-4); background: var(--color-panel-solid);
+    box-shadow: inset 0 0 0 1px var(--border-subtle); flex-wrap: wrap; }
+  .when-d { flex: 0 0 auto; width: 62px; text-align: center; }
+  .when-d b { display: block; font-size: var(--fs-6); line-height: 1; font-weight: var(--weight-bold); color: var(--fg-high); }
+  .when-d span { display: block; margin-top: 2px; font-size: var(--fs-1); letter-spacing: .06em;
+    text-transform: uppercase; color: var(--fg-subtle); }
+  .when-t { flex: 1; min-width: 180px; display: flex; flex-direction: column; gap: var(--space-1); }
+  .when-n { font-size: var(--fs-4); font-weight: var(--weight-semibold); color: var(--fg-high); }
+  .when-w { font-size: var(--fs-2); color: var(--fg-low); }
+
+  .note { padding: var(--space-5); border-radius: var(--radius-4); background: var(--accent-2);
+    box-shadow: inset 0 0 0 1px var(--accent-6); }
+  .note-h { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
+  .note-n { font-size: var(--fs-2); font-weight: var(--weight-semibold); color: var(--fg-high); }
+  .note-w { margin-left: auto; font-size: var(--fs-1); color: var(--fg-subtle); }
+  .note-b { font-size: var(--fs-3); line-height: 1.6; color: var(--fg-high); }
+  .note-a { margin-top: var(--space-4); }
+
+  /* Progress last, and never a rate. "Completion rate" is an oversight
+     number; a learner needs the count and the thing still missing. */
+  .mine { display: grid; grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); gap: var(--space-4); }
+  .mine-c { padding: var(--space-5); border-radius: var(--radius-4);
+    background: var(--color-panel-solid); box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .mine-v { font-size: var(--fs-6); line-height: 1; font-weight: var(--weight-bold);
+    color: var(--fg-high); font-variant-numeric: tabular-nums; }
+  .mine-v.is-quiet { color: var(--fg-subtle); font-size: var(--fs-4); }
+  .mine-l { display: block; margin-top: var(--space-2); font-size: var(--fs-2); color: var(--fg-low); }
+  .bar { height: 10px; border-radius: var(--radius-full); background: var(--gray-3);
+    overflow: hidden; margin-bottom: var(--space-4); }
+  .bar i { display: block; height: 100%; border-radius: var(--radius-full); background: var(--seq-5); }
+
+  .toast-stack { position: fixed; left: 50%; bottom: var(--space-6); transform: translateX(-50%);
+    z-index: 80; display: flex; flex-direction: column; gap: var(--space-3); }
+  .toast { min-width: 280px; max-width: 440px; padding: var(--space-4) var(--space-5);
+    border-radius: var(--radius-3); background: var(--gray-12); color: var(--gray-1); box-shadow: var(--shadow-4); }
+  .toast-title { font-size: var(--fs-2); font-weight: var(--weight-semibold); }
+  .toast-body { margin-top: var(--space-1); font-size: var(--fs-2); opacity: .82; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header is-dark">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect width="24" height="24" rx="6" fill="var(--accent-9)"/><text x="12" y="16.5" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-contrast)">S</text></svg>
+      <span>skyLearn</span>
+    </div>
+    <div class="search hdr-search">
+      <span class="search-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+      <label class="sr-only" for="q">Search</label>
+      <input class="input" id="q" type="search" placeholder="Search courses and learners" autocomplete="off" />
+    </div>
+    <div class="header-right">
+      <span class="presence"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg><span><strong class="pt-num">4</strong> points</span></span>
+      <button class="icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="ic-badge">3</span></button>
+      <button class="icon-btn" id="themeBtn" aria-label="Switch to dark theme"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+      <span class="divider-v"></span>
+      <span class="header-wrap">
+        <button class="header-user" id="viewAsBtn" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar c3" id="meAv">DW</span>
+          <span class="hu-id"><span class="hu-name" id="meName">Dana Whitfield</span><span class="hu-role" id="meRole">CNA, Lakeside Manor</span></span>
+        </button>
+        <div class="view-as" id="viewAs" role="menu" hidden>
+          <div class="view-as-t">View as</div>
+          <a href="index.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Administrator<span>Everything, across all six communities</span></span></a>
+          <a href="teach.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Instructor<span>Your courses, learners and sessions</span></span></a>
+          <a href="learn.html" role="menuitem" aria-current="true"><span class="vr"></span>
+            <span class="vw">Learner<span>What you have to do, and by when</span></span></a>
+          <div class="view-as-t" style="margin-top:var(--space-2);">Which learner</div>
+          <div id="whoList"></div>
+          <div class="vs">
+            <a href="signin.html" role="menuitem">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
+              Sign out</a>
+          </div>
+        </div>
+      </span>
+    </div>
+  </header>
+
+  <nav class="app-sidebar" aria-label="Primary">
+    <button class="sidebar-toggle" id="railBtn" aria-label="Collapse navigation"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>
+    <a class="nav-item is-active" href="learn.html" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg><span class="nav-label">Dashboard</span></a>
+    <a class="nav-item" href="my-courses.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg><span class="nav-label">My courses</span></a>
+    <a class="nav-item" href="catalog.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg><span class="nav-label">Catalogue</span></a>
+    <a class="nav-item" href="my-certs.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg><span class="nav-label">Certificates</span></a>
+    <a class="nav-item" href="my-badges.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0z"/></svg><span class="nav-label">Badges</span></a>
+    <a class="nav-item" href="my-record.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M9 13h6"/><path d="M9 17h3"/></svg><span class="nav-label">My record</span></a>
+    <a class="nav-item" href="my-sessions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg><span class="nav-label">Sessions</span></a>
+    <a class="nav-item" href="coach.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg><span class="nav-label">Ask the coach</span></a>
+    <a class="nav-item nav-tail" href="#"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="nav-label">Help and support</span></a>
+  </nav>
+
+  <main class="app-content">
+    <div class="breadcrumbs"><a href="learn.html">Home</a><span class="sep"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span><span class="current">Dashboard</span></div>
+    <div class="content-body">
+      <div id="view"></div>
+    </div>
+  </main>
+</div>
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+
+<script>
+/* ==============================================================
+   The same 44 people the rest of the app uses.
+   name|role|community|required|done|overdue|expiring|expired|competency|weeks seen
+   ============================================================== */
+const RAW = `Dana Whitfield|CNA|Lakeside Manor|12|9|2|1|1|72/68/61|1
+Rosalind Vega|CNA|Lakeside Manor|12|11|0|0|1|81/77/70|2
+Marcus Ellery|Med Tech|Northgate|14|11|1|2|0|79/74/68|1
+Aurelie Bonnet|CNA|Northgate|12|10|0|1|1|76/71/64|4
+Piotr Zawadzki|Caregiver|Northgate|10|10|0|0|0|85/80/74|1
+Desmond Achebe|Caregiver|Lakeside Manor|10|8|1|0|0|74/70/63|3
+Imani Sowande|LPN|Willow Creek|15|15|0|1|0|90/86/79|1
+Yusuf Demirci|Caregiver|Willow Creek|10|9|1|0|0|77/73/66|2
+Theo Brannigan|Caregiver|Sunrise Terrace|10|4|1|0|0|-|1
+Fenella Wick|LPN|Sunrise Terrace|15|7|1|0|0|-|1
+Nadia Kerr|CNA|Harborview|12|6|0|0|0|-|2
+Oren Kaplan|Med Tech|Harborview|14|14|0|0|0|88/83/77|1
+Callum Reyes|Med Tech|Cedar Ridge|14|13|0|1|0|86/81/75|1
+Greta Lindqvist|CNA|Cedar Ridge|12|12|0|0|0|89/85/78|1
+Ines Halvorsen|CNA|Cedar Ridge|12|12|0|0|0|91/87/80|2
+Tomas Ruiz|Caregiver|Cedar Ridge|10|10|0|0|0|84/79/73|3
+Priya Raghavan|LPN|Cedar Ridge|15|13|0|0|0|87/82/76|46
+Bea Ferreira|CNA|Harborview|12|12|0|1|0|83/78/72|1
+Idris Mensah|Caregiver|Harborview|10|9|0|0|1|75/70/64|5
+Lena Vogt|CNA|Harborview|12|7|0|0|0|70/66/59|203
+Sofia Grandi|LPN|Willow Creek|15|14|0|0|0|88/84/77|1
+Hamid Nazari|Caregiver|Willow Creek|10|10|0|0|0|82/78/71|2
+Ruth Okonkwo|CNA|Willow Creek|12|12|0|0|0|90/86/80|1
+Malik Osei|Med Tech|Willow Creek|14|12|1|0|0|78/74/67|4
+Clara Bianchi|CNA|Sunrise Terrace|12|11|0|1|0|80/76/69|1
+Jonas Aalto|Caregiver|Sunrise Terrace|10|10|0|0|0|86/82/75|2
+Mira Solberg|LPN|Sunrise Terrace|15|12|0|0|0|84/80/73|38
+Ade Balogun|CNA|Northgate|12|10|1|0|0|76/72/65|3
+Freya Lindholm|Caregiver|Northgate|10|5|0|0|0|-|1
+Rafael Duarte|Med Tech|Northgate|14|13|0|0|0|85/81/74|1
+Zainab Farah|CNA|Lakeside Manor|12|6|0|0|0|-|2
+Otto Reinhardt|Caregiver|Lakeside Manor|10|9|1|0|0|73/69/62|6
+Silvia Marchetti|LPN|Lakeside Manor|15|12|1|1|0|81/77/70|2
+Kwame Boateng|CNA|Lakeside Manor|12|5|0|0|0|68/64/57|187
+Elena Petrova|CNA|Cedar Ridge|12|12|0|0|0|92/88/81|1
+Noor Haddad|Caregiver|Cedar Ridge|10|10|0|0|0|87/83/76|1
+Bram de Vries|Med Tech|Harborview|14|14|0|0|0|89/85/78|2
+Aiko Tanaka|CNA|Harborview|12|11|0|1|0|82/78/71|1
+Miguel Santos|Caregiver|Willow Creek|10|10|0|0|0|85/80/74|3
+Hana Novak|CNA|Sunrise Terrace|12|10|0|0|0|79/75/68|1
+Grace Mbeki|Housekeeping|Cedar Ridge|4|4|0|0|0|-|2
+Viktor Novikov|Housekeeping|Northgate|4|3|0|0|0|-|5
+Tara Sullivan|Administrator|Cedar Ridge|6|6|0|0|0|88/84/77|1
+Owen Fitzgerald|Administrator|Harborview|6|5|0|0|0|86/82/75|2`;
+const PASS = 75;
+
+const PEOPLE = RAW.split('\n').map(function (l, i) {
+  const f = l.split('|');
+  return { i:i, n:f[0], first:f[0].split(' ')[0], role:f[1], comm:f[2],
+           req:+f[3], done:+f[4], od:+f[5], exg:+f[6], exp:+f[7],
+           comp: f[8] === '-' ? null : f[8].split('/').map(Number), seen:+f[9] };
+});
+
+/* Five states, and the screen has to be good in all of them. Counted across
+   the roster before anything was drawn: 4 lapsed, 9 late, 15 outstanding,
+   2 expiring, 14 clear. Nobody has an empty course list, which is why the
+   live screen's "browse the catalog to enrol" is written for nobody. */
+function stateOf(p) {
+  if (p.exp)            return 'lapsed';
+  if (p.od)             return 'late';
+  if (p.done < p.req)   return 'todo';
+  if (p.exg)            return 'expiring';
+  return 'clear';
+}
+const STATES = [
+  { k:'lapsed',   l:'Certificate lapsed' },
+  { k:'late',     l:'Something late' },
+  { k:'todo',     l:'Courses to do' },
+  { k:'expiring', l:'Certificate expiring' },
+  { k:'clear',    l:'Nothing outstanding' }
+];
+
+/* The catalogue, so the work list is named courses rather than "2 courses". */
+const CATALOG = [
+  { n:'Safe Resident Handling', mins:35, cert:true, renew:12, hue:1,
+    ls:['Before you move anyone','Choosing the right aid','Two-person transfers','When to stop'] },
+  { n:'Preventing Falls in Senior Living', mins:22, hue:2,
+    ls:['Why people fall','The walk-round','Footwear and floors','After a fall'] },
+  { n:'Abuse Prevention', mins:18, cert:true, renew:24, hue:3,
+    ls:['What counts as abuse','Spotting the signs','Reporting it'] },
+  { n:'Infection Prevention', mins:24, cert:true, renew:12, hue:4,
+    ls:['Hand hygiene','Gloves and aprons','Isolation rooms','Cleaning as you go'] },
+  { n:'Resident Rights', mins:25, hue:5,
+    ls:['Dignity and choice','Privacy','Complaints','Advocacy'] },
+  { n:'Nutrition and Hydration', mins:15, hue:6,
+    ls:['Spotting dehydration','Modified diets','Mealtime help'] },
+  { n:'Skin Integrity', mins:20, hue:7,
+    ls:['Pressure areas','Repositioning','What to report'] },
+  { n:'Dementia Care Essentials', mins:28, hue:8,
+    ls:['What is happening','Communication','Sundowning','Families'] },
+  { n:'Emergency Preparedness', mins:26, hue:1,
+    ls:['Fire','Evacuation','Missing resident','After the event'] },
+  { n:'HIPAA and Data Security', mins:19, cert:true, renew:12, hue:2,
+    ls:['What is protected','Talking about residents','When it goes wrong'] },
+  { n:'Communication', mins:16, hue:3,
+    ls:['Handover','Difficult conversations','Writing it down'] },
+  { n:'CPR and First Aid', mins:40, cert:true, renew:24, hue:4,
+    ls:['Recognising arrest','Compressions','The defibrillator','Choking'] }
+,
+  { n:'Medication Administration', mins:32, cert:true, renew:12, hue:5,
+    ls:['The five rights','Controlled drugs','Refusals','Recording it'] },
+  { n:'Wound Care Basics', mins:23, hue:6,
+    ls:['What you may do','Spotting infection','Reporting'] },
+  { n:'Delegation and Supervision', mins:21, hue:7,
+    ls:['What can be delegated','Checking back','Accountability'] },
+  { n:'End of Life Care', mins:30, hue:8,
+    ls:['Recognising the change','Comfort','Families','Afterwards'] }
+];
+
+/* Deterministic, so the screen reads the same on every load. */
+/* The certificate that has lapsed is one she EARNED and that then expired,
+   so it comes from a completed course. The first version picked whichever
+   cert-issuing course was outstanding, and told four people a certificate had
+   run out for training they had never finished. Kept identical to
+   my-certs.html, and asserted equal across all 44. */
+function heldCerts(p) {
+  const out = [];
+  const need = p.req - p.done;
+  for (let k = 0; k < p.req; k++) {
+    const c = CATALOG[(p.i * 5 + k * 5) % CATALOG.length];
+    if (k >= need && c.cert) out.push(c);
+  }
+  return out;
+}
+function lapsedCert(p) {
+  if (!p.exp) return null;
+  const held = heldCerts(p);
+  return held.length ? held[0] : null;
+}
+
+function workFor(p) {
+  const need = Math.max(0, p.req - p.done);
+  const out = [];
+  for (let k = 0; k < need; k++) {
+    /* Stride 5 is coprime with the twelve courses, so a person never gets
+       the same course twice. Stride 3 shares a factor and put "Abuse
+       Prevention" in one learner's list twice. */
+    const c = CATALOG[(p.i * 5 + k * 5) % CATALOG.length];
+    const isLate = k < p.od;
+    /* Where they stopped. Lesson 0 means never opened, which is a different
+       card from one that is half done -- "continue" and "start" are not the
+       same offer. */
+    const at = (p.i + k * 3) % (c.ls.length + 1);
+    out.push({ n:c.n, mins:c.mins, cert:!!c.cert, hue:c.hue, ls:c.ls,
+               at: at >= c.ls.length ? c.ls.length - 1 : at,
+               left: Math.max(4, Math.round(c.mins * (1 - at / (c.ls.length + 1)))),
+               late: isLate ? 2 + ((p.i + k) % 19) : 0,
+               due: isLate ? 0 : 6 + ((p.i + k * 7) % 26) });
+  }
+  /* A lapsed certificate means its renewal course is outstanding, by
+     definition. Without forcing that, the work list was generated
+     independently of p.exp and the headline named whichever course happened
+     to sort first -- claiming "your Infection Prevention certificate has run
+     out" about a course that issues no certificate. */
+  if (p.exp && !out.some(x => x.cert)) {
+    const c = lapsedCert(p) || CATALOG.filter(x => x.cert)[0];
+    out[0] = { n:c.n, mins:c.mins, cert:true, hue:c.hue, ls:c.ls,
+               at: 1 + (p.i % 2), left: Math.max(4, Math.round(c.mins * 0.55)),
+               late: 2 + (p.i % 19), due:0 };
+  }
+  return out.sort((a, b) => (b.cert ? 1 : 0) - (a.cert ? 1 : 0) || b.late - a.late || a.due - b.due);
+}
+const certItem = w => w.filter(x => x.cert)[0] || null;
+
+/* The session card used to be invented: "26 Aug, day room, Greta Lindqvist",
+   a date on which no session exists. It now reads the real twenty from
+   sessions.html, and shows the next one this person is actually registered
+   for -- so the dashboard, the sessions screen and the admin screen cannot
+   disagree about where somebody is meant to be on Tuesday. */
+const NOW   = new Date('2026-08-17T09:40:00');
+const at    = (date, hm) => new Date(date + 'T' + hm + ':00');
+const mins  = s => (at(s.date, s.end) - at(s.date, s.start)) / 60000;
+const hrs   = s => Math.round(mins(s) / 60 * 10) / 10;
+const DAY   = 86400000;
+const POOL = `Dana Whitfield|CNA|Lakeside Manor
+Rosalind Vega|CNA|Lakeside Manor
+Marcus Ellery|Med Tech|Northgate
+Aurelie Bonnet|CNA|Northgate
+Piotr Zawadzki|Caregiver|Northgate
+Desmond Achebe|Caregiver|Lakeside Manor
+Imani Sowande|LPN|Willow Creek
+Yusuf Demirci|Caregiver|Willow Creek
+Theo Brannigan|Caregiver|Sunrise Terrace
+Fenella Wick|LPN|Sunrise Terrace
+Nadia Kerr|CNA|Harborview
+Oren Kaplan|Med Tech|Harborview
+Callum Reyes|Med Tech|Cedar Ridge
+Greta Lindqvist|CNA|Cedar Ridge
+Ines Halvorsen|CNA|Cedar Ridge
+Tomas Ruiz|Caregiver|Cedar Ridge
+Priya Raghavan|LPN|Cedar Ridge
+Bea Ferreira|CNA|Harborview
+Idris Mensah|Caregiver|Harborview
+Lena Vogt|CNA|Harborview
+Sofia Grandi|LPN|Willow Creek
+Hamid Nazari|Caregiver|Willow Creek
+Ruth Okonkwo|CNA|Willow Creek
+Malik Osei|Med Tech|Willow Creek
+Clara Bianchi|CNA|Sunrise Terrace
+Jonas Aalto|Caregiver|Sunrise Terrace
+Mira Solberg|LPN|Sunrise Terrace
+Ade Balogun|CNA|Northgate
+Freya Lindholm|Caregiver|Northgate
+Rafael Duarte|Med Tech|Northgate
+Zainab Farah|CNA|Lakeside Manor
+Otto Reinhardt|Caregiver|Lakeside Manor
+Silvia Marchetti|LPN|Lakeside Manor
+Kwame Boateng|CNA|Lakeside Manor
+Elena Petrova|CNA|Cedar Ridge
+Noor Haddad|Caregiver|Cedar Ridge
+Bram de Vries|Med Tech|Harborview
+Aiko Tanaka|CNA|Harborview
+Miguel Santos|Caregiver|Willow Creek
+Hana Novak|CNA|Sunrise Terrace
+Grace Mbeki|Housekeeping|Cedar Ridge
+Viktor Novikov|Housekeeping|Northgate
+Tara Sullivan|Administrator|Cedar Ridge
+Owen Fitzgerald|Administrator|Harborview`
+  .trim().split('\n').map(l => { const [n, role, comm] = l.split('|'); return { n, role, comm }; });
+const mailOf = n => n.toLowerCase().replace(/[^a-z ]/g, '').replace(/ /g, '.') + '@skypoint.ai';
+
+function roster(date, n, offset, absentIdx) {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const p = POOL[(offset + i * 3) % POOL.length];
+    out.push({
+      n: p.n, role: p.role, comm: p.comm, email: mailOf(p.n),
+      on: new Date(at(date, '00:00') - (3 + (i * 5) % 21) * DAY).toISOString().slice(0, 10),
+      att: absentIdx ? (absentIdx.includes(i) ? 'absent' : 'present') : null
+    });
+  }
+  return out;
+}
+
+const SESSIONS = [
+  { id:'s1', t:'Data security Training', course:'HIPAA and Data Security',
+    mode:'in-person', place:'Cedar Ridge, Training Room A', comm:'Cedar Ridge',
+    instr:['Anjali Deshmukh','Suresh Balan'], cap:50,
+    date:'2026-08-06', start:'14:32', end:'18:30', cert:'Fancy', noShow:'HIPAA Training',
+    status:'open', reminded:null,
+    note:'This is a instructor led Training, the instructors will cover the data security concepts in this course.',
+    reg:[ { n:'Anjali Deshmukh', role:'Instructor', comm:'Cedar Ridge', email:'anjali.deshmukh@skypoint.ai', on:'2026-08-06', att:null },
+          { n:'Ravi Chandran', role:'Med Tech', comm:'Cedar Ridge', email:'ravi.chandran@skypoint.ai', on:'2026-08-06', att:null },
+          { n:'Suresh Balan', role:'Instructor', comm:'Cedar Ridge', email:'suresh.balan@skypoint.ai', on:'2026-08-06', att:null } ],
+    wait:[] },
+
+  { id:'s2', t:'Safe resident transfer and Hoyer lift', course:'Safe Resident Handling',
+    mode:'in-person', place:'Lakeside Manor, Skills Lab', comm:'Lakeside Manor',
+    instr:['Priya Raghavan'], cap:16, date:'2026-08-12', start:'09:00', end:'11:00',
+    cert:'In-service record', noShow:'Safe Resident Handling refresher', status:'open', reminded:'2026-08-11',
+    note:'Hands-on. Every learner performs one full transfer with the lift and one two-person assist.',
+    reg:roster('2026-08-12', 14, 0), wait:[] },
+
+  { id:'s3', t:'Fire drill and evacuation procedure', course:'Emergency Preparedness',
+    mode:'in-person', place:'Willow Creek, Main Hall', comm:'Willow Creek',
+    instr:['Imani Sowande'], cap:30, date:'2026-08-14', start:'07:00', end:'08:00',
+    cert:'In-service record', noShow:null, status:'open', reminded:'2026-08-13',
+    note:'Annual drill for the night and early shift. Fire marshal attends.',
+    reg:roster('2026-08-14', 22, 6), wait:[] },
+
+  { id:'s4', t:'CPR and first aid recertification', course:'CPR and First Aid',
+    mode:'in-person', place:'Northgate, Skills Lab', comm:'Northgate',
+    instr:['Dr Elaine Rusk, RN (external)'], cap:12, date:'2026-08-17', start:'08:00', end:'12:00',
+    cert:'AHA card', noShow:'CPR and First Aid', status:'open', reminded:'2026-08-16',
+    note:'American Heart Association certification. Cards are issued on the day.',
+    reg:roster('2026-08-17', 12, 2), wait:roster('2026-08-17', 3, 39) },
+
+  { id:'s5', t:'Dementia care, de-escalation practice', course:'Dementia Care Essentials',
+    mode:'in-person', place:'Harborview, Activity Room', comm:'Harborview',
+    instr:['Mira Solberg'], cap:14, date:'2026-08-17', start:'14:00', end:'16:30',
+    cert:'In-service record', noShow:'Dementia Care Essentials', status:'open', reminded:'2026-08-16',
+    note:'Role play in pairs. Three scripted scenarios, then debrief.',
+    reg:roster('2026-08-17', 9, 10), wait:[] },
+
+  { id:'s6', t:'Medication pass observation', course:'Medication Administration',
+    mode:'in-person', place:'Cedar Ridge, Medication Room', comm:'Cedar Ridge',
+    instr:['Priya Raghavan'], cap:6, date:'2026-08-18', start:'07:00', end:'09:00',
+    cert:'Competency sign-off', noShow:null, status:'open', reminded:null,
+    note:'One-to-one observation during the morning pass. Six seats only.',
+    reg:roster('2026-08-18', 6, 12), wait:roster('2026-08-18', 2, 25) },
+
+  { id:'s7', t:'Infection control update', course:'Infection Prevention',
+    mode:'virtual', place:'Microsoft Teams', comm:null,
+    instr:['Tara Sullivan'], cap:100, date:'2026-08-18', start:'15:00', end:'16:00',
+    cert:'In-service record', noShow:'Infection Prevention', status:'open', reminded:null,
+    note:'Quarterly update, all communities. Recorded for anyone on shift.',
+    reg:roster('2026-08-18', 31, 4), wait:[] },
+
+  { id:'s8', t:'New hire orientation, day 1', course:'Onboarding',
+    mode:'blended', place:'Lakeside Manor, Conference Room and Teams', comm:'Lakeside Manor',
+    instr:['Tara Sullivan','Priya Raghavan'], cap:20, date:'2026-08-19', start:'09:00', end:'16:00',
+    cert:'In-service record', noShow:null, status:'open', reminded:null,
+    note:'Policies, resident rights, and a tour. Day 2 is the skills lab.',
+    reg:roster('2026-08-19', 8, 20), wait:[] },
+
+  { id:'s9', t:'Safe resident transfer and Hoyer lift', course:'Safe Resident Handling',
+    mode:'in-person', place:'Sunrise Terrace, Skills Lab', comm:'Sunrise Terrace',
+    instr:['Mira Solberg'], cap:16, date:'2026-08-20', start:'09:00', end:'11:00',
+    cert:'In-service record', noShow:'Safe Resident Handling refresher', status:'open', reminded:null,
+    note:'Repeat of the Lakeside session for the Sunrise Terrace floor staff.',
+    reg:roster('2026-08-20', 2, 24), wait:[] },
+
+  { id:'s10', t:'Abuse and neglect reporting', course:'Abuse Prevention',
+    mode:'virtual', place:'Microsoft Teams', comm:null,
+    instr:['Tara Sullivan'], cap:100, date:'2026-08-21', start:'13:00', end:'14:30',
+    cert:'In-service record', noShow:'Abuse Prevention', status:'open', reminded:null,
+    note:'Mandatory reporter duties and the escalation path. All roles.',
+    reg:roster('2026-08-21', 45, 8), wait:[] },
+
+  { id:'s11', t:'Dementia care, de-escalation practice', course:'Dementia Care Essentials',
+    mode:'in-person', place:'Willow Creek, Activity Room', comm:'Willow Creek',
+    instr:['Imani Sowande'], cap:14, date:'2026-08-25', start:'14:00', end:'16:30',
+    cert:'In-service record', noShow:'Dementia Care Essentials', status:'open', reminded:null,
+    note:'Role play in pairs. Three scripted scenarios, then debrief.',
+    reg:roster('2026-08-25', 11, 16), wait:[] },
+
+  { id:'s12', t:'CPR and first aid recertification', course:'CPR and First Aid',
+    mode:'in-person', place:'Cedar Ridge, Skills Lab', comm:'Cedar Ridge',
+    instr:['Dr Elaine Rusk, RN (external)'], cap:12, date:'2026-08-27', start:'08:00', end:'12:00',
+    cert:'AHA card', noShow:'CPR and First Aid', status:'open', reminded:null,
+    note:'American Heart Association certification. Cards are issued on the day.',
+    reg:roster('2026-08-27', 4, 30), wait:[] },
+
+  { id:'s13', t:'Fall prevention skills check', course:'Preventing Falls in Senior Living',
+    mode:'in-person', place:'Northgate, Skills Lab', comm:'Northgate',
+    instr:['Priya Raghavan'], cap:16, date:'2026-09-02', start:'10:00', end:'12:00',
+    cert:'Competency sign-off', noShow:null, status:'open', reminded:null,
+    note:'Practical check against the falls course. Book after the online modules.',
+    reg:[], wait:[] },
+
+  { id:'s14', t:'Data security Training', course:'HIPAA and Data Security',
+    mode:'virtual', place:'Microsoft Teams', comm:null,
+    instr:['Anjali Deshmukh'], cap:100, date:'2026-09-10', start:'14:00', end:'16:00',
+    cert:'In-service record', noShow:'HIPAA Training', status:'open', reminded:null,
+    note:'Repeat of the August session, run online for the other five communities.',
+    reg:roster('2026-09-10', 7, 34), wait:[] },
+
+  { id:'s15', t:'Dementia care, de-escalation practice', course:'Dementia Care Essentials',
+    mode:'in-person', place:'Harborview, Activity Room', comm:'Harborview',
+    instr:['Mira Solberg'], cap:14, date:'2026-08-10', start:'14:00', end:'16:30',
+    cert:'In-service record', noShow:null, status:'cancelled', reminded:'2026-08-09',
+    cancelReason: 'Instructor called out sick. Everyone registered was moved to the 25 August session at Willow Creek.',
+    note:'Role play in pairs. Three scripted scenarios, then debrief.',
+    reg:roster('2026-08-10', 12, 26), wait:[] },
+
+  { id:'s16', t:'Infection control update', course:'Infection Prevention',
+    mode:'virtual', place:'Microsoft Teams', comm:null,
+    instr:['Tara Sullivan'], cap:100, date:'2026-08-03', start:'15:00', end:'16:00',
+    cert:'In-service record', noShow:'Infection Prevention', status:'completed', reminded:'2026-08-02',
+    note:'Quarterly update, all communities.',
+    reg:roster('2026-08-03', 28, 0, [3, 17]), wait:[] },
+
+  { id:'s17', t:'Safe resident transfer and Hoyer lift', course:'Safe Resident Handling',
+    mode:'in-person', place:'Cedar Ridge, Skills Lab', comm:'Cedar Ridge',
+    instr:['Priya Raghavan'], cap:16, date:'2026-08-04', start:'09:00', end:'11:00',
+    cert:'In-service record', noShow:'Safe Resident Handling refresher', status:'completed', reminded:'2026-08-03',
+    note:'Hands-on. Every learner performs one full transfer with the lift.',
+    reg:roster('2026-08-04', 15, 12, [7]), wait:[] },
+
+  { id:'s18', t:'CPR and first aid recertification', course:'CPR and First Aid',
+    mode:'in-person', place:'Willow Creek, Skills Lab', comm:'Willow Creek',
+    instr:['Dr Elaine Rusk, RN (external)'], cap:12, date:'2026-08-05', start:'08:00', end:'12:00',
+    cert:'AHA card', noShow:'CPR and First Aid', status:'completed', reminded:'2026-08-04',
+    note:'American Heart Association certification.',
+    reg:roster('2026-08-05', 12, 20, [2]), wait:[] },
+
+  { id:'s19', t:'New hire orientation, day 1', course:'Onboarding',
+    mode:'blended', place:'Lakeside Manor, Conference Room and Teams', comm:'Lakeside Manor',
+    instr:['Tara Sullivan'], cap:20, date:'2026-08-07', start:'09:00', end:'16:00',
+    cert:'In-service record', noShow:null, status:'completed', reminded:'2026-08-06',
+    note:'Policies, resident rights, and a tour.',
+    reg:roster('2026-08-07', 9, 30, []), wait:[] },
+
+  { id:'s20', t:'Abuse and neglect reporting', course:'Abuse Prevention',
+    mode:'virtual', place:'Microsoft Teams', comm:null,
+    instr:['Tara Sullivan'], cap:100, date:'2026-08-10', start:'13:00', end:'14:30',
+    cert:'In-service record', noShow:'Abuse Prevention', status:'completed', reminded:'2026-08-09',
+    note:'Mandatory reporter duties and the escalation path.',
+    reg:roster('2026-08-10', 41, 5, [4, 11, 25]), wait:[] }
+];
+
+function phase(s) {
+  if (s.status === 'cancelled') return 'cancelled';
+  if (s.status === 'completed') return 'completed';
+  if (NOW < at(s.date, s.start)) return 'upcoming';
+  if (NOW <= at(s.date, s.end))  return 'running';
+  return 'unrecorded';
+}
+
+const MONTHS3 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const clockOf = hm => {
+  const h = +hm.slice(0, 2), m = hm.slice(3);
+  const ap = h < 12 ? 'am' : 'pm', hh = h % 12 === 0 ? 12 : h % 12;
+  return hh + (m === '00' ? '' : '.' + m) + ap;
+};
+function nextSession(p) {
+  return SESSIONS
+    .filter(s => (s.reg || []).some(r => r.n === p.n) && phase(s) === 'upcoming')
+    .sort((a, b) => at(a.date, a.start) - at(b.date, b.start))[0] || null;
+}
+
+const $   = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+const IC = {
+  alert:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  clock:'<path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/>',
+  right:'<path d="m9 18 6-6-6-6"/>',
+  play:'<path d="M6 3.5v17a1 1 0 0 0 1.5.87l14-8.5a1 1 0 0 0 0-1.74l-14-8.5A1 1 0 0 0 6 3.5z" fill="currentColor" stroke="none"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>'
+};
+const ic = (n, s) => '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" fill="none" stroke="currentColor" ' +
+  'stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+IC[n]+'</svg>';
+
+function toast(t, b) {
+  const el = document.createElement('div'); el.className = 'toast';
+  el.innerHTML = '<div><div class="toast-title">'+esc(t)+'</div>' +
+    (b ? '<div class="toast-body">'+esc(b)+'</div>' : '')+'</div>';
+  $('toasts').appendChild(el); setTimeout(() => el.remove(), 4600);
+}
+
+/* Minutes, because that is what decides whether it happens on this break. */
+function span(list) {
+  const m = list.reduce((s, x) => s + x.mins, 0);
+  if (!m) return 'nothing';
+  if (m < 60) return m + (m === 1 ? ' minute' : ' minutes');
+  const h = Math.floor(m / 60), r = m % 60;
+  return h + (h === 1 ? ' hour' : ' hours') + (r ? ' ' + r + (r === 1 ? ' minute' : ' minutes') : '');
+}
+const lateTxt = n => n === 1 ? '1 day late' : n + ' days late';
+
+/* Somebody in each state, picked from the roster rather than invented. */
+const WHO = {};
+STATES.forEach(s => { WHO[s.k] = PEOPLE.filter(p => stateOf(p) === s.k)[0]; });
+const S = { at: 'lapsed' };
+</script>
+<script>
+/* ==============================================================
+   One answer at the top. Which answer depends on the state, and
+   there are five of them -- not one empty state and four accidents.
+   ============================================================== */
+function headline(p, st, work) {
+  const late = work.filter(w => w.late);
+  if (st === 'lapsed') {
+    const lc = lapsedCert(p);
+    const c = lc ? Object.assign({ mins: lc.mins }, { n: lc.n }) : certItem(work);
+    return {
+      tone:'is-stop', ic:'alert',
+      b:'You cannot work unsupervised until this is renewed',
+      p:'Your <strong>' + esc(c.n) + '</strong> certificate has run out. Renewing it is one ' +
+        'course, about ' + c.mins + ' minutes, and it clears as soon as it is signed off.',
+      cta:'Renew it now', go:c.n
+    };
+  }
+  if (st === 'late') return {
+    tone:'is-warn', ic:'alert',
+    b:lateTxt(late[0].late) + ' on ' + esc(late[0].n),
+    p:'You have ' + late.length + ' thing' + (late.length === 1 ? '' : 's') + ' past its date, ' +
+      'about ' + span(late) + ' of work altogether.',
+    cta:'Start the oldest', go:late[0].n
+  };
+  if (st === 'todo') return {
+    tone:'is-warn', ic:'clock',
+    b:'Nothing is late yet',
+    p:'You have ' + work.length + ' course' + (work.length === 1 ? '' : 's') + ' to do, about ' +
+      span(work) + '. The first is due in ' + work[0].due + ' days.',
+    cta:'Start the first', go:work[0].n
+  };
+  if (st === 'expiring') return {
+    tone:'is-warn', ic:'clock',
+    b:'A certificate lapses within 30 days',
+    p:'Everything else is done. Renewing before it runs out means it never stops you working.',
+    cta:'Renew it early', go:CATALOG[0].n
+  };
+  return {
+    tone:'is-good', ic:'check',
+    b:'Nothing outstanding',
+    p:'Every required course is done and every certificate is current. Next check is the ninety day one.',
+    cta:null
+  };
+}
+
+/* "Continue" and "Start" are different offers, so the card and the heading
+   both say which one this is. */
+function cardHtml(x) {
+  const started = x.at > 0;
+  const pct = Math.round(x.at / x.ls.length * 100);
+  return '<button class="cc" data-go="' + esc(x.n) + '">' +
+    '<span class="cc-th h' + x.hue + '">' +
+      (x.cert && x.late ? '<span class="cc-flag">Certificate lapsed</span>' : '') +
+      '<span class="cc-play">' + ic('play', 17) + '</span></span>' +
+    '<span class="cc-b">' +
+      '<span class="cc-c">' + esc(x.n) + '</span>' +
+      '<span class="cc-n">' + esc(x.ls[x.at]) + '</span>' +
+      '<span class="cc-m">Lesson ' + (x.at + 1) + ' of ' + x.ls.length + ' &middot; ' + x.left + 'm left' +
+        (x.late ? ' &middot; <b>' + lateTxt(x.late) + '</b>' : '') + '</span>' +
+      '<span class="cc-bar"><i style="width:' + pct + '%;"></i></span>' +
+    '</span></button>';
+}
+
+function rowHtml(work) {
+  if (!work.length) return '';
+  /* Order of the row, in priority order:
+       1. the lapsed certificate, because it is the one thing stopping them
+          working unsupervised -- it cannot be the third card
+       2. half-finished, because resuming is one tap and no decisions
+       3. latest first
+     The first draft sorted on "started" alone and put the lapsed certificate
+     third, behind two courses nobody is waiting on. */
+  const cards = work.slice().sort((a, b) =>
+    (b.cert && b.late ? 1 : 0) - (a.cert && a.late ? 1 : 0) ||
+    (b.at > 0) - (a.at > 0) ||
+    b.late - a.late || a.due - b.due);
+  const anyStarted = cards.some(c => c.at > 0);
+  return '<div class="row-h"><h2>' + (anyStarted ? 'Continue learning' : 'Start learning') + '</h2>' +
+      '<a href="my-courses.html">All my courses</a></div>' +
+    '<div class="row-wrap"><div class="row" id="ccRow">' + cards.map(cardHtml).join('') + '</div>' +
+      (cards.length > 2 ? '<button class="row-next" id="ccNext" aria-label="Scroll for more">' +
+        ic('right', 18) + '</button>' : '') +
+    '</div>';
+}
+
+function itemHtml(x) {
+  return '<button class="item' + (x.late ? ' is-late' : '') + '" data-go="' + esc(x.n) + '">' +
+    '<span class="item-t"><span class="item-n">' + esc(x.n) + '</span>' +
+      '<span class="item-w">' +
+        (x.late ? '<b>' + lateTxt(x.late) + '</b>' : 'due in ' + x.due + ' days') +
+        (x.cert ? ' &middot; renews a certificate' : '') +
+        '<span class="mins">' + ic('clock', 14) + x.mins + ' min</span>' +
+      '</span></span>' +
+    '<span class="btn btn-solid">Start' + ic('right', 15) + '</span></button>';
+}
+
+function render() {
+  const p = WHO[S.at], st = stateOf(p), work = workFor(p);
+  const late = work.filter(w => w.late), soon = work.filter(w => !w.late);
+  const h = headline(p, st, work);
+  const pct = p.req ? Math.round(p.done / p.req * 100) : 100;
+  const comp = p.comp ? Math.round((p.comp[0] + p.comp[1] + p.comp[2]) / 3) : null;
+  const nx = nextSession(p);
+
+  $('view').innerHTML =
+    '<div class="hello">Hello ' + esc(p.first) + '</div>' +
+    '<div class="hello-s">' + esc(p.role) + ' at ' + esc(p.comm) + '. ' +
+      (work.length
+        ? 'You have <b>' + span(work) + '</b> of training waiting.'
+        : 'Nothing is waiting on you.') + '</div>' +
+
+    rowHtml(work) +
+
+    '<div class="stop ' + h.tone + '"><span class="stop-ic">' + ic(h.ic, 22) + '</span>' +
+      '<span class="stop-t"><b>' + h.b + '</b><p>' + h.p + '</p>' +
+        (h.cta ? '<span class="stop-a"><button class="btn btn-solid" data-go="' + esc(h.go) + '">' +
+          h.cta + '</button><button class="btn btn-surface" data-ask="1">Ask about this</button></span>' : '') +
+      '</span></div>' +
+
+    (late.length
+      ? '<div class="sec-h"><h2>Late</h2><span>' + span(late) + '</span></div>' +
+        '<div class="todo">' + late.map(itemHtml).join('') + '</div>'
+      : '') +
+
+    (soon.length
+      ? '<div class="sec-h"><h2>' + (late.length ? 'Also due' : 'To do') + '</h2><span>' + span(soon) + '</span></div>' +
+        '<div class="todo">' + soon.map(itemHtml).join('') + '</div>'
+      : '') +
+
+    (nx
+      ? '<div class="sec-h"><h2>Booked in</h2><span>nothing to do until the day</span></div>' +
+        '<div class="when"><span class="when-d"><b>' + nx.date.slice(8) + '</b>' +
+          '<span>' + MONTHS3[+nx.date.slice(5, 7) - 1] + '</span></span>' +
+          '<span class="when-t"><span class="when-n">' + esc(nx.t) + '</span>' +
+            '<span class="when-w">' + clockOf(nx.start) + ' to ' + clockOf(nx.end) +
+              ' &middot; ' + esc(nx.place) + '</span></span>' +
+          '<button class="btn btn-surface" data-cal="1">Add to my calendar</button></div>'
+      : '') +
+
+    (comp !== null && comp < PASS
+      ? '<div class="sec-h"><h2>From your manager</h2></div>' +
+        '<div class="note"><div class="note-h"><span class="note-n">Sumit Awinash</span>' +
+          '<span class="note-w">3 weeks ago</span></div>' +
+          '<div class="note-b">Referred back to training after the ninety day check. ' +
+            'Judgment and people skills came out at ' + Math.min.apply(null, p.comp) +
+            ', against a threshold of ' + PASS + '.</div>' +
+          '<div class="note-a"><button class="btn btn-surface" data-reply="1">Reply</button></div></div>'
+      : '') +
+
+    /* Progress last, and no completion rate: that is an oversight number.
+       Never assessed shows as "not assessed", never as a zero. */
+    '<div class="sec-h"><h2>Where you are</h2><span>' + p.done + ' of ' + p.req + ' required courses</span></div>' +
+    '<div class="bar"><i style="width:' + pct + '%;"></i></div>' +
+    '<div class="mine">' +
+      '<div class="mine-c"><span class="mine-v">' + p.done + ' of ' + p.req + '</span>' +
+        '<span class="mine-l">required courses done</span></div>' +
+      '<div class="mine-c"><span class="mine-v">' + (work.length || 'none') + '</span>' +
+        '<span class="mine-l">' + (work.length ? 'still to do' : 'nothing left') + '</span></div>' +
+      '<div class="mine-c"><span class="mine-v' + (comp === null ? ' is-quiet' : '') + '">' +
+        (comp === null ? 'Not assessed' : comp) + '</span>' +
+        '<span class="mine-l">' + (comp === null ? 'no check recorded yet' : 'competency, pass is ' + PASS) + '</span></div>' +
+      '<div class="mine-c"><span class="mine-v">' + (p.exp ? p.exp : p.exg ? p.exg : 'all current') + '</span>' +
+        '<span class="mine-l">' + (p.exp ? 'certificate lapsed' : p.exg ? 'lapsing within 30 days' : 'certificates') + '</span></div>' +
+    '</div>';
+
+  renderMe();
+  renderWho();
+  wire();
+}
+
+/* Who is being viewed lives in the View as menu, next to which ROLE is being
+   viewed, because it is the same question. It is emphatically not something a
+   learner is offered on their own screen -- a control there reads as "browse
+   your colleagues' records", which is exactly wrong in a product holding
+   people's training and competency scores. */
+function renderWho() {
+  const list = $('whoList');
+  if (!list) return;
+  list.innerHTML = STATES.map(function (s) {
+    const p = WHO[s.k];
+    return '<a href="#" role="menuitem" data-who="' + s.k + '" aria-current="' +
+      (s.k === S.at) + '"><span class="vr"></span>' +
+      '<span class="vw">' + esc(p.n) + '<span>' + esc(s.l.toLowerCase()) + '</span></span></a>';
+  }).join('');
+  list.querySelectorAll('[data-who]').forEach(a => a.onclick = e => {
+    e.preventDefault(); e.stopPropagation();
+    S.at = a.dataset.who;
+    $('viewAs').hidden = true;
+    $('viewAsBtn').setAttribute('aria-expanded', 'false');
+    render();
+  });
+}
+
+/* The name in the header is the person being viewed, or the screen is lying
+   about whose training it is showing. */
+function renderMe() {
+  const p = WHO[S.at];
+  $('meAv').textContent   = p.n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  $('meName').textContent = p.n;
+  $('meRole').textContent = p.role + ', ' + p.comm;
+}
+
+function wire() {
+  const v = $('view');
+  v.querySelectorAll('[data-go]').forEach(b => b.onclick = () =>
+    { location.href = 'course.html'; });
+  v.querySelectorAll('[data-ask]').forEach(b => b.onclick = () =>
+    toast('Ask about this', 'It goes to your charge nurse and onto your training record.'));
+  const next = $('ccNext');
+  if (next) next.onclick = () => {
+    const row = $('ccRow');
+    if (row) row.scrollLeft += 372;
+  };
+  v.querySelectorAll('[data-cal]').forEach(b => b.onclick = () => {
+    const s = nextSession(WHO[S.at]);
+    if (s) toast('Added', s.date.slice(8) + ' ' + MONTHS3[+s.date.slice(5, 7) - 1] + ', ' +
+      clockOf(s.start) + ', ' + s.place + '.');
+  });
+  v.querySelectorAll('[data-reply]').forEach(b => b.onclick = () =>
+    toast('Reply', 'It goes on your training record, where your manager will see it.'));
+}
+
+const viewAsBtn = document.getElementById('viewAsBtn');
+if (viewAsBtn) {
+  const menu = document.getElementById('viewAs');
+  viewAsBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = !menu.hidden;
+    menu.hidden = open;
+    viewAsBtn.setAttribute('aria-expanded', String(!open));
+  });
+  document.addEventListener('click', () => {
+    if (!menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+}
+
+$('themeBtn').addEventListener('click', () => {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+});
+
+render();
+
+/* Collapsing the rail is shell behaviour, so every page does it. It was
+   markup on twenty pages and wired on one, and standardising the nav dropped
+   the id the one handler depended on. */
+const railBtn = document.getElementById('railBtn');
+if (railBtn) {
+  railBtn.addEventListener('click', () => {
+    const shell = document.querySelector('.app-shell');
+    const side  = document.querySelector('.app-sidebar');
+    const on = shell.style.gridTemplateColumns === '0px 1fr';
+    shell.style.gridTemplateColumns = on ? '256px 1fr' : '0px 1fr';
+    if (side) side.style.visibility = on ? 'visible' : 'hidden';
+    railBtn.setAttribute('aria-label', on ? 'Collapse navigation' : 'Expand navigation');
+  });
+}
+</script>
+</body>
+</html>

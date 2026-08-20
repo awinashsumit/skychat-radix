@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<!--
+  skyLearn - Discussions, Radix flavour.
+  For an administrator this is not a forum, it is a triage queue: what is
+  unanswered, what is being asked repeatedly, and what is not a question
+  at all. See DISCUSSIONS-IA.md.
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>skyLearn &middot; Discussions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../tokens.css?v=102" />
+<link rel="stylesheet" href="../dashboard.css?v=102" />
+<style>
+  /* Shell bits shared with the other skyLearn screens */
+  .ph-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-5); flex-wrap: wrap; }
+  .ph-text { flex: 1; min-width: 0; }
+  .ph-acts { display: flex; gap: var(--space-3); flex: 0 0 auto; margin-left: auto; }
+
+  .tbar { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-4); }
+
+  /* One row per thing needing attention. The kind of thing it is lives in
+     the tag at the top of the row, and only there. A coloured edge down
+     the side said the same thing a second time, in the same colour, next
+     to a tag that already said it in words. */
+  .qlist { display: flex; flex-direction: column; }
+  .qrow { display: flex; align-items: flex-start; gap: var(--space-4);
+    padding: var(--space-4);
+    border-top: var(--stroke-thin) solid var(--border-subtle); }
+  .qrow:first-child { border-top: 0; }
+  /* Answered rows only turn up in search results, and they are context
+     rather than work, so they recede. That is a different job from the
+     tag, which classifies; this only de-emphasises. */
+  .qrow.is-done { opacity: .6; }
+  .qrow-b { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2);
+    text-align: left; background: transparent; padding: 0; cursor: pointer; }
+  .qrow-q { font-size: var(--fs-3); color: var(--fg-high); }
+  .qrow-m { font-size: var(--fs-1); color: var(--fg-low); }
+  .qrow-m .dot { margin: 0 6px; color: var(--fg-subtle); }
+  .qrow-why { font-size: var(--fs-1); color: var(--danger-text); font-style: italic; }
+  .qrow-acts { display: flex; gap: var(--space-2); flex: 0 0 auto; flex-wrap: wrap; justify-content: flex-end; }
+
+  .qrow-tag { display: inline-flex; }
+  .tag-p, .tag-g, .tag-s, .tag-d { display: inline-flex; align-items: center; gap: 4px;
+    height: 22px; padding: 0 var(--space-2); border-radius: var(--radius-2); font-size: var(--fs-1);
+    font-weight: var(--weight-medium); }
+  .tag-p { background: var(--danger-bg);  color: var(--danger-text); }
+  .tag-g { background: var(--warning-bg); color: var(--warning-text); }
+  .tag-s { background: var(--gray-3);     color: var(--fg-low); }
+  /* Marks a question that came out of the AI coach unanswered. */
+  .tag-c { display: inline-flex; align-items: center; gap: var(--space-2); margin-left: var(--space-2);
+    padding: 2px var(--space-3); border-radius: var(--radius-full);
+    background: var(--warning-bg); color: var(--warning-text);
+    font-size: var(--fs-1); font-weight: var(--weight-medium); }
+  .tag-d { background: var(--success-bg); color: var(--success-text); }
+
+  .qnote { font-size: var(--fs-1); color: var(--fg-subtle); margin-top: var(--space-4); }
+
+  /* Thread */
+  .back-link { display: inline-flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-4);
+    font-size: var(--fs-2); color: var(--fg-low); text-decoration: none; background: transparent; }
+  .back-link:hover { color: var(--fg-high); }
+  .post { display: flex; gap: var(--space-3); padding: var(--space-4) 0; }
+  .post + .post { border-top: var(--stroke-thin) solid var(--border-subtle); }
+  .post.is-answer { background: var(--success-bg); border-radius: var(--radius-3); padding: var(--space-4); }
+  .post-b { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .post-w { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+  .post-x { font-size: var(--fs-3); color: var(--fg-high); margin-top: var(--space-2); }
+  .post-t { font-size: var(--fs-1); color: var(--fg-subtle); margin-top: var(--space-2); }
+  .avatar.sm { width: 32px; height: 32px; font-size: var(--fs-1); }
+
+  .toast-stack { position: fixed; left: 50%; bottom: var(--space-6); transform: translateX(-50%);
+    display: flex; flex-direction: column; gap: var(--space-2); z-index: 1400; }
+  .toast-stack .toast { animation: t-in .2s ease-out; }
+  @keyframes t-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header is-dark">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect width="24" height="24" rx="6" fill="var(--accent-9)"/><text x="12" y="16.5" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-contrast)">S</text></svg>
+      <span>skyLearn</span>
+    </div>
+    <div class="search hdr-search">
+      <span class="search-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+      <label class="sr-only" for="q">Search</label>
+      <input class="input" id="q" type="search" placeholder="Search courses and learners" autocomplete="off" />
+    </div>
+    <div class="header-right">
+      <span class="presence"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg><span><strong class="pt-num">4</strong> points</span></span>
+      <button class="icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="ic-badge">3</span></button>
+      <button class="icon-btn" id="themeBtn" aria-label="Switch to dark theme"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+      <span class="divider-v"></span>
+      <span class="header-wrap">
+        <button class="header-user" id="viewAsBtn" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar c6">SA</span>
+          <span class="hu-id"><span class="hu-name">Sumit Awinash</span><span class="hu-role">Administrator</span></span>
+        </button>
+        <div class="view-as" id="viewAs" role="menu" hidden>
+          <div class="view-as-t">View as</div>
+          <a href="index.html" role="menuitem" aria-current="true"><span class="vr"></span>
+            <span class="vw">Administrator<span>Everything, across all six communities</span></span></a>
+          <a href="teach.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Instructor<span>Your courses, learners and sessions</span></span></a>
+          <a href="learn.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Learner<span>What you have to do, and by when</span></span></a>
+          <div class="vs">
+            <a href="signin.html" role="menuitem">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
+              Sign out</a>
+          </div>
+        </div>
+      </span>
+    </div>
+  </header>
+
+  <nav class="app-sidebar" aria-label="Primary">
+    <button class="sidebar-toggle" id="railBtn" aria-label="Collapse navigation"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>
+    <a class="nav-item" href="index.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg><span class="nav-label">Dashboard</span></a>
+    <a class="nav-item" href="courses.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg><span class="nav-label">Courses</span></a>
+    <a class="nav-item" href="learners.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg><span class="nav-label">Learners</span></a>
+    <a class="nav-item" href="certificate.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg><span class="nav-label">Certifications</span></a>
+    <a class="nav-item" href="sessions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg><span class="nav-label">Sessions</span></a>
+    <a class="nav-item" href="groups.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg><span class="nav-label">Groups</span></a>
+    <a class="nav-item" href="recognition.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0z"/></svg><span class="nav-label">Recognition</span></a>
+    <a class="nav-item is-active" href="discussions.html" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6V2H8"/><path d="m8 18-4 4V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2Z"/><path d="M2 12h2"/><path d="M9 11v2"/><path d="M15 11v2"/><path d="M20 12h2"/></svg><span class="nav-label">Discussions</span></a>
+    <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span class="nav-label">Reports</span></a>
+    <a class="nav-item" href="automations.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/><path d="m2 2 20 20"/></svg><span class="nav-label">Automations</span></a>
+    <a class="nav-item" href="surveys.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/><rect x="3" y="4" width="18" height="16" rx="2"/></svg><span class="nav-label">Surveys</span></a>
+    <a class="nav-item" href="grading.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="m9 11-1.5 1.5L9 14"/><path d="M16 16h-4"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg><span class="nav-label">Grading Hub</span></a>
+    <a class="nav-item" href="files.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span class="nav-label">Reference library</span></a>
+    <a class="nav-item nav-tail" href="#"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="nav-label">Help and support</span></a>
+  </nav>
+
+  <main class="app-content">
+    <div class="breadcrumbs" id="crumbs"></div>
+    <div class="content-body"><div id="view"></div></div>
+  </main>
+</div>
+<div class="overlay" id="overlay" hidden></div>
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+
+<script>
+/* ==============================================================
+   Who posts here, and why.
+
+   Not a community. The people writing are CNAs and caregivers, hourly,
+   on a phone between shifts, often with English as a second language.
+   Nobody in that job browses a forum for pleasure. If they write
+   something it is because they are stuck, or because the training just
+   told them to do something that does not match the floor.
+
+   So almost every post is one of four things, and the administrator's
+   job is different for each:
+
+     a question about the content   -> answer it
+     the SAME question, repeatedly  -> fix the lesson, do not answer it again
+     a question about the system    -> answer it, or fix the help
+     not a question at all          -> route it to a human, today
+
+   The screen this replaces is a search box over a list. It can tell you
+   none of that.
+   ============================================================== */
+const THREADS = [
+  { id:1, q:'The video shows a two-person assist but our Hoyer on the night shift needs three. Which one is right for us?',
+    by:'Otto Reinhardt', role:'Caregiver', comm:'Lakeside Manor', course:'Safe Resident Handling', lesson:3, days:9,
+    topic:'assist-count', replies:[] },
+  { id:2, q:'Does the two-person rule change if the resident can bear some weight?',
+    by:'Desmond Achebe', role:'Caregiver', comm:'Lakeside Manor', course:'Safe Resident Handling', lesson:3, days:7,
+    topic:'assist-count', replies:[] },
+  { id:3, q:'Two of us or three? The handout and the video say different things.',
+    by:'Zainab Farah', role:'CNA', comm:'Lakeside Manor', course:'Safe Resident Handling', lesson:3, days:5,
+    topic:'assist-count', replies:[] },
+  { id:4, q:'Is it still two people if you are only moving them up the bed?',
+    by:'Yusuf Demirci', role:'Caregiver', comm:'Willow Creek', course:'Safe Resident Handling', lesson:3, days:4,
+    topic:'assist-count', replies:[] },
+
+  { id:5, q:'We do not have the medium sling the course shows. We only have large ones on our floor.',
+    by:'Theo Brannigan', role:'Caregiver', comm:'Sunrise Terrace', course:'Safe Resident Handling', lesson:4, days:6,
+    topic:'equipment', replies:[] },
+  { id:6, q:'My charge nurse told me we do not need the gait belt for short transfers. The course says always.',
+    by:'Freya Lindholm', role:'Caregiver', comm:'Northgate', course:'Safe Resident Handling', lesson:2, days:3,
+    topic:'conflict', replies:[] },
+  { id:7, q:'There is only one of us on nights so a two-person transfer is not possible. What do we do?',
+    by:'Kwame Boateng', role:'CNA', comm:'Lakeside Manor', course:'Safe Resident Handling', lesson:3, days:2,
+    topic:'staffing', replies:[] },
+
+  { id:8, q:'Where do I find my CPR card after the class? It is not on my dashboard.',
+    by:'Nadia Kerr', role:'CNA', comm:'Harborview', course:'CPR and First Aid', lesson:1, days:8,
+    topic:'certificate', replies:[] },
+  { id:9, q:'My certificate is not showing up either. Do they take a few days?',
+    by:'Lena Vogt', role:'CNA', comm:'Harborview', course:'CPR and First Aid', lesson:1, days:6,
+    topic:'certificate', replies:[] },
+  { id:10, q:'How long before the card appears? Mine has been three days.',
+    by:'Idris Mensah', role:'Caregiver', comm:'Harborview', course:'CPR and First Aid', lesson:1, days:3,
+    topic:'certificate', replies:[] },
+
+  { id:11, q:'Is the 90 day check the same thing as the annual competency, or two separate things?',
+    by:'Clara Bianchi', role:'CNA', comm:'Sunrise Terrace', course:'Dementia Care Essentials', lesson:5, days:4,
+    topic:'competency', replies:[] },
+  { id:12, q:'What score do I need to pass the judgment section?',
+    by:'Hana Novak', role:'CNA', comm:'Sunrise Terrace', course:'Dementia Care Essentials', lesson:5, days:1,
+    topic:'competency',
+    replies:[{ by:'Mira Solberg', role:'LPN', text:'Seventy-five, same as the other two domains.', days:1 }] },
+
+  { id:13, q:'The de-escalation scripts are useful but they assume the resident speaks English.',
+    by:'Aiko Tanaka', role:'CNA', comm:'Harborview', course:'Dementia Care Essentials', lesson:3, days:12,
+    topic:'content',
+    replies:[{ by:'Tara Sullivan', role:'Administrator', text:'Good point. We are adding Spanish versions to the next revision.', days:10 }] },
+  { id:14, q:'Really helpful session yesterday, the practice pairs made it click.',
+    by:'Jonas Aalto', role:'Caregiver', comm:'Sunrise Terrace', course:'Dementia Care Essentials', lesson:3, days:2,
+    topic:'praise', replies:[] },
+
+  { id:15, q:'Someone was hurt doing a transfer last month on our floor and nothing changed. Is this course the response?',
+    by:'Silvia Marchetti', role:'LPN', comm:'Lakeside Manor', course:'Safe Resident Handling', lesson:1, days:5,
+    topic:'incident', replies:[] },
+  { id:16, q:'Can I do the fire drill module on my phone? I do not have a computer at home.',
+    by:'Viktor Novikov', role:'Housekeeping', comm:'Northgate', course:'Emergency Preparedness', lesson:1, days:11,
+    topic:'access', replies:[] }
+];
+
+/* Questions the AI coach could not answer, folded into the same list.
+
+   A learner asks the coach; if it is not in that course's material the coach
+   refuses rather than guessing, and the question lands here. It goes through
+   the same clusters() as everything else, so several people asking about the
+   same uncovered thing surfaces as one course problem instead of a queue of
+   individuals. The origin is kept because "the material does not cover this"
+   is a different fix from "one person is confused". */
+function coachGaps() {
+  let raw = [];
+  try { raw = JSON.parse(localStorage.getItem('skylearn.coachGaps') || '[]'); } catch (e) { raw = []; }
+  const seeded = [
+    { q:'What do I do if the resident refuses to be hoisted at all?', course:'Safe Resident Handling',
+      by:'Otto Reinhardt', role:'Caregiver', comm:'Lakeside Manor' },
+    { q:'Is there a weight limit on the standing hoist?', course:'Safe Resident Handling',
+      by:'Zainab Farah', role:'CNA', comm:'Lakeside Manor' },
+    { q:'Which sling do we use for someone with a fractured hip?', course:'Safe Resident Handling',
+      by:'Desmond Achebe', role:'Caregiver', comm:'Lakeside Manor' },
+    { q:'Do agency staff need the same HIPAA training as us?', course:'HIPAA Training',
+      by:'Mira Solberg', role:'LPN', comm:'Willow Creek' }
+  ];
+  let id = 900;
+  return seeded.concat(raw).map(g => ({
+    id: id++, q: g.q, by: g.by, role: g.role, comm: g.comm,
+    course: g.course, lesson: 0, days: g.at ? 0 : 2 + (id % 5),
+    topic: 'uncovered', from: 'coach', replies: []
+  }));
+}
+THREADS.push.apply(THREADS, coachGaps());
+
+const $   = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+/* Not every plural is +s. `person` was rendering as "13 persons" on five
+   screens; anything else irregular goes in the same map rather than being
+   worked around at the call site. */
+const IRREGULAR = { person:'people' };
+const plural = (n, w) => n + ' ' + (n === 1 ? w : (IRREGULAR[w] || w + 's'));
+const initials = n => n.split(' ').map(x => x[0]).join('').slice(0, 2).toUpperCase();
+const ago = d => d === 0 ? 'today' : d === 1 ? 'yesterday' : d + ' days ago';
+
+/* ==============================================================
+   The three things an administrator needs, computed by traversal.
+   ============================================================== */
+
+/* Asked more than once. This is the finding the old screen threw away:
+   when several people ask the same thing about the same lesson, the
+   lesson is unclear. Answering each of them individually treats a content
+   defect as a support queue. */
+function clusters(min) {
+  const g = {};
+  THREADS.forEach(t => { const k = t.course + '|' + t.lesson + '|' + t.topic; (g[k] = g[k] || []).push(t); });
+  return Object.keys(g).map(k => g[k]).filter(set => set.length >= (min || 3))
+    .sort((a, b) => b.length - a.length);
+}
+
+/* Not a question. Some of what arrives here is an incident report, a
+   staffing problem or a supervisor contradicting the policy, posted in
+   the only box the person had. Those need a named human today, not a
+   reply in a thread, and in this sector getting that wrong is how an
+   injury becomes a citation. */
+const ROUTE = [
+  { topic:'incident', why:'Describes somebody being hurt at work.', to:'Director of Nursing' },
+  { topic:'conflict', why:'A supervisor has told somebody to do the opposite of the policy.', to:'Director of Nursing' },
+  { topic:'staffing', why:'Says the safe procedure is not possible at their staffing level.', to:'Scheduling' },
+  { topic:'equipment', why:'Says the equipment the course requires is not on the floor.', to:'Facilities' }
+];
+const escalations = () => THREADS.filter(t => ROUTE.some(r => r.topic === t.topic))
+  .map(t => ({ t:t, r:ROUTE.find(r => r.topic === t.topic) }))
+  .sort((a, b) => b.t.days - a.t.days);
+
+const ageClass = d => d >= 7 ? ' is-bad' : d >= 3 ? ' is-late' : '';
+</script>
+
+<script>
+/* ==============================================================
+   Icons, chrome
+   ============================================================== */
+const IC = {
+  chev:'<path d="m9 18 6-6-6-6"/>', back:'<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+  alert:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>', plus:'<path d="M5 12h14"/><path d="M12 5v14"/>',
+  chat:'<path d="M12 6V2H8"/><path d="m8 18-4 4V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2Z"/><path d="M2 12h2"/><path d="M9 11v2"/><path d="M15 11v2"/><path d="M20 12h2"/>',
+  pencil:'<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
+  send:'<path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/>',
+  user:'<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  /* ic('users') was called by every group row and was never in this map, so
+     each one rendered an empty svg containing the string "undefined". Tag
+     balance cannot catch that -- undefined is perfectly balanced. */
+  users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/>',
+  bot:'<path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>'
+};
+const ic = (n, s) => '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+IC[n]+'</svg>';
+const callout = (tone, text) => '<div class="callout is-'+tone+'"><span class="co-icon">' +
+  ic(tone === 'info' ? 'info' : tone === 'success' ? 'check' : 'alert', 18)+'</span><span>'+text+'</span></div>';
+function toast(title, body) {
+  const el = document.createElement('div'); el.className = 'toast';
+  el.innerHTML = '<div><div class="toast-title">'+esc(title)+'</div>'+(body ? '<div class="toast-body">'+esc(body)+'</div>' : '')+'</div>';
+  $('toasts').appendChild(el); setTimeout(() => el.remove(), 5000);
+}
+const S = { open:null, q:'' };
+const CRUMB = '<span class="sep"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>';
+</script>
+
+<script>
+/* ==============================================================
+   The queue
+   ============================================================== */
+/* ==============================================================
+   One queue, one row per thing.
+
+   The first version of this screen had four sections: escalations,
+   unanswered, repeated questions, and everything. Each was a defensible
+   view, and together they rendered 43 items for 16 posts, with every post
+   appearing three times. Sumit's word for reading it was "exhausted",
+   which is the correct reaction to a page that says the same thing three
+   times in three different shapes.
+
+   The sections were the mistake, not the analysis. A post belongs to
+   exactly one row, the row says which kind of thing it is, and a group of
+   people asking the same question is ONE row, not four rows plus a
+   summary card. Same findings, a ninth of the page.
+   ============================================================== */
+function queue() {
+  const used = new Set(), out = [];
+
+  /* Costs the most to ignore: somebody is hurt, understaffed, or being
+     told to work against the policy. */
+  escalations().forEach(e => { used.add(e.t.id); out.push({ kind:'person', t:e.t, route:e.r }); });
+
+  /* Most leverage: one lesson fix answers everybody in the group. */
+  clusters(3).forEach(set => {
+    const fresh = set.filter(x => !used.has(x.id));
+    if (fresh.length < 3) return;
+    fresh.forEach(x => used.add(x.id));
+    out.push({ kind:'group', set:fresh, t:fresh.slice().sort((a, b) => b.days - a.days)[0],
+               open: fresh.some(x => !x.replies.length) });
+  });
+
+  /* Everything else, one row each, oldest unanswered first. */
+  THREADS.filter(x => !used.has(x.id))
+    .sort((a, b) => (a.replies.length - b.replies.length) || (b.days - a.days))
+    .forEach(x => out.push({ kind: x.replies.length ? 'done' : 'single', t:x }));
+
+  return out;
+}
+/* A group stops needing you once its questions are answered, even though
+   the lesson that produced them is still unclear. It moves to Answered
+   carrying the fix, rather than sitting in the queue forever: a worklist
+   that cannot be emptied stops being read. */
+const needsYou = it => it.kind === 'group' ? it.open : it.kind !== 'done';
+
+function qRow(it) {
+  const t = it.t;
+  /* "The material does not cover this" is a different job from "somebody is
+     confused": the first is fixed by editing the course, the second by
+     replying. The queue says which. */
+  const gap = it.kind === 'group' ? it.set.every(x => x.from === 'coach') : t.from === 'coach';
+  const tag =
+    it.kind === 'person' ? '<span class="tag-p">'+ic('alert', 12)+' Needs a person</span>' :
+    it.kind === 'group'  ? '<span class="'+(it.open ? 'tag-g' : 'tag-d')+'">'+ic('users', 12)+' '+
+                           it.set.length+' people asked this'+(it.open ? '' : ', answered')+'</span>' +
+                           (gap ? '<span class="tag-c">'+ic('bot', 12)+' the course does not cover it</span>' : '') :
+    it.kind === 'single' ? '<span class="tag-s">'+esc(ago(t.days))+', no answer</span>' +
+                           (gap ? '<span class="tag-c">'+ic('bot', 12)+' the course does not cover it</span>' : '') :
+                           '<span class="tag-d">'+ic('check', 12)+' Answered</span>';
+
+  const acts =
+    it.kind === 'person' ? '<button class="btn btn-surface is-sm" data-route="'+t.id+'">'+ic('user', 15)+' Send to '+esc(it.route.to)+'</button>' :
+    it.kind === 'group'  ? '<button class="btn '+(it.open ? 'btn-solid' : 'btn-surface')+' is-sm" data-fix="'+t.course+'|'+t.lesson+'">'+ic('pencil', 15)+' Fix the lesson</button>' +
+                           (it.open ? '<button class="btn btn-surface is-sm" data-pin="'+t.course+'|'+t.lesson+'|'+t.topic+'">Answer all '+it.set.filter(x=>!x.replies.length).length+'</button>' : '') :
+    it.kind === 'single' ? '<button class="btn btn-surface is-sm" data-open="'+t.id+'">'+ic('send', 15)+' Answer</button>' : '';
+
+  const where = it.kind === 'group'
+    ? esc(t.course) + ', lesson ' + t.lesson + '<span class="dot">&middot;</span>' +
+      (it.open ? 'oldest ' + esc(ago(t.days))
+               : 'answered, but the lesson still made ' + it.set.length + ' people ask')
+    : esc(t.by) + ', ' + esc(t.role) + '<span class="dot">&middot;</span>' + esc(t.course) + ', lesson ' + t.lesson;
+
+  return '<div class="qrow'+(it.kind === 'done' ? ' is-done' : '')+'">' +
+    '<button class="qrow-b" data-open="'+t.id+'">' +
+      '<span class="qrow-tag">'+tag+'</span>' +
+      '<span class="qrow-q">'+esc(t.q)+'</span>' +
+      '<span class="qrow-m">'+where+'</span>' +
+      (it.kind === 'person' ? '<span class="qrow-why">'+esc(it.route.why)+'</span>' : '') +
+    '</button>' +
+    (acts ? '<span class="qrow-acts">'+acts+'</span>' : '') +
+  '</div>';
+}
+
+function renderQueue() {
+  const all = queue();
+  const open = all.filter(needsYou);
+  const done = all.filter(x => !needsYou(x));
+  const q = S.q.toLowerCase();
+
+  /* Searching looks at everything, answered included. The filter chips
+     that used to sit here scoped the search to whatever chip was
+     selected, so searching for a question somebody had already answered
+     returned "Nothing matches" from the default view. Looking up a past
+     answer is the main reason to search a discussion board at all. */
+  const searching = !!q;
+  const match = it => (it.t.q + ' ' + it.t.by + ' ' + it.t.course).toLowerCase().includes(q);
+  const list = searching ? all.filter(match) : open;
+
+  return '<div class="card">' +
+    '<div class="tbar">' +
+      '<div class="search" style="min-width:300px;"><span class="search-icon">'+ic('chat', 16)+'</span>' +
+        '<label class="sr-only" for="tq">Search discussions</label>' +
+        '<input class="input" id="tq" placeholder="Search every discussion, answered or not" value="'+esc(S.q)+'" /></div>' +
+      (searching ? '<button class="btn btn-ghost is-sm" id="clearQ">Clear search</button>' : '') +
+    '</div>' +
+    (searching
+      ? '<div style="margin-bottom:var(--space-3);">' + callout('info',
+          plural(list.length, 'result') + ' across all ' + all.length + ' discussions, answered ones included.') + '</div>'
+      : '') +
+    (list.length
+      ? '<div class="qlist">' + list.map(qRow).join('') + '</div>'
+      : '<div class="empty-state"><div class="empty-art">'+ic('check', 36)+'</div>' +
+        '<h2>' + (searching ? 'Nothing matches' : 'Nothing waiting') + '</h2>' +
+        '<p>' + (searching
+          ? 'No discussion mentions that, answered or not.'
+          : 'Every question has an answer and nothing needs routing. What learners write here is the only place they tell you the training is unclear, so it is worth checking back.') +
+        '</p></div>') +
+    /* The answered ones are not a second list to browse; they are things
+       you look up. Saying they exist is enough. */
+    (!searching && done.length
+      ? '<p class="qnote">'+plural(done.length, 'answered discussion')+' not listed. Search finds them.</p>'
+      : '') +
+  '</div>';
+}
+
+function renderThread(t) {
+  return '<button class="back-link" id="back">'+ic('back', 16)+' All discussions</button>' +
+    '<header class="page-header"><h1>'+esc(t.q)+'</h1>' +
+    '<p>'+esc(t.course)+', lesson '+t.lesson+'<span class="dot"> &middot; </span>asked by '+esc(t.by)+
+      ', '+esc(t.role)+' at '+esc(t.comm)+'<span class="dot"> &middot; </span>'+esc(ago(t.days))+'</p></header>' +
+    '<div class="stack-5">' +
+      (t.replies.length ? '' : '<div>' + callout('warning',
+        'No answer yet, ' + ago(t.days) + '. ' + (t.days >= 7
+          ? 'That is long enough that they have probably stopped waiting and asked a colleague instead.'
+          : 'Answer it, or if others have asked the same thing, fix the lesson instead.')) + '</div>') +
+      '<div class="card">' +
+        '<div class="post"><span class="avatar sm c3">'+esc(initials(t.by))+'</span>' +
+        '<span class="post-b"><span class="post-w">'+esc(t.by)+'</span>' +
+        '<span class="post-x">'+esc(t.q)+'</span><span class="post-t">'+esc(ago(t.days))+'</span></span></div>' +
+        t.replies.map(r => '<div class="post is-answer"><span class="avatar sm c6">'+esc(initials(r.by))+'</span>' +
+          '<span class="post-b"><span class="post-w">'+esc(r.by)+', '+esc(r.role)+'</span>' +
+          '<span class="post-x">'+esc(r.text)+'</span><span class="post-t">'+esc(ago(r.days))+'</span></span></div>').join('') +
+      '</div>' +
+      '<div class="card"><div class="field"><label class="field-label" for="reply">Your answer</label>' +
+        '<textarea class="textarea" id="reply" rows="3" placeholder="Answer in the words the person asking would use."></textarea>' +
+        '<span class="field-hint">Anyone taking this course sees it, so write it once for all of them.</span></div>' +
+        '<div class="ph-acts" style="margin-top:var(--space-4);">' +
+          '<button class="btn btn-surface" data-fix="'+t.course+'|'+t.lesson+'">'+ic('pencil', 16)+' Fix the lesson instead</button>' +
+          '<button class="btn btn-solid" data-reply="'+t.id+'">'+ic('send', 16)+' Post answer</button></div></div>' +
+    '</div>';
+}
+
+function render() {
+  const t = S.open ? THREADS.find(x => x.id === S.open) : null;
+  $('crumbs').innerHTML = t
+    ? '<a href="index.html">Home</a>'+CRUMB+'<a href="#" id="crumbAll">Discussions</a>'+CRUMB+'<span class="current">'+esc(t.course)+'</span>'
+    : '<a href="index.html">Home</a>'+CRUMB+'<span class="current">Discussions</span>';
+
+  if (t) { $('view').innerHTML = renderThread(t); return; }
+
+  const open = queue().filter(needsYou).length;
+  $('view').innerHTML =
+    '<header class="page-header ph-row"><div class="ph-text"><h1>Discussions</h1>' +
+      '<p>' + (open
+        ? plural(open, 'thing') + ' to deal with. What learners write here is the only place they tell you the training is unclear.'
+        : 'Nothing waiting. What learners write here is the only place they tell you the training is unclear.') +
+      '</p></div>' +
+      '<div class="ph-acts"><button class="btn btn-surface" id="newBtn">'+ic('plus', 16)+' Post an announcement</button></div></header>' +
+    renderQueue();
+}
+</script>
+
+<script>
+/* ==============================================================
+   Behaviour
+   ============================================================== */
+let qt;
+document.addEventListener('input', e => {
+  if (e.target.id === 'tq') { clearTimeout(qt);
+    qt = setTimeout(() => { S.q = e.target.value.trim(); render();
+      const f = $('tq'); if (f) { f.focus(); f.setSelectionRange(f.value.length, f.value.length); } }, 180); }
+});
+
+document.addEventListener('click', e => {
+  const t = e.target;
+  if (t.closest('#clearQ')) { S.q = ''; return render(); }
+
+  const op = t.closest('[data-open]');
+  if (op) { S.open = +op.dataset.open; window.scrollTo(0, 0); return render(); }
+  if (t.closest('#back') || t.closest('#crumbAll')) { S.open = null; return render(); }
+
+  const fix = t.closest('[data-fix]');
+  if (fix) { const [c, l] = fix.dataset.fix.split('|');
+    toast('Opening ' + c + ', lesson ' + l + '.',
+      'The fix for a question several people asked is in the lesson, not in a reply. Not wired up in this prototype.');
+    return; }
+
+  const pin = t.closest('[data-pin]');
+  /* Match the topic too. Filtering on course and lesson alone swept up
+     every other post on that lesson, including the one saying a
+     two-person transfer is impossible at night, which needs a named
+     person and not a stock answer. */
+  if (pin) { const [c, l, topic] = pin.dataset.pin.split('|');
+    const set = THREADS.filter(x => x.course === c && x.lesson === +l && x.topic === topic && !x.replies.length);
+    set.forEach(x => x.replies.push({ by:'Sumit Awinash', role:'Administrator',
+      text:'Answered for everyone on this lesson.', days:0 }));
+    toast(plural(set.length, 'question') + ' answered at once.',
+      'The same answer is pinned to ' + c + ', lesson ' + l + ', so the next person to ask sees it before they type.');
+    return render(); }
+
+  const rt = t.closest('[data-route]');
+  if (rt) { const th = THREADS.find(x => x.id === +rt.dataset.route);
+    const r = ROUTE.find(x => x.topic === th.topic);
+    toast('Sent to ' + r.to + '.', 'With the post, who wrote it and which community they are at. It stays here too, so nobody thinks it vanished.');
+    return; }
+
+  const rp = t.closest('[data-reply]');
+  if (rp) { const th = THREADS.find(x => x.id === +rp.dataset.reply);
+    const text = (($('reply') || {}).value || '').trim();
+    if (!text) { toast('Write something first.'); return; }
+    th.replies.push({ by:'Sumit Awinash', role:'Administrator', text:text, days:0 });
+    toast('Answered.', 'Visible to everyone taking ' + th.course + '.');
+    return render(); }
+
+  if (t.closest('#newBtn')) return toast('Announcements',
+    'A post from you, pinned to the top of a course, that nobody has to ask a question to see. Not wired up in this prototype.');
+});
+
+$('themeBtn').addEventListener('click', () => {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+  $('themeBtn').setAttribute('aria-label', dark ? 'Switch to dark theme' : 'Switch to light theme');
+});
+
+render();
+
+const viewAsBtn = document.getElementById('viewAsBtn');
+if (viewAsBtn) {
+  const menu = document.getElementById('viewAs');
+  viewAsBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = !menu.hidden;
+    menu.hidden = open;
+    viewAsBtn.setAttribute('aria-expanded', String(!open));
+  });
+  document.addEventListener('click', () => {
+    if (!menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+}
+
+/* Collapsing the rail is shell behaviour, so every page does it. It was
+   markup on twenty pages and wired on one, and standardising the nav dropped
+   the id the one handler depended on. */
+const railBtn = document.getElementById('railBtn');
+if (railBtn) {
+  railBtn.addEventListener('click', () => {
+    const shell = document.querySelector('.app-shell');
+    const side  = document.querySelector('.app-sidebar');
+    const on = shell.style.gridTemplateColumns === '0px 1fr';
+    shell.style.gridTemplateColumns = on ? '256px 1fr' : '0px 1fr';
+    if (side) side.style.visibility = on ? 'visible' : 'hidden';
+    railBtn.setAttribute('aria-label', on ? 'Collapse navigation' : 'Expand navigation');
+  });
+}
+</script>
+</body>
+</html>

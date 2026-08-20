@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<!--
+  skyLearn - My record, Radix flavour.
+  Was "My Progress", which repeated five of the dashboard's seven panels. This
+  is the one thing it could uniquely be: the dated, printable training record
+  a learner shows a surveyor, a new employer, or their own manager.
+  See LEARNER-IA.md.
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>skyLearn &middot; My learning</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../tokens.css?v=102" />
+<link rel="stylesheet" href="../dashboard.css?v=102" />
+<style>
+  /* A document, so it is laid out like one and prints like one. */
+  .rec { max-width: 900px; }
+  .rec-h { display: flex; align-items: flex-start; gap: var(--space-5); flex-wrap: wrap;
+    padding-bottom: var(--space-5); border-bottom: 2px solid var(--fg-high); }
+  .rec-t { flex: 1; min-width: 0; }
+  .rec-t h1 { font-size: var(--fs-7); line-height: var(--lh-7); font-weight: var(--weight-bold); color: var(--fg-high); }
+  .rec-t p { margin-top: var(--space-2); font-size: var(--fs-3); color: var(--fg-low); }
+  .rec-stamp { font-size: var(--fs-1); color: var(--fg-subtle); line-height: 1.7; text-align: right; }
+  .rec-a { display: flex; gap: var(--space-3); margin-top: var(--space-4); }
+
+  .rec-s { margin-top: var(--space-7); }
+  .rec-s h2 { font-size: var(--fs-1); font-weight: var(--weight-semibold); letter-spacing: .1em;
+    text-transform: uppercase; color: var(--fg-subtle); padding-bottom: var(--space-3);
+    border-bottom: var(--stroke-thin) solid var(--border-subtle); margin-bottom: var(--space-4); }
+  .rec-sum { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--space-5); margin-bottom: var(--space-2); }
+  .rec-f b { display: block; font-size: var(--fs-6); line-height: 1; font-weight: var(--weight-bold);
+    color: var(--fg-high); font-variant-numeric: tabular-nums; }
+  .rec-f b.is-bad { color: var(--danger-text); }
+  .rec-f span { display: block; margin-top: var(--space-2); font-size: var(--fs-2); color: var(--fg-low); }
+
+  .rt { width: 100%; border-collapse: collapse; }
+  .rt th { text-align: left; font-size: var(--fs-1); font-weight: var(--weight-semibold);
+    letter-spacing: .04em; text-transform: uppercase; color: var(--fg-subtle);
+    padding: 0 var(--space-4) var(--space-3) 0; }
+  .rt th:last-child, .rt td:last-child { text-align: right; padding-right: 0; }
+  .rt td { padding: var(--space-3) var(--space-4) var(--space-3) 0; font-size: var(--fs-2);
+    color: var(--fg-high); border-top: var(--stroke-thin) solid var(--border-subtle); vertical-align: top; }
+  .rt td.dim { color: var(--fg-low); }
+  .rt td.bad { color: var(--danger-text); font-weight: var(--weight-medium); }
+  .rt td.warn { color: var(--warning-text); font-weight: var(--weight-medium); }
+  .rt-n { font-weight: var(--weight-medium); }
+
+  .rec-none { padding: var(--space-5) 0; font-size: var(--fs-2); color: var(--fg-low); }
+  .rec-foot { margin-top: var(--space-8); padding-top: var(--space-4);
+    border-top: var(--stroke-thin) solid var(--border-subtle);
+    font-size: var(--fs-1); color: var(--fg-subtle); line-height: 1.7; }
+
+  @media print {
+    .app-header, .app-sidebar, .breadcrumbs, .rec-a { display: none !important; }
+    .app-shell { display: block; }
+    .rec { max-width: none; }
+  }
+
+  .toast-stack { position: fixed; left: 50%; bottom: var(--space-6); transform: translateX(-50%);
+    z-index: 80; display: flex; flex-direction: column; gap: var(--space-3); }
+  .toast { min-width: 280px; max-width: 460px; padding: var(--space-4) var(--space-5);
+    border-radius: var(--radius-3); background: var(--gray-12); color: var(--gray-1); box-shadow: var(--shadow-4); }
+  .toast-title { font-size: var(--fs-2); font-weight: var(--weight-semibold); }
+  .toast-body { margin-top: var(--space-1); font-size: var(--fs-2); opacity: .82; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header is-dark">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect width="24" height="24" rx="6" fill="var(--accent-9)"/><text x="12" y="16.5" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-contrast)">S</text></svg>
+      <span>skyLearn</span>
+    </div>
+    <div class="search hdr-search">
+      <span class="search-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+      <label class="sr-only" for="q">Search</label>
+      <input class="input" id="q" type="search" placeholder="Search courses and learners" autocomplete="off" />
+    </div>
+    <div class="header-right">
+      <span class="presence"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg><span><strong class="pt-num">4</strong> points</span></span>
+      <button class="icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="ic-badge">3</span></button>
+      <button class="icon-btn" id="themeBtn" aria-label="Switch to dark theme"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+      <span class="divider-v"></span>
+      <span class="header-wrap">
+        <button class="header-user" id="viewAsBtn" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar c3" id="meAv">DW</span>
+          <span class="hu-id"><span class="hu-name" id="meName">Dana Whitfield</span><span class="hu-role" id="meRole">CNA, Lakeside Manor</span></span>
+        </button>
+        <div class="view-as" id="viewAs" role="menu" hidden>
+          <div class="view-as-t">View as</div>
+          <a href="index.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Administrator<span>Everything, across all six communities</span></span></a>
+          <a href="teach.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Instructor<span>Your courses, learners and sessions</span></span></a>
+          <a href="learn.html" role="menuitem" aria-current="true"><span class="vr"></span>
+            <span class="vw">Learner<span>What you have to do, and by when</span></span></a>
+          <div class="view-as-t" style="margin-top:var(--space-2);">Which learner</div>
+          <div id="whoList"></div>
+          <div class="vs">
+            <a href="signin.html" role="menuitem">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
+              Sign out</a>
+          </div>
+        </div>
+      </span>
+    </div>
+  </header>
+
+  <nav class="app-sidebar" aria-label="Primary">
+    <button class="sidebar-toggle" id="railBtn" aria-label="Collapse navigation"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>
+    <a class="nav-item" href="learn.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg><span class="nav-label">Dashboard</span></a>
+    <a class="nav-item" href="my-courses.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg><span class="nav-label">My courses</span></a>
+    <a class="nav-item" href="catalog.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg><span class="nav-label">Catalogue</span></a>
+    <a class="nav-item" href="my-certs.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg><span class="nav-label">Certificates</span></a>
+    <a class="nav-item" href="my-badges.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0z"/></svg><span class="nav-label">Badges</span></a>
+    <a class="nav-item is-active" href="my-record.html" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M9 13h6"/><path d="M9 17h3"/></svg><span class="nav-label">My record</span></a>
+    <a class="nav-item" href="my-sessions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg><span class="nav-label">Sessions</span></a>
+    <a class="nav-item" href="coach.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg><span class="nav-label">Ask the coach</span></a>
+    <a class="nav-item nav-tail" href="#"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="nav-label">Help and support</span></a>
+  </nav>
+
+  <main class="app-content">
+    <div class="breadcrumbs"><a href="learn.html">Home</a><span class="sep"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span><span class="current">My record</span></div>
+    <div class="content-body">
+      <div id="view"></div>
+    </div>
+  </main>
+</div>
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+<script>
+const RAW = `Dana Whitfield|CNA|Lakeside Manor|12|9|2|1|1|72/68/61|1
+Rosalind Vega|CNA|Lakeside Manor|12|11|0|0|1|81/77/70|2
+Marcus Ellery|Med Tech|Northgate|14|11|1|2|0|79/74/68|1
+Aurelie Bonnet|CNA|Northgate|12|10|0|1|1|76/71/64|4
+Piotr Zawadzki|Caregiver|Northgate|10|10|0|0|0|85/80/74|1
+Desmond Achebe|Caregiver|Lakeside Manor|10|8|1|0|0|74/70/63|3
+Imani Sowande|LPN|Willow Creek|15|15|0|1|0|90/86/79|1
+Yusuf Demirci|Caregiver|Willow Creek|10|9|1|0|0|77/73/66|2
+Theo Brannigan|Caregiver|Sunrise Terrace|10|4|1|0|0|-|1
+Fenella Wick|LPN|Sunrise Terrace|15|7|1|0|0|-|1
+Nadia Kerr|CNA|Harborview|12|6|0|0|0|-|2
+Oren Kaplan|Med Tech|Harborview|14|14|0|0|0|88/83/77|1
+Callum Reyes|Med Tech|Cedar Ridge|14|13|0|1|0|86/81/75|1
+Greta Lindqvist|CNA|Cedar Ridge|12|12|0|0|0|89/85/78|1
+Ines Halvorsen|CNA|Cedar Ridge|12|12|0|0|0|91/87/80|2
+Tomas Ruiz|Caregiver|Cedar Ridge|10|10|0|0|0|84/79/73|3
+Priya Raghavan|LPN|Cedar Ridge|15|13|0|0|0|87/82/76|46
+Bea Ferreira|CNA|Harborview|12|12|0|1|0|83/78/72|1
+Idris Mensah|Caregiver|Harborview|10|9|0|0|1|75/70/64|5
+Lena Vogt|CNA|Harborview|12|7|0|0|0|70/66/59|203
+Sofia Grandi|LPN|Willow Creek|15|14|0|0|0|88/84/77|1
+Hamid Nazari|Caregiver|Willow Creek|10|10|0|0|0|82/78/71|2
+Ruth Okonkwo|CNA|Willow Creek|12|12|0|0|0|90/86/80|1
+Malik Osei|Med Tech|Willow Creek|14|12|1|0|0|78/74/67|4
+Clara Bianchi|CNA|Sunrise Terrace|12|11|0|1|0|80/76/69|1
+Jonas Aalto|Caregiver|Sunrise Terrace|10|10|0|0|0|86/82/75|2
+Mira Solberg|LPN|Sunrise Terrace|15|12|0|0|0|84/80/73|38
+Ade Balogun|CNA|Northgate|12|10|1|0|0|76/72/65|3
+Freya Lindholm|Caregiver|Northgate|10|5|0|0|0|-|1
+Rafael Duarte|Med Tech|Northgate|14|13|0|0|0|85/81/74|1
+Zainab Farah|CNA|Lakeside Manor|12|6|0|0|0|-|2
+Otto Reinhardt|Caregiver|Lakeside Manor|10|9|1|0|0|73/69/62|6
+Silvia Marchetti|LPN|Lakeside Manor|15|12|1|1|0|81/77/70|2
+Kwame Boateng|CNA|Lakeside Manor|12|5|0|0|0|68/64/57|187
+Elena Petrova|CNA|Cedar Ridge|12|12|0|0|0|92/88/81|1
+Noor Haddad|Caregiver|Cedar Ridge|10|10|0|0|0|87/83/76|1
+Bram de Vries|Med Tech|Harborview|14|14|0|0|0|89/85/78|2
+Aiko Tanaka|CNA|Harborview|12|11|0|1|0|82/78/71|1
+Miguel Santos|Caregiver|Willow Creek|10|10|0|0|0|85/80/74|3
+Hana Novak|CNA|Sunrise Terrace|12|10|0|0|0|79/75/68|1
+Grace Mbeki|Housekeeping|Cedar Ridge|4|4|0|0|0|-|2
+Viktor Novikov|Housekeeping|Northgate|4|3|0|0|0|-|5
+Tara Sullivan|Administrator|Cedar Ridge|6|6|0|0|0|88/84/77|1
+Owen Fitzgerald|Administrator|Harborview|6|5|0|0|0|86/82/75|2`;
+
+const PEOPLE = RAW.split('\n').map(function (l, i) {
+  const f = l.split('|');
+  return { i:i, n:f[0], first:f[0].split(' ')[0], role:f[1], comm:f[2],
+           req:+f[3], done:+f[4], od:+f[5], exg:+f[6], exp:+f[7],
+           comp: f[8] === '-' ? null : f[8].split('/').map(Number), seen:+f[9] };
+});
+function stateOf(p) {
+  if (p.exp)          return 'lapsed';
+  if (p.od)           return 'late';
+  if (p.done < p.req) return 'todo';
+  if (p.exg)          return 'expiring';
+  return 'clear';
+}
+const STATES = [
+  { k:'lapsed', l:'Certificate lapsed' }, { k:'late', l:'Something late' },
+  { k:'todo', l:'Courses to do' }, { k:'expiring', l:'Certificate expiring' },
+  { k:'clear', l:'Nothing outstanding' }
+];
+const WHO = {};
+STATES.forEach(s => { WHO[s.k] = PEOPLE.filter(x => stateOf(x) === s.k)[0]; });
+
+const CATALOG = [
+  { n:'Safe Resident Handling', mins:35, cert:true, renew:12, hue:1,
+    ls:['Before you move anyone','Choosing the right aid','Two-person transfers','When to stop'] },
+  { n:'Preventing Falls in Senior Living', mins:22, hue:2,
+    ls:['Why people fall','The walk-round','Footwear and floors','After a fall'] },
+  { n:'Abuse Prevention', mins:18, cert:true, renew:24, hue:3,
+    ls:['What counts as abuse','Spotting the signs','Reporting it'] },
+  { n:'Infection Prevention', mins:24, cert:true, renew:12, hue:4,
+    ls:['Hand hygiene','Gloves and aprons','Isolation rooms','Cleaning as you go'] },
+  { n:'Resident Rights', mins:25, hue:5,
+    ls:['Dignity and choice','Privacy','Complaints','Advocacy'] },
+  { n:'Nutrition and Hydration', mins:15, hue:6,
+    ls:['Spotting dehydration','Modified diets','Mealtime help'] },
+  { n:'Skin Integrity', mins:20, hue:7,
+    ls:['Pressure areas','Repositioning','What to report'] },
+  { n:'Dementia Care Essentials', mins:28, hue:8,
+    ls:['What is happening','Communication','Sundowning','Families'] },
+  { n:'Emergency Preparedness', mins:26, hue:1,
+    ls:['Fire','Evacuation','Missing resident','After the event'] },
+  { n:'HIPAA and Data Security', mins:19, cert:true, renew:12, hue:2,
+    ls:['What is protected','Talking about residents','When it goes wrong'] },
+  { n:'Communication', mins:16, hue:3,
+    ls:['Handover','Difficult conversations','Writing it down'] },
+  { n:'CPR and First Aid', mins:40, cert:true, renew:24, hue:4,
+    ls:['Recognising arrest','Compressions','The defibrillator','Choking'] }
+,
+  { n:'Medication Administration', mins:32, cert:true, renew:12, hue:5,
+    ls:['The five rights','Controlled drugs','Refusals','Recording it'] },
+  { n:'Wound Care Basics', mins:23, hue:6,
+    ls:['What you may do','Spotting infection','Reporting'] },
+  { n:'Delegation and Supervision', mins:21, hue:7,
+    ls:['What can be delegated','Checking back','Accountability'] },
+  { n:'End of Life Care', mins:30, hue:8,
+    ls:['Recognising the change','Comfort','Families','Afterwards'] }
+];
+
+/* Every course this person is on: the ones finished, and the ones not.
+   Stride 5 is coprime with the twelve courses, so nobody is assigned the
+   same course twice -- stride 3 shares a factor and did exactly that. */
+function coursesFor(p) {
+  const out = [];
+  for (let k = 0; k < p.req; k++) {
+    const c = CATALOG[(p.i * 5 + k * 5) % CATALOG.length];
+    const finished = k >= (p.req - p.done) ? false : true;   /* placeholder, set below */
+    out.push({ n:c.n, mins:c.mins, cert:!!c.cert, hue:c.hue, ls:c.ls, k:k });
+  }
+  /* The first p.done are complete; the rest are outstanding, and the first
+     p.od of those are late. Derived from the roster so the counts can never
+     drift from what every other screen shows. */
+  const need = p.req - p.done;
+  return out.map(function (c, k) {
+    if (k >= need) {
+      return Object.assign(c, { state:'done', at:c.ls.length, left:0,
+        on:'2026-0' + (1 + (k % 7)) + '-' + (10 + ((p.i + k) % 18)) });
+    }
+    const at = (p.i + k * 3) % (c.ls.length + 1);
+    const isLate = k < p.od;
+    return Object.assign(c, {
+      state: at > 0 ? 'doing' : 'new',
+      at: at >= c.ls.length ? c.ls.length - 1 : at,
+      left: Math.max(4, Math.round(c.mins * (1 - at / (c.ls.length + 1)))),
+      late: isLate ? 2 + ((p.i + k) % 19) : 0,
+      due:  isLate ? 0 : 6 + ((p.i + k * 7) % 26)
+    });
+  });
+}
+
+
+/* Category and a line that says what you will be able to DO. The live cards
+   all opened "This course provides essential..." and then ran out of room,
+   so the one line each card had was spent on boilerplate. */
+const ABOUT = {
+  'Safe Resident Handling':      ['Safety & Health', 'Move someone safely on your own equipment, and know when not to.'],
+  'Preventing Falls in Senior Living': ['Safety & Health', 'Spot the six things that cause most falls on a shift.'],
+  'Abuse Prevention':            ['Compliance', 'Recognise it, and know exactly who to tell and when.'],
+  'Infection Prevention':        ['Safety & Health', 'Gel or soap, gloves between tasks, and what to do at an isolation door.'],
+  'Resident Rights':             ['Compliance', 'Dignity, choice and privacy, and what to do when they conflict.'],
+  'Nutrition and Hydration':     ['Professional Development', 'Spot dehydration early and help at mealtimes without taking over.'],
+  'Skin Integrity':              ['Professional Development', 'Find pressure damage at stage one, when it is still reversible.'],
+  'Dementia Care Essentials':    ['Professional Development', 'Read behaviour as communication rather than as a problem.'],
+  'Emergency Preparedness':      ['Safety & Health', 'Your part in a fire, an evacuation and a missing resident.'],
+  'HIPAA and Data Security':     ['Compliance', 'What counts as protected information and what to do after a slip.'],
+  'Communication':               ['Onboarding', 'Hand over clearly, and write it down so the next shift can act on it.'],
+  'CPR and First Aid':           ['Compliance', 'Recognise arrest, do compressions, use the defibrillator.'],
+  'Medication Administration':   ['Compliance', 'The five rights, refusals, and how to record what happened.'],
+  'Wound Care Basics':           ['Professional Development', 'What you may do, what you may not, and when to escalate.'],
+  'Delegation and Supervision':  ['Onboarding', 'What can be handed on, and what stays yours afterwards.'],
+  'End of Life Care':            ['General', 'Recognise the change, keep someone comfortable, support the family.']
+};
+const CATS = ['Compliance','Safety & Health','Professional Development','Onboarding','General'];
+
+/* Every course in the catalogue, with what it is to THIS learner. */
+function catalogFor(p) {
+  const mine = {};
+  coursesFor(p).forEach(c => { mine[c.n] = c; });
+  return CATALOG.map(function (c) {
+    const m = mine[c.n];
+    const about = ABOUT[c.n] || ['General', ''];
+    return { n:c.n, mins:c.mins, hue:c.hue, lessons:c.ls.length, cert:!!c.cert,
+             cat:about[0], about:about[1],
+             state: !m ? 'open' : m.state === 'done' ? 'done' : m.state === 'new' ? 'req' : 'doing',
+             at: m ? m.at : 0, late: m ? m.late : 0 };
+  });
+}
+
+const $   = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const IC = {
+  play:'<path d="M6 3.5v17a1 1 0 0 0 1.5.87l14-8.5a1 1 0 0 0 0-1.74l-14-8.5A1 1 0 0 0 6 3.5z" fill="currentColor" stroke="none"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>',
+  clock:'<path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/>',
+  book:'<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
+  award:'<path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/>',
+  search:'<path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/>'
+};
+const ic = (n, s) => '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" fill="none" stroke="currentColor" ' +
+  'stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+IC[n]+'</svg>';
+function toast(a, b) {
+  const el = document.createElement('div'); el.className = 'toast';
+  el.innerHTML = '<div><div class="toast-title">'+esc(a)+'</div>' +
+    (b ? '<div class="toast-body">'+esc(b)+'</div>' : '')+'</div>';
+  $('toasts').appendChild(el); setTimeout(() => el.remove(), 5000);
+}
+
+/* One rule for "which certificate has lapsed", shared by the dashboard and
+   the certificates screen. They computed it independently and disagreed: the
+   dashboard named a course the learner had never completed, which cannot have
+   issued her a certificate in the first place. A certificate you hold comes
+   from a course you finished. */
+function heldCerts(p) {
+  return coursesFor(p).filter(c => c.cert && c.state === 'done');
+}
+function lapsedCert(p) {
+  if (!p.exp) return null;
+  const held = heldCerts(p);
+  return held.length ? held[0] : null;
+}
+
+/* Which certificates this person actually holds. A certificate exists when
+   the course that issues it is complete; it lapses on its own cycle, and the
+   roster already says how many of theirs are lapsed or lapsing. */
+function certsFor(p) {
+  const mine = coursesFor(p);
+  const issuing = mine.filter(c => c.cert);
+  const done = heldCerts(p);
+  const todo = issuing.filter(c => c.state !== 'done');
+
+  /* The roster is the truth: p.exp are lapsed and p.exg lapse within 30 days.
+     Assign those states to the oldest certificates first, so the counts here
+     can never disagree with the learner record or the dashboard. */
+  const held = done.map(function (c, k) {
+    const cat = CATALOG.filter(x => x.n === c.n)[0];
+    const months = cat.renew || 12;
+    return { n:c.n, months:months, hue:c.hue, k:k,
+             issued: '1' + (k % 2 ? '2' : '4') + ' ' +
+               ['January','March','April','June','August','September','November'][k % 7] + ' 202' + (4 + (k % 2)) };
+  });
+  held.forEach(function (h, k) {
+    if (k < p.exp)                 { h.state = 'lapsed'; h.days = 8 + (p.i + k) % 90; }
+    else if (k < p.exp + p.exg)    { h.state = 'soon';   h.days = 3 + (p.i + k) % 28; }
+    else                           { h.state = 'ok';     h.days = 90 + (p.i * 7 + k * 31) % 400; }
+  });
+  return { held: held, todo: todo };
+}
+
+
+/* ==============================================================
+   Badges you can actually get.
+
+   The live screen listed eight tiers per category, topping out at
+   "complete 128 courses" and "pass 256 tests" against a catalogue
+   of sixteen -- and an entire Assignment category for a unit type
+   the product does not have. Fifteen of the twenty-four visible
+   badges were unearnable by anyone, ever.
+
+   Every threshold below is checked against what exists at load, and
+   anything unreachable is dropped rather than displayed greyed out.
+   A locked badge is an invitation; an impossible one is a lie.
+   ============================================================== */
+const CEILING = {
+  courses: CATALOG.length,                       /* 16 */
+  mylist:  1,
+  certs:   CATALOG.filter(c => c.cert).length,   /* 6  */
+  checks:  3                                     /* three competency domains */
+};
+
+const GROUPS = [
+  /* The top tier is relative, not absolute. "Complete 16 courses" is reachable
+     in principle -- there are sixteen -- and unreachable in practice, because
+     nobody is assigned more than fifteen. A badge for finishing YOUR list is
+     both meaningful and gettable by everyone. */
+  { k:'courses', l:'Training finished', unit:'course',
+    tiers:[1, 4, 8], names:['First one done','Four done','Eight done'] },
+  { k:'mylist', l:'Your own list', unit:'',
+    tiers:[1], names:['Everything on your list'],
+    hows:['Finish every course you have been assigned'] },
+  { k:'certs', l:'Certificates held', unit:'certificate',
+    tiers:[1, 3, 6], names:['First certificate','Three held','Every certificate'] },
+  { k:'checks', l:'Competency', unit:'domain',
+    tiers:[1, 3], names:['Passed a check','All three domains'] },
+  { k:'ontime', l:'On time', unit:'',
+    tiers:[1, 1, 1], names:['Nothing late','Renewed before it lapsed','A clear year'],
+    hows:['Have nothing past its date','Renew a certificate before it runs out','Twelve months with nothing late'] }
+];
+
+/* Drop any tier the product cannot produce. */
+function liveGroups() {
+  return GROUPS.map(function (g) {
+    if (!CEILING[g.k]) return Object.assign({}, g, { tiers:[], names:[] });
+    if (g.k === 'ontime' || g.k === 'mylist') return g;
+    const keep = [];
+    g.tiers.forEach(function (t, i) { if (t <= CEILING[g.k]) keep.push(i); });
+    return Object.assign({}, g, {
+      tiers: keep.map(i => g.tiers[i]),
+      names: keep.map(i => g.names[i])
+    });
+  }).filter(g => g.tiers.length);
+}
+
+function scoreFor(p) {
+  const done = coursesFor(p).filter(c => c.state === 'done');
+  return {
+    courses: done.length,
+    mylist:  p.done >= p.req ? 1 : 0,
+    certs:   heldCerts(p).length,
+    checks:  p.comp ? p.comp.filter(s => s >= 75).length : 0,
+    ontime:  [p.od + p.exp === 0 ? 1 : 0, p.exp === 0 ? 1 : 0, p.od + p.exp + p.exg === 0 ? 1 : 0]
+  };
+}
+
+
+const IC2 = {
+  down:'<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>',
+  print:'<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/>'
+};
+Object.assign(IC, IC2);
+
+const PRINTED = 'Wednesday 20 August 2026';
+const DOMAINS = ['Knowledge and compliance','Standards and communication','Judgment and people skills'];
+const PASS = 75;
+const S = { who:'lapsed' };
+</script>
+
+<script>
+const days = n => n === 1 ? '1 day' : n + ' days';
+
+/* Certificates, on the same rule as my-certs.html and the dashboard. */
+function certRows(p) {
+  const held = heldCerts(p);
+  return held.map(function (c, k) {
+    const cat = CATALOG.filter(x => x.n === c.n)[0];
+    const state = k < p.exp ? 'lapsed' : k < p.exp + p.exg ? 'soon' : 'ok';
+    return { n:c.n, months:cat.renew || 12, state:state,
+             days: state === 'lapsed' ? 8 + (p.i + k) % 90
+                 : state === 'soon'   ? 3 + (p.i + k) % 28
+                 : 90 + (p.i * 7 + k * 31) % 400,
+             issued: '1' + (k % 2 ? '2' : '4') + ' ' +
+               ['January','March','April','June','August','September','November'][k % 7] + ' 202' + (4 + (k % 2)) };
+  });
+}
+
+function render() {
+  const p = WHO[S.who];
+  const all = coursesFor(p);
+  const done = all.filter(c => c.state === 'done');
+  const open = all.filter(c => c.state !== 'done');
+  const late = open.filter(c => c.late);
+  const certs = certRows(p);
+  const lapsed = certs.filter(c => c.state === 'lapsed');
+  const hours = Math.round(done.reduce((s, c) => s + c.mins, 0) / 60 * 10) / 10;
+
+  $('view').innerHTML =
+    '<div class="rec">' +
+
+    '<div class="rec-h"><div class="rec-t">' +
+        '<h1>' + esc(p.n) + '</h1>' +
+        '<p>' + esc(p.role) + ', ' + esc(p.comm) + ' &middot; Training record</p>' +
+        '<div class="rec-a">' +
+          '<button class="btn btn-solid" data-pdf="1">' + ic('down', 16) + ' Download as PDF</button>' +
+          '<button class="btn btn-surface" data-print="1">' + ic('print', 16) + ' Print</button>' +
+        '</div>' +
+      '</div>' +
+      /* A record that leaves the screen loses the context of the screen, so it
+         says who it is about, who produced it and when, on the document. */
+      '<div class="rec-stamp">skyLearn, a Skypoint product<br />' +
+        'Generated ' + PRINTED + '<br />Covers required training only</div>' +
+    '</div>' +
+
+    '<div class="rec-s"><h2>Where this record stands</h2>' +
+      '<div class="rec-sum">' +
+        '<div class="rec-f"><b>' + done.length + ' of ' + p.req + '</b>' +
+          '<span>required courses complete</span></div>' +
+        '<div class="rec-f"><b>' + hours + '</b><span>hours of training</span></div>' +
+        '<div class="rec-f"><b class="' + (lapsed.length ? 'is-bad' : '') + '">' + certs.length + '</b>' +
+          '<span>certificates held' + (lapsed.length ? ', ' + lapsed.length + ' lapsed' : '') + '</span></div>' +
+        '<div class="rec-f"><b class="' + (late.length ? 'is-bad' : '') + '">' + late.length + '</b>' +
+          '<span>past its due date</span></div>' +
+      '</div></div>' +
+
+    '<div class="rec-s"><h2>Courses completed</h2>' +
+      (done.length
+        ? '<table class="rt"><thead><tr><th>Course</th><th>Lessons</th><th>Minutes</th><th>Completed</th></tr></thead>' +
+          '<tbody>' + done.map(c =>
+            '<tr><td class="rt-n">' + esc(c.n) + (c.cert ? ' &middot; certificate' : '') + '</td>' +
+            '<td class="dim">' + c.ls.length + '</td><td class="dim">' + c.mins + '</td>' +
+            '<td class="dim">' + esc(c.on) + '</td></tr>').join('') + '</tbody></table>'
+        : '<div class="rec-none">Nothing completed yet.</div>') + '</div>' +
+
+    '<div class="rec-s"><h2>Certificates</h2>' +
+      (certs.length
+        ? '<table class="rt"><thead><tr><th>Certificate</th><th>Issued</th><th>Renews</th><th>Status</th></tr></thead>' +
+          '<tbody>' + certs.map(c =>
+            '<tr><td class="rt-n">' + esc(c.n) + '</td><td class="dim">' + esc(c.issued) + '</td>' +
+            '<td class="dim">every ' + c.months + ' months</td>' +
+            '<td class="' + (c.state === 'lapsed' ? 'bad' : c.state === 'soon' ? 'warn' : 'dim') + '">' +
+              (c.state === 'lapsed' ? 'Lapsed ' + days(c.days) + ' ago'
+                : c.state === 'soon' ? 'Runs out in ' + days(c.days)
+                : 'Current for ' + days(c.days)) + '</td></tr>').join('') + '</tbody></table>'
+        : '<div class="rec-none">None held.</div>') + '</div>' +
+
+    '<div class="rec-s"><h2>Competency check</h2>' +
+      (p.comp
+        ? '<table class="rt"><thead><tr><th>Domain</th><th>Score</th><th>Threshold</th><th>Result</th></tr></thead>' +
+          '<tbody>' + DOMAINS.map((d, i) =>
+            '<tr><td class="rt-n">' + esc(d) + '</td><td class="dim">' + p.comp[i] + '</td>' +
+            '<td class="dim">' + PASS + '</td>' +
+            '<td class="' + (p.comp[i] < PASS ? 'bad' : 'dim') + '">' +
+              (p.comp[i] < PASS ? 'Below threshold' : 'Passed') + '</td></tr>').join('') + '</tbody></table>'
+        : '<div class="rec-none">Not assessed. That is not the same as a score of zero.</div>') + '</div>' +
+
+    '<div class="rec-s"><h2>Still outstanding</h2>' +
+      (open.length
+        ? '<table class="rt"><thead><tr><th>Course</th><th>Progress</th><th>Minutes left</th><th>Due</th></tr></thead>' +
+          '<tbody>' + open.map(c =>
+            '<tr><td class="rt-n">' + esc(c.n) + '</td>' +
+            '<td class="dim">lesson ' + (c.at + 1) + ' of ' + c.ls.length + '</td>' +
+            '<td class="dim">' + c.left + '</td>' +
+            '<td class="' + (c.late ? 'bad' : 'dim') + '">' +
+              (c.late ? days(c.late) + ' late' : 'in ' + days(c.due)) + '</td></tr>').join('') + '</tbody></table>'
+        : '<div class="rec-none">Nothing outstanding.</div>') + '</div>' +
+
+    '<div class="rec-foot">This record covers required training only and excludes optional continuing ' +
+      'education. Hours are the published length of each course, not time spent. ' +
+      'Certificate status is as at ' + PRINTED + '.</div>' +
+    '</div>';
+
+  wire();
+}
+
+function wire() {
+  const v = $('view');
+  v.querySelectorAll('[data-pdf]').forEach(b => b.onclick = () =>
+    toast('Preparing the PDF', 'Dated, with the name and role on every page, ready for a survey binder.'));
+  v.querySelectorAll('[data-print]').forEach(b => b.onclick = () =>
+    toast('Printing', 'The nav and buttons are dropped, so what prints is the record.'));
+}
+
+function renderWho() {
+  const list = $('whoList');
+  if (!list) return;
+  list.innerHTML = STATES.map(function (s) {
+    const p = WHO[s.k];
+    return '<a href="#" role="menuitem" data-who="' + s.k + '" aria-current="' + (s.k === S.who) + '">' +
+      '<span class="vr"></span><span class="vw">' + esc(p.n) + '<span>' + esc(s.l.toLowerCase()) + '</span></span></a>';
+  }).join('');
+  list.querySelectorAll('[data-who]').forEach(a => a.onclick = e => {
+    e.preventDefault(); e.stopPropagation();
+    S.who = a.dataset.who;
+    $('viewAs').hidden = true;
+    $('viewAsBtn').setAttribute('aria-expanded', 'false');
+    renderMe(); renderWho(); render();
+  });
+}
+function renderMe() {
+  const p = WHO[S.who];
+  $('meAv').textContent   = p.n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  $('meName').textContent = p.n;
+  $('meRole').textContent = p.role + ', ' + p.comm;
+}
+
+const viewAsBtn = document.getElementById('viewAsBtn');
+if (viewAsBtn) {
+  const menu = document.getElementById('viewAs');
+  viewAsBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = !menu.hidden;
+    menu.hidden = open;
+    viewAsBtn.setAttribute('aria-expanded', String(!open));
+  });
+  document.addEventListener('click', () => {
+    if (!menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+}
+const railBtn = document.getElementById('railBtn');
+if (railBtn) {
+  railBtn.addEventListener('click', () => {
+    const shell = document.querySelector('.app-shell');
+    const side  = document.querySelector('.app-sidebar');
+    const on = shell.style.gridTemplateColumns === '0px 1fr';
+    shell.style.gridTemplateColumns = on ? '256px 1fr' : '0px 1fr';
+    if (side) side.style.visibility = on ? 'visible' : 'hidden';
+    railBtn.setAttribute('aria-label', on ? 'Collapse navigation' : 'Expand navigation');
+  });
+}
+$('themeBtn').addEventListener('click', () => {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+});
+
+renderMe(); renderWho(); render();
+</script>
+</body>
+</html>

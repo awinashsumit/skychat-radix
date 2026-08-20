@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<!--
+  skyLearn - Home > Dashboard, Radix flavour redesign.
+  Shell + components from the shared Radix-Design System (../tokens.css / ../dashboard.css).
+  Only the primitives this screen genuinely needs are defined locally, below, and every
+  one of them is built from tokens. See DASHBOARD-IA.md for why the screen is shaped this
+  way and UI-CHECKLIST.md for the contract it is checked against.
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>skyLearn &middot; Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../tokens.css?v=102" />
+<link rel="stylesheet" href="../dashboard.css?v=102" />
+<!-- classic, not defer: the inline render() below calls Chart during parsing -->
+<script src="../charts.js?v=102"></script>
+<style>
+  /* ==========================================================
+     skyLearn dashboard: page-local primitives.
+     Nothing here introduces a colour, radius, size or shadow
+     that is not already a token. Grouped by the block it serves.
+     ========================================================== */
+
+  /* --- Grid rhythm -------------------------------------------------
+     The DS ships .kpi-row / .split-2 at a --space-4 (16px) gap while
+     .card padding is --space-5 (24px), which inverts the internal <=
+     external rule. Lift both gaps to 24px so padding == gutter. */
+  .kpi-row, .split-2, .split-even { gap: var(--space-5); }
+  /* Cards in a row share one height. The DS default (align-items:start) leaves
+     the shorter card floating beside a hole; stretching turns that hole into
+     card padding, which is what reads as a considered grid. */
+  .split-2, .split-even { align-items: stretch; }
+
+  /* Card that carries an edge-to-edge control strip instead of content */
+  .card.is-flush { padding: 0; }
+
+  /* --- KPI delta ---------------------------------------------------
+     Colour encodes GOOD or BAD, the arrow encodes DIRECTION, and the
+     two are allowed to disagree: 14 fewer overdue learners is a down
+     arrow and a green delta. The DS .is-up/.is-down names direction,
+     so it would force them to agree. */
+  .sc-delta.is-good { color: var(--success-text); }
+  .sc-delta.is-bad  { color: var(--danger-text); }
+  .sc-delta svg { width: 14px; height: 14px; flex: 0 0 auto; }
+  /* Reserve two lines for the label so all four values sit on one baseline
+     however long the label runs. */
+  .stat-card .sc-label { min-height: calc(var(--lh-2) * 2); }
+  .stat-card .sc-value { margin-top: var(--space-1); }
+  .stat-card .sc-spark { margin-top: var(--space-3); height: 40px; }
+  .stat-card .sc-spark svg { width: 100%; height: 100%; display: block; }
+  .stat-card .sc-foot { margin-top: auto; padding-top: var(--space-3); font-size: var(--fs-1); color: var(--fg-low); }
+
+  /* --- Scope menu ---------------------------------------------------- */
+  .scope-menu { position: fixed; z-index: 1200; width: 292px; }
+  .scope-menu .list-item { justify-content: flex-start; }
+  .scope-menu .li-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .scope-menu .li-meta { flex: 0 0 auto; font-size: var(--fs-1); color: var(--fg-low); font-variant-numeric: tabular-nums; }
+  .scope-menu .list-item:hover .li-meta { color: var(--accent-contrast); }
+  /* opacity, not visibility: a hidden ancestor cannot override visibility */
+  .scope-menu .list-check { opacity: 0; }
+  .scope-menu .list-item.is-selected .list-check { opacity: 1; }
+  .scope-menu .list-item.is-header { margin-top: var(--space-1); }
+
+  /* --- Needs attention: exception rows that filter the worklist ---- */
+  .attn-item {
+    display: flex; align-items: center; gap: var(--space-3);
+    width: 100%; text-align: left; padding: var(--space-3) var(--space-2);
+    background: transparent; border: 0; border-radius: var(--radius-3);
+    font-family: var(--font-base); cursor: pointer;
+    transition: background-color .12s ease-out;
+  }
+  .attn-item + .attn-item { border-top: var(--stroke-thin) solid var(--border-subtle); }
+  .attn-item:hover { background: var(--gray-3); }
+  .attn-item[aria-pressed="true"] { background: var(--row-accent); }
+  .attn-item:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
+  .attn-ic {
+    width: 32px; height: 32px; border-radius: var(--radius-3); flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .attn-item.is-danger  .attn-ic { background: var(--danger-bg);  color: var(--danger-solid); }
+  .attn-item.is-warning .attn-ic { background: var(--warning-bg); color: var(--warning-solid); }
+  .attn-item.is-info    .attn-ic { background: var(--info-bg);    color: var(--info-solid); }
+  /* Same tile at notification size, with no severity of its own */
+  .attn-ic.is-plain { width: 28px; height: 28px; background: var(--gray-3); color: var(--fg-low); }
+  .attn-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }  /* §14 stacked label */
+  .attn-title { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+  .attn-sub { font-size: var(--fs-1); color: var(--fg-low); margin-top: 1px; }
+  /* The review row navigates instead of filtering, so it is an <a>. Reset the
+     link defaults and give it a chevron, which is the cue for going somewhere. */
+  a.attn-item { text-decoration: none; color: inherit; }
+  .attn-chev { flex: 0 0 auto; display: inline-flex; color: var(--fg-subtle); margin-left: var(--space-2); }
+  a.attn-item:hover .attn-chev { color: var(--fg-low); }
+
+  .attn-count {
+    flex: 0 0 auto; font-size: var(--fs-5); line-height: 1;
+    font-weight: var(--weight-bold); color: var(--fg-high); font-variant-numeric: tabular-nums;
+  }
+
+  /* --- Compliance by community: ranked bars, worst first ----------- */
+  .comm-row {
+    display: grid; grid-template-columns: 1fr auto; align-items: baseline;
+    gap: 2px var(--space-3); width: 100%; text-align: left;
+    padding: var(--space-2); border: 0; border-radius: var(--radius-3);
+    background: transparent; font-family: var(--font-base); cursor: pointer;
+    transition: background-color .12s ease-out;
+  }
+  .comm-row + .comm-row { margin-top: var(--space-1); }
+  .comm-row:hover { background: var(--gray-3); }
+  .comm-row[aria-pressed="true"] { background: var(--row-accent); }
+  .comm-row:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
+  .comm-name { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+  .comm-val { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); font-variant-numeric: tabular-nums; }
+  .comm-track {
+    grid-column: 1 / 3; position: relative; height: 6px; margin-top: var(--space-1);
+    border-radius: var(--radius-full); background: var(--gray-4);
+  }
+  .comm-fill { display: block; height: 100%; border-radius: var(--radius-full); background: var(--chart-1); }
+  .comm-fill.is-below { background: var(--warning-solid); }
+  .comm-meta { grid-column: 1 / 3; font-size: var(--fs-1); color: var(--fg-low); margin-top: var(--space-1); }
+
+  /* Shared target marker for the community + competency tracks. Overhangs the
+     track by one thick stroke at each end so it reads as a gauge tick. */
+  .track-mark {
+    position: absolute;
+    top: calc(-1 * var(--stroke-thick)); bottom: calc(-1 * var(--stroke-thick));
+    width: var(--stroke-thick);
+    border-radius: var(--radius-full); background: var(--fg-subtle);
+  }
+
+  /* --- Shell: header identity + search ------------------------------ */
+  /* The dark app bar is the one theme-independent chrome literal dashboard.css
+     allows. Its identity text follows the same rule rather than a token. */
+
+  /* --- Page header: title block and the single CTA ------------------- */
+  .ph-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-5); flex-wrap: wrap; }
+  .ph-text { min-width: 0; }
+  .ph-cta { flex: 0 0 auto; margin-left: auto; }   /* stays right when the row wraps */
+
+  /* --- Filter bar: scope trigger sizing ------------------------------ */
+  .scope-trigger { min-width: 216px; }
+  .scope-ic { flex: 0 0 auto; color: var(--fg-subtle); }
+  .scope-name { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fb-rule { height: 20px; }
+
+  /* --- Worklist header tools ----------------------------------------- */                 /* pins Settings to the rail bottom */
+  .table td.cell-empty { height: auto; padding: 0; }  /* lets .empty-state own the cell */
+
+  .risk-tools { display: flex; align-items: center; gap: var(--space-2); flex: 0 0 auto; }
+
+
+  /* --- Competency by domain: score bars against a pass threshold --- */
+  .score-row + .score-row { margin-top: var(--space-4); }
+  .score-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+  .score-label { font-size: var(--fs-2); color: var(--fg-high); min-width: 0; }
+  /* Badge and score travel together on one line however far the label wraps */
+  .score-right { display: flex; align-items: center; gap: var(--space-2); flex: 0 0 auto; }
+  .score-val { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); font-variant-numeric: tabular-nums; }
+  .score-track {
+    position: relative; height: 8px; margin-top: var(--space-2);
+    border-radius: var(--radius-full); background: var(--gray-4);
+  }
+  .score-fill { display: block; height: 100%; border-radius: var(--radius-full); background: var(--chart-1); }
+  .score-fill.is-below { background: var(--warning-solid); }
+
+  /* --- Trend chart -------------------------------------------------- */
+  .chart svg { width: 100%; height: auto; display: block; }
+  .chart-legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); margin-top: var(--space-3); font-size: var(--fs-1); color: var(--fg-low); }
+  .lg-key { display: inline-flex; align-items: center; gap: var(--space-2); }
+  .lg-line { width: 16px; height: 2px; border-radius: var(--radius-full); background: var(--chart-1); }
+  .lg-line.is-target { background: transparent; border-top: var(--stroke-thick) dashed var(--fg-subtle); }
+
+  /* --- Notification popover ---------------------------------------- */
+  .notif-anchor { position: relative; display: inline-flex; }
+  .notif-pop { position: absolute; top: calc(100% + var(--space-2)); right: 0; width: 340px; z-index: 1200; padding: var(--space-2); }
+  .notif-head { font-size: var(--fs-1); font-weight: var(--weight-medium); text-transform: uppercase; letter-spacing: .04em; color: var(--fg-subtle); padding: var(--space-2); }
+  .notif-item { display: flex; gap: var(--space-3); padding: var(--space-2); border-radius: var(--radius-3); }
+  .notif-item + .notif-item { border-top: var(--stroke-thin) solid var(--border-subtle); }
+  .notif-body { display: flex; flex-direction: column; min-width: 0; }
+  .notif-title { font-size: var(--fs-2); color: var(--fg-high); }
+  .notif-time { font-size: var(--fs-1); color: var(--fg-subtle); margin-top: 2px; }
+
+  /* --- Toast stack --------------------------------------------------- */
+  .toast-stack { position: fixed; left: 50%; bottom: var(--space-6); transform: translateX(-50%); display: flex; flex-direction: column; gap: var(--space-2); z-index: 1400; }
+  .toast-stack .toast { animation: sl-toast-in .2s ease-out; }
+  @keyframes sl-toast-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  /* --- Dialog scrim -------------------------------------------------- */
+  /* Numeric alignment in the worklist */
+  .table td.is-numeric { font-variant-numeric: tabular-nums; }
+  .cell-name { display: flex; flex-direction: column; }   /* §14 stacked label */
+  .cell-name .cn-role { font-size: var(--fs-1); color: var(--fg-low); }
+
+  @media (max-width: 1024px) {
+    .kpi-row, .split-2, .split-even { gap: var(--space-4); }
+  }
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- ============================ HEADER ============================ -->
+  <header class="app-header is-dark">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect width="24" height="24" rx="6" fill="var(--accent-9)"/><text x="12" y="16.5" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-contrast)">S</text></svg>
+      <span>skyLearn</span>
+    </div>
+
+    <div class="search hdr-search">
+      <span class="search-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+      <label class="sr-only" for="q">Search learners</label>
+      <input class="input" id="q" type="search" placeholder="Search learners" autocomplete="off" />
+    </div>
+
+    <div class="header-right">
+      <!-- Learner points. A status display, not a control, so it is a span with no
+           hover: the account here is also a learner with required training of its own. -->
+      <span class="presence" id="points" title="Points earned from your own required training">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg>
+        <span><strong class="pt-num">4</strong> points</span>
+      </span>
+
+      <span class="notif-anchor">
+        <button class="icon-btn" id="notifBtn" aria-label="Notifications" aria-haspopup="dialog" aria-expanded="false">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
+          <span class="ic-badge">3</span>
+        </button>
+        <div class="popover notif-pop" id="notifPop" role="dialog" aria-label="Notifications" hidden></div>
+      </span>
+
+      <button class="icon-btn" id="themeBtn" aria-label="Switch to dark theme">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>
+      </button>
+
+      <span class="divider-v"></span>
+      <span class="header-wrap">
+        <button class="header-user" id="viewAsBtn" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar c6">SA</span>
+          <span class="hu-id"><span class="hu-name">Sumit Awinash</span><span class="hu-role">Administrator</span></span>
+        </button>
+        <div class="view-as" id="viewAs" role="menu" hidden>
+          <div class="view-as-t">View as</div>
+          <a href="index.html" role="menuitem" aria-current="true"><span class="vr"></span>
+            <span class="vw">Administrator<span>Everything, across all six communities</span></span></a>
+          <a href="teach.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Instructor<span>Your courses, learners and sessions</span></span></a>
+          <a href="learn.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Learner<span>What you have to do, and by when</span></span></a>
+          <div class="vs">
+            <a href="signin.html" role="menuitem">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
+              Sign out</a>
+          </div>
+        </div>
+      </span>
+    </div>
+  </header>
+
+  <!-- ============================ SIDEBAR =========================== -->
+  <nav class="app-sidebar" aria-label="Primary">
+    <button class="sidebar-toggle" id="railBtn" aria-label="Collapse navigation"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>
+    <a class="nav-item is-active" href="index.html" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg><span class="nav-label">Dashboard</span></a>
+    <a class="nav-item" href="courses.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg><span class="nav-label">Courses</span></a>
+    <a class="nav-item" href="learners.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg><span class="nav-label">Learners</span></a>
+    <a class="nav-item" href="certificate.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg><span class="nav-label">Certifications</span></a>
+    <a class="nav-item" href="sessions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg><span class="nav-label">Sessions</span></a>
+    <a class="nav-item" href="groups.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg><span class="nav-label">Groups</span></a>
+    <a class="nav-item" href="recognition.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0z"/></svg><span class="nav-label">Recognition</span></a>
+    <a class="nav-item" href="discussions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6V2H8"/><path d="m8 18-4 4V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2Z"/><path d="M2 12h2"/><path d="M9 11v2"/><path d="M15 11v2"/><path d="M20 12h2"/></svg><span class="nav-label">Discussions</span></a>
+    <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span class="nav-label">Reports</span></a>
+    <a class="nav-item" href="automations.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/><path d="m2 2 20 20"/></svg><span class="nav-label">Automations</span></a>
+    <a class="nav-item" href="surveys.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/><rect x="3" y="4" width="18" height="16" rx="2"/></svg><span class="nav-label">Surveys</span></a>
+    <a class="nav-item" href="grading.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="m9 11-1.5 1.5L9 14"/><path d="M16 16h-4"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg><span class="nav-label">Grading Hub</span></a>
+    <a class="nav-item" href="files.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span class="nav-label">Reference library</span></a>
+    <a class="nav-item nav-tail" href="#"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="nav-label">Help and support</span></a>
+  </nav>
+
+  <!-- ============================ CONTENT =========================== -->
+  <main class="app-content">
+
+    <div class="breadcrumbs">
+      <a href="#">Home</a>
+      <span class="sep"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+      <span class="current">Dashboard</span>
+    </div>
+
+    <div class="content-body">
+
+      <header class="page-header ph-row">
+        <div class="ph-text">
+          <h1>Dashboard</h1>
+          <p id="pageSub">Workforce compliance and competency across your communities, with the exceptions that need action today.</p>
+        </div>
+        <button class="btn btn-solid ph-cta" id="createBtn">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+          Create course
+        </button>
+      </header>
+
+      <div class="stack-5">
+
+        <!-- 1. Scope strip: what you are looking at, and as of when -->
+        <section class="card is-flush" aria-label="Report scope">
+          <div class="filter-bar">
+            <!-- Community scope. It sits beside the comparison period because the two
+                 together are the whole answer to "what am I looking at, and over what
+                 window". Every block on the page reads from both. -->
+            <button class="dropdown scope-trigger" id="scopeBtn" aria-haspopup="listbox" aria-expanded="false">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="scope-ic"><path d="M10 12h4"/><path d="M10 8h4"/><path d="M14 21v-3a2 2 0 0 0-4 0v3"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/></svg>
+              <span id="scopeLabel" class="scope-name">All communities</span>
+              <span class="dropdown-chevron"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg></span>
+            </button>
+            <span class="divider is-vertical fb-rule"></span>
+            <span class="fb-ic"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span>
+            <span class="fb-label">Compared with</span>
+            <div class="segmented" role="tablist" aria-label="Comparison period" id="rangeTabs">
+              <button class="segmented-item is-active" role="tab" aria-selected="true" data-range="30">30 days</button>
+              <button class="segmented-item" role="tab" aria-selected="false" data-range="90">90 days</button>
+              <button class="segmented-item" role="tab" aria-selected="false" data-range="365">12 months</button>
+            </div>
+            <span class="spacer"></span>
+            <span class="fb-label" id="scopeSummary"></span>
+            <span class="divider is-vertical fb-rule"></span>
+            <span class="fb-label">Updated 6 minutes ago</span>
+          </div>
+        </section>
+
+        <!-- 2. The four numbers a training director is accountable for -->
+        <div class="kpi-row" id="kpiRow"></div>
+
+        <!-- 3. What is wrong, and where -->
+        <div class="split-2">
+          <section class="card" aria-labelledby="attnTitle">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title" id="attnTitle">Needs attention</div>
+                <div class="panel-sub">Select an exception to filter the worklist below.</div>
+              </div>
+              <button class="btn btn-ghost is-sm" id="attnClear" hidden>Clear filter</button>
+            </div>
+            <div id="attnList"></div>
+          </section>
+
+          <section class="card" aria-labelledby="compTitle">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title" id="compTitle">Competency by domain</div>
+                <div class="panel-sub" id="compSub"></div>
+              </div>
+            </div>
+            <div id="compList"></div>
+          </section>
+        </div>
+
+        <!-- 4. Is it getting better, and where is it worst -->
+        <div class="split-2">
+          <section class="card" aria-labelledby="trendTitle">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title" id="trendTitle">Compliance trend</div>
+                <div class="panel-sub" id="trendSub"></div>
+              </div>
+            </div>
+            <div class="chart" id="trendChart"></div>
+            <div class="chart-legend">
+              <span class="lg-key"><span class="lg-line"></span> Learners fully current on required training</span>
+              <span class="lg-key"><span class="lg-line is-target"></span> Target 95 percent</span>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="commTitle">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title" id="commTitle">Compliance by community</div>
+                <div class="panel-sub">Lowest first. Target 95 percent.</div>
+              </div>
+            </div>
+            <div id="commList"></div>
+          </section>
+        </div>
+
+        <!-- 5. Who to act on -->
+        <section aria-labelledby="riskTitle">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title" id="riskTitle">Learners at risk</div>
+              <div class="panel-sub" id="riskSub"></div>
+            </div>
+            <div class="risk-tools">
+              <span class="tag" id="riskTag" hidden>
+                <span id="riskTagText"></span>
+                <span class="tag-dismiss" role="button" tabindex="0" aria-label="Clear filter"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span>
+              </span>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Learner</th>
+                  <th>Community</th>
+                  <th>Exception</th>
+                  <th>Requirement</th>
+                  <th class="is-numeric">Days past due</th>
+                </tr>
+              </thead>
+              <tbody id="riskBody"></tbody>
+            </table>
+          </div>
+          <div class="pagination">
+            <span class="page-info" id="riskCount"></span>
+            <span class="page-spacer"></span>
+            <button class="btn btn-surface is-sm" id="riskMore">Show more</button>
+          </div>
+        </section>
+
+      </div>
+    </div>
+
+    <footer class="app-footer">
+      skyLearn, a Skypoint product. Compliance figures reflect required training only and exclude optional continuing education.
+    </footer>
+  </main>
+</div>
+
+<!-- Scope menu -->
+<div class="dropdown-menu scope-menu" id="scopeMenu" role="listbox" aria-label="Community scope" hidden></div>
+
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+
+<script>
+/* ==============================================================
+   Data. One model, and every figure on the page is derived from
+   it, so the KPI row, the exception list, the community panel and
+   the worklist cannot disagree. Identities are placeholders.
+   ============================================================== */
+const TARGET = 95;            // compliance target, percent
+const PASS   = 75;            // competency pass threshold, score
+
+const COMMUNITIES = [
+  { id:'cedar',     name:'Cedar Ridge',     state:'OH', learners:264, expired:0, overdue:7,  onboarding:3, expiring:3, due:32, passed:27, comp:[88,83,76], momentum:1.2 },
+  { id:'harborview',name:'Harborview',      state:'WA', learners:218, expired:1, overdue:6,  onboarding:3, expiring:3, due:26, passed:21, comp:[86,81,74], momentum:1.1 },
+  { id:'willow',    name:'Willow Creek',    state:'GA', learners:231, expired:1, overdue:9,  onboarding:5, expiring:4, due:28, passed:22, comp:[85,80,72], momentum:1.0 },
+  { id:'sunrise',   name:'Sunrise Terrace', state:'FL', learners:196, expired:1, overdue:9,  onboarding:6, expiring:3, due:24, passed:19, comp:[83,78,70], momentum:0.9 },
+  { id:'northgate', name:'Northgate',       state:'AZ', learners:207, expired:2, overdue:13, onboarding:8, expiring:5, due:25, passed:19, comp:[82,77,69], momentum:0.8 },
+  { id:'lakeside',  name:'Lakeside Manor',  state:'TX', learners:168, expired:2, overdue:13, onboarding:9, expiring:5, due:21, passed:14, comp:[80,75,65], momentum:0.6 }
+];
+
+const DOMAINS = ['Knowledge and compliance', 'Standards and communication', 'Judgment and people skills'];
+
+const EXCEPTIONS = [
+  { key:'expired',    sev:'danger',  title:'Certifications expired',        sub:'Blocking. The learner cannot work the floor unsupervised.', icon:'alert' },
+  { key:'overdue',    sev:'warning', title:'Required courses overdue',      sub:'Past the assigned due date.',                               icon:'clock' },
+  { key:'onboarding', sev:'warning', title:'Onboarding stalled past day 30',sub:'New hires behind the 90 day curriculum.',                   icon:'userplus' },
+  { key:'expiring',   sev:'info',    title:'Certifications expiring in 30 days', sub:'Still current today. Renew before they lapse.',        icon:'award' }
+];
+
+/* Approval is a real admin task with a real destination, so it belongs here
+   even though it is authoring work rather than workforce risk. It behaves
+   differently from the four above: it navigates instead of filtering, so it
+   is rendered as its own row rather than being folded into EXCEPTIONS. */
+const REVIEW_QUEUE = { count: 3, href: 'course-create.html?status=review' };
+
+/* 14 sampled learners out of the 98 at risk, all consistent with the
+   per community counts above. */
+const LEARNERS = [
+  { n:'Dana Whitfield',   r:'CNA',      c:'lakeside',   k:'expired',    q:'CPR and BLS certification',            d:12 },
+  { n:'Theo Brannigan',   r:'Caregiver',c:'sunrise',    k:'onboarding', q:'Day 41 of the 90 day curriculum',      d:11 },
+  { n:'Marcus Ellery',    r:'Med Tech', c:'northgate',  k:'overdue',    q:'Medication administration',            d:9  },
+  { n:'Fenella Wick',     r:'LPN',      c:'sunrise',    k:'onboarding', q:'Day 52 of the 90 day curriculum',      d:9  },
+  { n:'Rosalind Vega',    r:'CNA',      c:'lakeside',   k:'expired',    q:'First aid certification',              d:8  },
+  { n:'Imani Sowande',    r:'LPN',      c:'willow',     k:'overdue',    q:'Dementia care, level 2',               d:7  },
+  { n:'Piotr Zawadzki',   r:'Caregiver',c:'northgate',  k:'overdue',    q:'Infection control',                    d:6  },
+  { n:'Aurelie Bonnet',   r:'CNA',      c:'northgate',  k:'expired',    q:'CPR and BLS certification',            d:5  },
+  { n:'Desmond Achebe',   r:'Caregiver',c:'lakeside',   k:'overdue',    q:'Resident rights and abuse prevention', d:5  },
+  { n:'Nadia Kerr',       r:'CNA',      c:'harborview', k:'onboarding', q:'Day 34 of the 90 day curriculum',      d:4  },
+  { n:'Yusuf Demirci',    r:'Caregiver',c:'willow',     k:'overdue',    q:'Fall prevention',                      d:4  },
+  { n:'Callum Reyes',     r:'Med Tech', c:'cedar',      k:'overdue',    q:'HIPAA privacy and security',           d:3  },
+  { n:'Greta Lindqvist',  r:'CNA',      c:'cedar',      k:'overdue',    q:'Safe lifting and transfers',           d:2  },
+  { n:'Oren Kaplan',      r:'Med Tech', c:'harborview', k:'overdue',    q:'Medication administration',            d:2  }
+];
+
+/* Period over period movement at org level. Rates do not sum across
+   scopes, counts do, so the two are scaled differently below. */
+const DELTAS = {
+  '30':  { rate:+1.8,  overdue:-14, expiring:+6, comp:-3 },
+  '90':  { rate:+4.3,  overdue:-31, expiring:+9, comp:+2 },
+  '365': { rate:+10.9, overdue:-88, expiring:+4, comp:+6 }
+};
+
+const RANGES = {
+  '30':  { label:'last 30 days',   ago:'30 days ago',   ticks:['Jul 14','Jul 19','Jul 24','Jul 29','Aug 3','Aug 8','Aug 12'] },
+  '90':  { label:'last 90 days',   ago:'90 days ago',   ticks:['May 15','Jun 1','Jun 15','Jul 1','Jul 15','Aug 1','Aug 12'] },
+  '365': { label:'last 12 months', ago:'12 months ago', ticks:['Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug'] }
+};
+
+const ICONS = {
+  alert:    '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  clock:    '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  userplus: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/>',
+  award:    '<path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/>',
+  shield:   '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+  gauge:    '<path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/>',
+  up:       '<path d="M16 7h6v6"/><path d="m22 7-8.5 8.5-5-5L2 17"/>',
+  down:     '<path d="M16 17h6v-6"/><path d="m22 17-8.5-8.5-5 5L2 7"/>',
+  chevright:'<path d="m9 18 6-6-6-6"/>'
+};
+const svg = (name, size) => '<svg viewBox="0 0 24 24" width="' + size + '" height="' + size +
+  '" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[name] + '</svg>';
+</script>
+
+<script>
+/* ==============================================================
+   Derivation
+   ============================================================== */
+const state = { scope:'all', range:'30', filter:null, expanded:false, query:'' };
+
+function aggregate(scope) {
+  const set = scope === 'all' ? COMMUNITIES : COMMUNITIES.filter(c => c.id === scope);
+  const sum = k => set.reduce((t, c) => t + c[k], 0);
+  const learners = sum('learners');
+  const a = {
+    set, learners,
+    expired: sum('expired'), overdue: sum('overdue'),
+    onboarding: sum('onboarding'), expiring: sum('expiring'),
+    due: sum('due'), passed: sum('passed')
+  };
+  a.atRisk    = a.expired + a.overdue + a.onboarding;
+  a.compliant = learners - a.atRisk;
+  a.rate      = (a.compliant / learners) * 100;
+  a.pass      = (a.passed / a.due) * 100;
+  a.comp      = [0, 1, 2].map(i =>
+    Math.round(set.reduce((t, c) => t + c.comp[i] * c.learners, 0) / learners));
+  /* Org level momentum is 1 by definition: DELTAS already describes the whole
+     book of business. Only a single community scales away from it. */
+  a.momentum  = scope === 'all' ? 1 : set[0].momentum;
+  return a;
+}
+
+function scopedDeltas(range, a, org) {
+  const d = DELTAS[range];
+  const share = (v, t) => (t ? v / t : 0);
+  const scale = (v, s) => {
+    const r = Math.round(v * s);
+    return r === 0 && v !== 0 ? (v < 0 ? -1 : 1) : r;
+  };
+  return {
+    rate:     +(d.rate * a.momentum).toFixed(1),
+    overdue:  scale(d.overdue,  share(a.overdue,  org.overdue)),
+    expiring: scale(d.expiring, share(a.expiring, org.expiring)),
+    comp:     Math.round(d.comp * a.momentum)
+  };
+}
+
+/* Deterministic series between two known endpoints. The first point is
+   the value one period ago and the last is today, so a sparkline can
+   never contradict the delta printed beside it. */
+const WIGGLE = [0, .32, -.22, .45, -.30, .18, .38, -.25, .12, .30, -.15, .22, -.08];
+function series(start, end, n) {
+  const amp = Math.max(Math.abs(end - start) * .22, Math.abs(end) * .008);
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const t = n === 1 ? 1 : i / (n - 1);
+    let v = start + (end - start) * t;
+    if (i !== 0 && i !== n - 1) v += WIGGLE[i % WIGGLE.length] * amp;
+    out.push(v);
+  }
+  return out;
+}
+</script>
+
+<script>
+/* ==============================================================
+   Charts
+   ============================================================== */
+function sparkline(vals) {
+  const w = 200, h = 40, p = 3;
+  const mn = Math.min(...vals), mx = Math.max(...vals), r = (mx - mn) || 1;
+  const pts = vals.map((v, i) => [
+    p + i * (w - 2 * p) / (vals.length - 1),
+    h - p - ((v - mn) / r) * (h - 2 * p)
+  ]);
+  const d = pts.map((q, i) => (i ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1)).join(' ');
+  return '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" aria-hidden="true">' +
+    '<path d="' + d + ' L ' + (w - p) + ' ' + h + ' L ' + p + ' ' + h + ' Z" fill="var(--chart-1)" opacity=".10"/>' +
+    '<path d="' + d + '" fill="none" stroke="var(--chart-1)" stroke-width="1.75" ' +
+    'stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>';
+}
+
+</script>
+
+<script>
+/* ==============================================================
+   Render
+   ============================================================== */
+const $ = id => document.getElementById(id);
+const ORG = aggregate('all');
+const pct = v => v.toFixed(1) + '%';
+const num = v => v.toLocaleString('en-US');
+const commName = id => COMMUNITIES.find(c => c.id === id).name;
+const HUES = ['c1','c2','c3','c4','c5','c6','c7','c8'];
+const hue = n => HUES[(n.charCodeAt(0) + n.charCodeAt(n.indexOf(' ') + 1)) % 8];
+const initials = n => n.split(' ').map(w => w[0]).join('');
+
+function deltaLine(good, dir, text) {
+  return '<div class="sc-delta ' + (good ? 'is-good' : 'is-bad') + '">' +
+    svg(dir, 14) + '<span>' + text + '</span></div>';
+}
+
+function renderKPIs(a, d, r) {
+  const ago = RANGES[r].ago;
+  const n = RANGES[r] === RANGES['365'] ? 13 : 7;
+  const cards = [
+    { label:'Compliance rate', icon:'shield',
+      value: pct(a.rate),
+      sub:   num(a.compliant) + ' of ' + num(a.learners) + ' learners fully current',
+      delta: deltaLine(d.rate >= 0, d.rate >= 0 ? 'up' : 'down',
+             (d.rate >= 0 ? '+' : '') + d.rate.toFixed(1) + ' points vs ' + ago),
+      spark: series(a.rate - d.rate, a.rate, n) },
+    { label:'Required courses overdue', icon:'clock',
+      value: num(a.overdue),
+      sub:   'Across ' + a.set.length + (a.set.length === 1 ? ' community' : ' communities'),
+      delta: deltaLine(d.overdue <= 0, d.overdue <= 0 ? 'down' : 'up',
+             Math.abs(d.overdue) + (d.overdue <= 0 ? ' fewer than ' : ' more than ') + ago),
+      spark: series(a.overdue - d.overdue, a.overdue, n) },
+    { label:'Certifications expiring in 30 days', icon:'award',
+      value: num(a.expiring),
+      sub:   'Current today, lapsing within the month',
+      delta: deltaLine(d.expiring <= 0, d.expiring <= 0 ? 'down' : 'up',
+             Math.abs(d.expiring) + (d.expiring <= 0 ? ' fewer than ' : ' more than ') + ago),
+      spark: series(a.expiring - d.expiring, a.expiring, n) },
+    { label:'90 day competency pass rate', icon:'gauge',
+      value: Math.round(a.pass) + '%',
+      sub:   num(a.passed) + ' of ' + num(a.due) + ' checks passed this quarter',
+      delta: deltaLine(d.comp >= 0, d.comp >= 0 ? 'up' : 'down',
+             (d.comp >= 0 ? '+' : '') + d.comp + ' points vs ' + ago),
+      spark: series(a.pass - d.comp, a.pass, n) }
+  ];
+
+  $('kpiRow').innerHTML = cards.map(c =>
+    '<section class="card stat-card">' +
+      '<div class="sc-head"><span class="sc-label">' + c.label + '</span>' +
+      '<span class="sc-icon">' + svg(c.icon, 18) + '</span></div>' +
+      '<div class="sc-value">' + c.value + '</div>' +
+      c.delta +
+      '<div class="sc-spark">' + sparkline(c.spark) + '</div>' +
+      '<div class="sc-foot">' + c.sub + '</div>' +
+    '</section>').join('');
+}
+
+function renderAttention(a) {
+  $('attnList').innerHTML = EXCEPTIONS.map(e =>
+    '<button type="button" class="attn-item is-' + e.sev + '" data-exc="' + e.key + '" ' +
+      'aria-pressed="' + (state.filter === e.key) + '">' +
+      '<span class="attn-ic">' + svg(e.icon, 18) + '</span>' +
+      '<span class="attn-text"><span class="attn-title">' + e.title + '</span>' +
+      '<span class="attn-sub">' + e.sub + '</span></span>' +
+      '<span class="attn-count">' + a[e.key] + '</span>' +
+    '</button>').join('') +
+    /* Navigates rather than filters, so it is an <a> with a chevron. Same row
+       shape, different affordance, because it does a different thing. */
+    '<a class="attn-item is-info" href="' + REVIEW_QUEUE.href + '">' +
+      '<span class="attn-ic">' + svg('clock', 18) + '</span>' +
+      '<span class="attn-text"><span class="attn-title">Courses waiting for your review</span>' +
+      '<span class="attn-sub">Submitted by instructors. Nothing reaches learners until you approve.</span></span>' +
+      '<span class="attn-count">' + REVIEW_QUEUE.count + '</span>' +
+      '<span class="attn-chev">' + svg('chevright', 16) + '</span>' +
+    '</a>';
+  $('attnClear').hidden = !state.filter;
+}
+
+function renderCommunities() {
+  const rows = [...COMMUNITIES].map(c => {
+    const risk = c.expired + c.overdue + c.onboarding;
+    return { c, risk, rate: ((c.learners - risk) / c.learners) * 100 };
+  }).sort((x, y) => x.rate - y.rate);
+
+  $('commList').innerHTML = rows.map(r =>
+    '<button type="button" class="comm-row" data-comm="' + r.c.id + '" ' +
+      'aria-pressed="' + (state.scope === r.c.id) + '">' +
+      '<span class="comm-name">' + r.c.name + ', ' + r.c.state + '</span>' +
+      '<span class="comm-val">' + pct(r.rate) + '</span>' +
+      '<span class="comm-track">' +
+        '<span class="comm-fill' + (r.rate < TARGET ? ' is-below' : '') + '" style="width:' + r.rate.toFixed(1) + '%"></span>' +
+        '<span class="track-mark" style="left:' + TARGET + '%"></span>' +
+      '</span>' +
+      '<span class="comm-meta">' + r.risk + ' of ' + r.c.learners + ' learners at risk</span>' +
+    '</button>').join('');
+}
+
+function renderCompetency(a) {
+  $('compSub').textContent = num(a.passed) + ' of ' + num(a.due) +
+    ' ninety day checks passed. Pass threshold ' + PASS + '.';
+  $('compList').innerHTML = DOMAINS.map((d, i) => {
+    const v = a.comp[i], below = v < PASS;
+    return '<div class="score-row">' +
+      '<div class="score-head"><span class="score-label">' + d + '</span>' +
+      '<span class="score-right">' +
+      (below ? '<span class="badge is-warning">Below threshold</span>' : '') +
+      '<span class="score-val">' + v + '</span></span></div>' +
+      '<div class="score-track">' +
+        '<span class="score-fill' + (below ? ' is-below' : '') + '" style="width:' + v + '%"></span>' +
+        '<span class="track-mark" style="left:' + PASS + '%"></span>' +
+      '</div></div>';
+  }).join('');
+}
+
+function renderTrend(a, d, r) {
+  const ticks = RANGES[r].ticks;
+  const vals = series(a.rate - d.rate, a.rate, ticks.length);
+  const lo = Math.min(Math.min.apply(null, vals), TARGET) - 3;
+  $('trendChart').innerHTML = Chart.area({
+    labels: ticks, values: vals, height: 260,
+    min: Math.max(0, Math.floor(lo / 5) * 5), max: 100,
+    target: TARGET, targetLabel: 'Target ' + TARGET + '%',
+    valueLabel: 'Compliance rate', alt: 'Compliance rate over the selected period'
+  });
+  $('trendChart').dataset.unit = '% fully current';
+  Chart.bind($('trendChart'));
+  $('trendSub').textContent = 'Percent of learners fully current, ' + RANGES[r].label + '. ' +
+    (state.scope === 'all' ? 'All communities.' : commName(state.scope) + '.');
+}
+
+const SEV = { expired:'is-danger', overdue:'is-warning', onboarding:'is-warning', expiring:'is-info' };
+const LABEL = { expired:'Expired', overdue:'Overdue', onboarding:'Onboarding stalled', expiring:'Expiring soon' };
+
+function renderWorklist(a) {
+  let rows = LEARNERS.slice();
+  if (state.scope !== 'all') rows = rows.filter(l => l.c === state.scope);
+  if (state.filter) rows = rows.filter(l => l.k === state.filter);
+  if (state.query) {
+    const q = state.query.toLowerCase();
+    rows = rows.filter(l => l.n.toLowerCase().includes(q) || l.q.toLowerCase().includes(q));
+  }
+  rows.sort((x, y) => y.d - x.d);
+
+  const total = state.filter ? a[state.filter] : a.atRisk;
+  const shown = state.expanded ? rows : rows.slice(0, 8);
+
+  $('riskBody').innerHTML = shown.length ? shown.map(l =>
+    '<tr>' +
+      '<td><span class="cell-person"><span class="avatar ' + hue(l.n) + '">' + initials(l.n) + '</span>' +
+        '<span class="cell-name"><span>' + l.n + '</span><span class="cn-role">' + l.r + '</span></span></span></td>' +
+      '<td>' + commName(l.c) + '</td>' +
+      '<td><span class="badge ' + SEV[l.k] + '">' + LABEL[l.k] + '</span></td>' +
+      '<td>' + l.q + '</td>' +
+      '<td class="is-numeric">' + l.d + '</td>' +
+    '</tr>').join('')
+    : '<tr><td colspan="5" class="cell-empty">' +
+      '<div class="empty-state"><div class="empty-art">' + svg('shield', 36) + '</div>' +
+      '<h2>Nothing at risk here</h2><p>No learner in this scope matches the current filter.</p></div></td></tr>';
+
+  $('riskSub').textContent = state.filter
+    ? LABEL[state.filter] + ' only. Most overdue first.'
+    : 'Most overdue first, across every exception type.';
+  $('riskCount').textContent = 'Showing ' + shown.length + ' of ' + total +
+    (state.filter ? ' ' + LABEL[state.filter].toLowerCase() : ' at risk') +
+    '. The full list lives in Learners.';
+  $('riskMore').hidden = rows.length <= 8;
+  $('riskMore').textContent = state.expanded ? 'Show fewer' : 'Show ' + (rows.length - 8) + ' more';
+
+  $('riskTag').hidden = !state.filter;
+  if (state.filter) $('riskTagText').textContent = LABEL[state.filter];
+}
+
+function renderNotifications(a) {
+  const worst = [...COMMUNITIES].sort((x, y) =>
+    (x.learners - x.expired - x.overdue - x.onboarding) / x.learners -
+    (y.learners - y.expired - y.overdue - y.onboarding) / y.learners)[0];
+  const items = [
+    { i:'alert',    t:a.expired + ' certifications have expired. ' + worst.name + ' holds the most.', w:'18 minutes ago' },
+    { i:'award',    t:a.expiring + ' certifications lapse within 30 days.', w:'2 hours ago' },
+    { i:'userplus', t:a.onboarding + ' new hires are past day 30 with onboarding incomplete.', w:'Yesterday' }
+  ];
+  $('notifPop').innerHTML = '<div class="notif-head">Notifications</div>' + items.map(n =>
+    '<div class="notif-item"><span class="attn-ic is-plain">' +
+    svg(n.i, 16) + '</span><span class="notif-body"><span class="notif-title">' + n.t +
+    '</span><span class="notif-time">' + n.w + '</span></span></div>').join('');
+}
+
+function render() {
+  const a = aggregate(state.scope);
+  const d = scopedDeltas(state.range, a, ORG);
+  renderKPIs(a, d, state.range);
+  renderAttention(a);
+  renderCommunities();
+  renderCompetency(a);
+  renderTrend(a, d, state.range);
+  renderWorklist(a);
+  renderNotifications(a);
+  $('scopeLabel').textContent = state.scope === 'all' ? 'All communities' : commName(state.scope);
+  $('scopeSummary').textContent = state.scope === 'all'
+    ? num(a.learners) + ' learners, 6 communities, 6 states'
+    : num(a.learners) + ' learners, ' + commName(state.scope) + ', ' +
+      COMMUNITIES.find(c => c.id === state.scope).state;
+}
+</script>
+
+<script>
+/* ==============================================================
+   Behaviour. Every control on this page changes something.
+   ============================================================== */
+function toast(title, body) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = '<div><div class="toast-title">' + title + '</div>' +
+    (body ? '<div class="toast-body">' + body + '</div>' : '') + '</div>';
+  $('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+
+/* Community scope menu */
+const scopeBtn = $('scopeBtn'), scopeMenu = $('scopeMenu');
+function buildScopeMenu() {
+  const opt = (id, name, meta) => {
+    const on = state.scope === id;
+    return '<div class="list-item' + (on ? ' is-selected' : '') + '" role="option" data-scope="' + id +
+      '" tabindex="0" aria-selected="' + on + '">' +
+      '<span class="list-check"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" ' +
+      'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>' +
+      '<span class="li-name">' + name + '</span>' +
+      '<span class="li-meta">' + meta + '</span></div>';
+  };
+  scopeMenu.innerHTML = opt('all', 'All communities', num(ORG.learners) + ' learners') +
+    '<div class="list-item is-header">By community</div>' +
+    COMMUNITIES.map(c => opt(c.id, c.name + ', ' + c.state, c.learners + ' learners')).join('');
+}
+function openScope(open) {
+  /* Unhide before measuring: offsetWidth is 0 on a hidden element. */
+  scopeMenu.hidden = !open;
+  scopeBtn.setAttribute('aria-expanded', String(open));
+  if (!open) return;
+  buildScopeMenu();
+  const r = scopeBtn.getBoundingClientRect();
+  scopeMenu.style.top = (r.bottom + 8) + 'px';
+  /* Left edges align, then clamp so the menu cannot run off the right of the
+     viewport if the trigger sits near the edge on a narrow window. */
+  scopeMenu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - scopeMenu.offsetWidth - 8)) + 'px';
+}
+scopeBtn.addEventListener('click', e => { e.stopPropagation(); openScope(scopeMenu.hidden); });
+scopeMenu.addEventListener('click', e => {
+  const it = e.target.closest('[data-scope]');
+  if (!it) return;
+  state.scope = it.dataset.scope; state.expanded = false;
+  openScope(false); render();
+});
+
+/* Comparison period */
+$('rangeTabs').addEventListener('click', e => {
+  const b = e.target.closest('[data-range]');
+  if (!b) return;
+  state.range = b.dataset.range;
+  [...$('rangeTabs').children].forEach(c => {
+    const on = c === b;
+    c.classList.toggle('is-active', on);
+    c.setAttribute('aria-selected', String(on));
+  });
+  render();
+});
+
+/* Exception filter */
+$('attnList').addEventListener('click', e => {
+  const b = e.target.closest('[data-exc]');
+  if (!b) return;
+  state.filter = state.filter === b.dataset.exc ? null : b.dataset.exc;
+  state.expanded = false;
+  render();
+});
+$('attnClear').addEventListener('click', () => { state.filter = null; state.expanded = false; render(); });
+$('riskTag').addEventListener('click', () => { state.filter = null; state.expanded = false; render(); });
+
+/* Community drill-in from the ranked list */
+$('commList').addEventListener('click', e => {
+  const b = e.target.closest('[data-comm]');
+  if (!b) return;
+  state.scope = state.scope === b.dataset.comm ? 'all' : b.dataset.comm;
+  state.expanded = false;
+  render();
+});
+
+/* Worklist */
+$('riskMore').addEventListener('click', () => { state.expanded = !state.expanded; render(); });
+let qt;
+$('q').addEventListener('input', e => {
+  clearTimeout(qt);
+  qt = setTimeout(() => { state.query = e.target.value.trim(); state.expanded = false; render(); }, 160);
+});
+
+/* Notifications */
+$('notifBtn').addEventListener('click', e => {
+  e.stopPropagation();
+  const open = $('notifPop').hidden;
+  $('notifPop').hidden = !open;
+  $('notifBtn').setAttribute('aria-expanded', String(open));
+});
+
+/* Theme */
+$('themeBtn').addEventListener('click', () => {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+  $('themeBtn').setAttribute('aria-label', dark ? 'Switch to dark theme' : 'Switch to light theme');
+});
+
+
+/* Create course. No dialog: step 1 of the create screen already asks how you
+   want to build it, so a dialog asking the same thing is the question twice. */
+$('createBtn').addEventListener('click', () => { location.href = 'course-create.html'; });
+
+/* Global dismiss */
+document.addEventListener('click', () => {
+  if (!scopeMenu.hidden) openScope(false);
+  if (!$('notifPop').hidden) { $('notifPop').hidden = true; $('notifBtn').setAttribute('aria-expanded', 'false'); }
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (!scopeMenu.hidden) return openScope(false);
+  if (!$('notifPop').hidden) { $('notifPop').hidden = true; $('notifBtn').setAttribute('aria-expanded', 'false'); }
+});
+
+render();
+
+const viewAsBtn = document.getElementById('viewAsBtn');
+if (viewAsBtn) {
+  const menu = document.getElementById('viewAs');
+  viewAsBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = !menu.hidden;
+    menu.hidden = open;
+    viewAsBtn.setAttribute('aria-expanded', String(!open));
+  });
+  document.addEventListener('click', () => {
+    if (!menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+}
+
+/* Collapsing the rail is shell behaviour, so every page does it. It was
+   markup on twenty pages and wired on one, and standardising the nav dropped
+   the id the one handler depended on. */
+const railBtn = document.getElementById('railBtn');
+if (railBtn) {
+  railBtn.addEventListener('click', () => {
+    const shell = document.querySelector('.app-shell');
+    const side  = document.querySelector('.app-sidebar');
+    const on = shell.style.gridTemplateColumns === '0px 1fr';
+    shell.style.gridTemplateColumns = on ? '256px 1fr' : '0px 1fr';
+    if (side) side.style.visibility = on ? 'visible' : 'hidden';
+    railBtn.setAttribute('aria-label', on ? 'Collapse navigation' : 'Expand navigation');
+  });
+}
+</script>
+</body>
+</html>

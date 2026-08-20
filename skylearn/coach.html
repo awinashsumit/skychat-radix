@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<!--
+  skyLearn - AI Coach, Radix flavour.
+  A learner surface, not an admin one. Every answer is grounded in a named
+  lesson of the chosen course; anything outside it, and anything clinical,
+  is handed to a person rather than guessed at. See COACH-IA.md.
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>skyLearn &middot; AI Coach</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../tokens.css?v=102" />
+<link rel="stylesheet" href="../dashboard.css?v=102" />
+<style>
+  .ph-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-5); flex-wrap: wrap; }
+  .ph-text { flex: 1; min-width: 0; }
+  .ph-acts { display: flex; gap: var(--space-3); flex: 0 0 auto; margin-left: auto; }
+  .tally { font-size: var(--fs-2); color: var(--fg-low); }
+
+  .who-note { display: inline-flex; align-items: center; gap: var(--space-2); margin-top: var(--space-3);
+    padding: var(--space-2) var(--space-4); border-radius: var(--radius-full);
+    background: var(--info-bg); color: var(--info-text); font-size: var(--fs-1); }
+
+  .pick { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-5); }
+  .pick .select { min-width: 320px; }
+
+  /* The conversation */
+  .chat { display: flex; flex-direction: column; min-height: 440px; border-radius: var(--radius-4);
+    background: var(--color-panel-solid); box-shadow: inset 0 0 0 1px var(--border-subtle); overflow: hidden; }
+  .chat-b { flex: 1; padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-5); }
+  .turn { max-width: 78%; }
+  .turn.is-me { align-self: flex-end; }
+  .bub { padding: var(--space-4) var(--space-5); border-radius: var(--radius-4); font-size: var(--fs-3);
+    line-height: 1.65; color: var(--fg-high); background: var(--gray-2);
+    box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .turn.is-me .bub { background: var(--accent-3); box-shadow: inset 0 0 0 1px var(--accent-6); }
+
+  /* Every answer names the lesson it came from. In a compliance product an
+     answer from nowhere is worse than no answer: somebody will act on it. */
+  .cite { display: inline-flex; align-items: center; gap: var(--space-2); margin-top: var(--space-3);
+    padding: var(--space-2) var(--space-3); border-radius: var(--radius-2);
+    background: var(--color-panel-solid); box-shadow: inset 0 0 0 1px var(--border-subtle);
+    font-size: var(--fs-1); color: var(--fg-low); }
+  .cite b { font-weight: var(--weight-semibold); color: var(--fg-high); }
+
+  /* When it will not answer. Two reasons, and they are different: outside the
+     course material, or clinical. Only one of them is a content gap. */
+  .refuse { padding: var(--space-4) var(--space-5); border-radius: var(--radius-4); font-size: var(--fs-3);
+    line-height: 1.65; }
+  .refuse.is-gap  { background: var(--warning-bg); color: var(--warning-text); }
+  .refuse.is-care { background: var(--danger-bg);  color: var(--danger-text); }
+  .refuse b { display: block; margin-bottom: var(--space-2); font-weight: var(--weight-semibold); }
+  .handoff { display: flex; gap: var(--space-3); flex-wrap: wrap; margin-top: var(--space-4); }
+
+  .chat-w { border-top: var(--stroke-thin) solid var(--border-subtle); padding: var(--space-4) var(--space-5);
+    display: flex; gap: var(--space-3); align-items: flex-end; }
+  .chat-w .input { flex: 1; min-width: 0; }
+
+  .starters { display: flex; flex-direction: column; gap: var(--space-3); }
+  .starter { text-align: left; padding: var(--space-4) var(--space-5); border: 0; border-radius: var(--radius-3);
+    cursor: pointer; background: var(--gray-2); box-shadow: inset 0 0 0 1px var(--border-subtle);
+    font-family: var(--font-base); font-size: var(--fs-2); color: var(--fg-high); }
+  .starter:hover { box-shadow: inset 0 0 0 1px var(--border-strong); }
+
+  .empty-pick { padding: var(--space-9) var(--space-6); text-align: center; }
+  .empty-pick h2 { font-size: var(--fs-5); line-height: var(--lh-5); font-weight: var(--weight-semibold); color: var(--fg-high); }
+  .empty-pick p { margin-top: var(--space-2); font-size: var(--fs-3); color: var(--fg-low); }
+
+  .toast-stack { position: fixed; left: 50%; bottom: var(--space-6); transform: translateX(-50%);
+    z-index: 80; display: flex; flex-direction: column; gap: var(--space-3); }
+  .toast { min-width: 280px; max-width: 440px; padding: var(--space-4) var(--space-5);
+    border-radius: var(--radius-3); background: var(--gray-12); color: var(--gray-1); box-shadow: var(--shadow-4); }
+  .toast-title { font-size: var(--fs-2); font-weight: var(--weight-semibold); }
+  .toast-body { margin-top: var(--space-1); font-size: var(--fs-2); opacity: .82; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header is-dark">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect width="24" height="24" rx="6" fill="var(--accent-9)"/><text x="12" y="16.5" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-contrast)">S</text></svg>
+      <span>skyLearn</span>
+    </div>
+    <div class="search hdr-search">
+      <span class="search-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+      <label class="sr-only" for="q">Search</label>
+      <input class="input" id="q" type="search" placeholder="Search courses and learners" autocomplete="off" />
+    </div>
+    <div class="header-right">
+      <span class="presence"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg><span><strong class="pt-num">4</strong> points</span></span>
+      <button class="icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="ic-badge">3</span></button>
+      <button class="icon-btn" id="themeBtn" aria-label="Switch to dark theme"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+      <span class="divider-v"></span>
+      <span class="header-wrap">
+        <button class="header-user" id="viewAsBtn" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar c3" id="meAv">DW</span>
+          <span class="hu-id"><span class="hu-name" id="meName">Dana Whitfield</span><span class="hu-role" id="meRole">CNA, Lakeside Manor</span></span>
+        </button>
+        <div class="view-as" id="viewAs" role="menu" hidden>
+          <div class="view-as-t">View as</div>
+          <a href="index.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Administrator<span>Everything, across all six communities</span></span></a>
+          <a href="teach.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Instructor<span>Your courses, learners and sessions</span></span></a>
+          <a href="learn.html" role="menuitem" aria-current="true"><span class="vr"></span>
+            <span class="vw">Learner<span>What you have to do, and by when</span></span></a>
+          <div class="vs">
+            <a href="signin.html" role="menuitem">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
+              Sign out</a>
+          </div>
+        </div>
+      </span>
+    </div>
+  </header>
+
+  <nav class="app-sidebar" aria-label="Primary">
+    <button class="sidebar-toggle" id="railBtn" aria-label="Collapse navigation"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>
+    <a class="nav-item" href="learn.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg><span class="nav-label">Dashboard</span></a>
+    <a class="nav-item" href="my-courses.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg><span class="nav-label">My courses</span></a>
+    <a class="nav-item" href="catalog.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg><span class="nav-label">Catalogue</span></a>
+    <a class="nav-item" href="my-certs.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg><span class="nav-label">Certificates</span></a>
+    <a class="nav-item" href="my-badges.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0z"/></svg><span class="nav-label">Badges</span></a>
+    <a class="nav-item" href="my-record.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M9 13h6"/><path d="M9 17h3"/></svg><span class="nav-label">My record</span></a>
+    <a class="nav-item" href="my-sessions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg><span class="nav-label">Sessions</span></a>
+    <a class="nav-item is-active" href="coach.html" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg><span class="nav-label">Ask the coach</span></a>
+    <a class="nav-item nav-tail" href="#"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="nav-label">Help and support</span></a>
+  </nav>
+
+  <main class="app-content">
+    <div class="breadcrumbs"><a href="learn.html">Home</a><span class="sep"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span><span class="current">AI Coach</span></div>
+    <div class="content-body">
+      <header class="page-header ph-row">
+        <div class="ph-text"><h1>AI Coach</h1>
+          <p>Ask about a course you are taking. Every answer comes from that course&rsquo;s material, and says which part.</p>
+          <span class="who-note">Anything it cannot answer goes to a person, and shows up in Discussions as a gap in the course.</span></div>
+        <div class="ph-acts"><button class="btn btn-surface" id="clearBtn" disabled>Clear chat</button></div>
+      </header>
+      <div id="view"></div>
+    </div>
+  </main>
+</div>
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+<script>
+/* ==============================================================
+   The coach answers from ONE course's material and says which
+   lesson. Two things it will not do, and they are different:
+
+   - outside the material  -> a content gap, handed to Discussions
+   - clinical              -> not a training question at all
+
+   The second matters more than it looks. "Can I give Mrs Achebe her
+   tablets early" is a care decision. A training bot that answers it
+   is a training bot that hurts somebody.
+   ============================================================== */
+const COURSES = {
+  'Safe Resident Handling': {
+    lessons: ['Before you move anyone', 'Choosing the right aid', 'Two-person transfers', 'When to stop'],
+    qa: [
+      { k:['hoist','sling','aid','equipment'], l:'Choosing the right aid',
+        a:'Match the sling to the resident, not to the hoist. Check the label for the size and the safe working load, and look at the stitching and the loops before every use. If the label is missing or unreadable, take it out of service and tell maintenance.' },
+      { k:['alone','on my own','single','one person'], l:'Two-person transfers',
+        a:'A full hoist transfer is always two people. One operates the hoist, one stays with the resident. If there is nobody else on the floor, wait — a transfer done alone is the commonest way both of you get hurt.' },
+      { k:['stop','refuse','agitated','resист','resist'], l:'When to stop',
+        a:'Stop if the resident says stop, if they become agitated mid-transfer, or if anything about the equipment feels wrong. Lower them back to a safe position and try again later or with more help. Nothing about the schedule is worth a fall.' },
+      { k:['check','before','start','prepare'], l:'Before you move anyone',
+        a:'Read the care plan first — it says how this resident transfers and whether that has changed. Then clear the route, put the brakes on, and tell them what you are about to do before you touch them.' }
+    ]
+  },
+  'HIPAA Training': {
+    lessons: ['What counts as protected information', 'Talking about residents', 'When something goes wrong'],
+    qa: [
+      { k:['what is','phi','protected','counts'], l:'What counts as protected information',
+        a:'Anything that ties a person to their care: name with a diagnosis, a room number on a chart, a photo, a date of admission. On its own a room number is not much; next to a condition it identifies somebody.' },
+      { k:['mistake','wrong','breach','told','accident'], l:'When something goes wrong',
+        a:'Tell your charge nurse the same shift. Not the next morning, not after you have thought about it. Most breaches are small and fixable if reported quickly, and every one of them gets worse if it is not.' },
+      { k:['family','relative','phone','ask','tell'], l:'Talking about residents',
+        a:'Only speak to somebody listed on the resident’s record. If a caller says they are family and you cannot see them on the record, take a number and pass it to the nurse. It is not rude, it is the rule.' }
+    ]
+  },
+  'Infection Prevention': {
+    lessons: ['Hand hygiene', 'Gloves and aprons', 'Isolation rooms'],
+    qa: [
+      { k:['hand','wash','gel','sanitis','sanitiz'], l:'Hand hygiene',
+        a:'Soap and water when hands are visibly soiled and always after caring for someone with diarrhoea. Gel is fine the rest of the time. Twenty seconds either way — that is the whole of the alphabet at a normal pace.' },
+      { k:['glove','apron','ppe','mask'], l:'Gloves and aprons',
+        a:'Gloves are for one task and one resident. Change them between tasks on the same person too — going from a wound to a drink with the same gloves is how things travel.' },
+      { k:['isolation','barrier','door','sign'], l:'Isolation rooms',
+        a:'Put the apron and gloves on before you go in, take them off inside the door, and clean your hands after. Everything that comes out is treated as contaminated unless it has been wiped down.' }
+    ]
+  }
+};
+
+/* Anything that sounds like a care decision rather than a training question.
+
+   Written with stems rather than whole words, because the first draft used
+   \btablet\b and "can I give her tablets early" sailed straight past it into
+   the content-gap branch. A gap goes to Discussions and gets answered whenever
+   somebody looks; a care question needs the charge nurse this shift. Getting
+   that wrong is not a routing bug, it is a delay on a medication question. */
+const CLINICAL = new RegExp([
+  'medicat\\w*', '\\bmeds?\\b', 'medicine\\w*', '\\btablets?\\b', '\\bpills?\\b',
+  '\\bdos(e|es|age)\\b', 'prescri\\w*', '\\bantibiotic\\w*', 'pain ?(relief|killer)',
+  'symptom\\w*', 'diagnos\\w*', 'allerg\\w*', '\\bwound\\w*', '\\brash(es)?\\b',
+  'looks infected', '\\bbleed\\w*', '\\bswollen\\b', '\\bfever\\b',
+  'should i give', 'give (her|him|them) (the|her|his|a)', 'is it safe to (give|do)',
+  'can i give'
+].join('|'), 'i');
+
+const $   = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const S = { course:'', turns:[] };
+
+/* What the coach does with a question. Grounded answer, content gap, or
+   clinical hand-off -- and the caller can tell which. */
+function answer(course, q) {
+  if (CLINICAL.test(q)) return { kind:'care' };
+  const c = COURSES[course];
+  const low = q.toLowerCase();
+  let best = null, score = 0;
+  c.qa.forEach(function (item) {
+    const n = item.k.filter(k => low.indexOf(k) >= 0).length;
+    if (n > score) { score = n; best = item; }
+  });
+  if (!best) return { kind:'gap' };
+  return { kind:'answer', a:best.a, l:best.l };
+}
+</script>
+<script>
+const IC = {
+  send:'<path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/>',
+  book:'<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
+  bot:'<path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>'
+};
+const ic = (n, s) => '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" fill="none" stroke="currentColor" ' +
+  'stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+IC[n]+'</svg>';
+
+/* A question the coach cannot answer is a content gap, so it is written
+   where the people who fix courses already work. Stored rather than merely
+   announced: Discussions reads this on load and folds it into the same
+   clustering that groups repeated questions, so five people asking the same
+   uncovered thing shows up as one course problem instead of five toasts
+   nobody saw. */
+const GAP_KEY = 'skylearn.coachGaps';
+function readGaps() {
+  try { return JSON.parse(localStorage.getItem(GAP_KEY) || '[]'); } catch (e) { return []; }
+}
+function recordGap(q) {
+  const gaps = readGaps();
+  /* The same person asking the same thing twice is one gap, not two. */
+  if (gaps.some(g => g.q === q && g.course === S.course && g.by === ME.n)) return gaps.length;
+  gaps.push({ q:q, course:S.course, by:ME.n, role:ME.role, comm:ME.comm, lesson:null,
+              topic:'uncovered', from:'coach', at:'just now' });
+  try { localStorage.setItem(GAP_KEY, JSON.stringify(gaps)); } catch (e) {}
+  return gaps.length;
+}
+const ME = { n:'Dana Whitfield', role:'CNA', comm:'Lakeside Manor' };
+
+function toast(title, body) {
+  const el = document.createElement('div'); el.className = 'toast';
+  el.innerHTML = '<div><div class="toast-title">'+esc(title)+'</div>' +
+    (body ? '<div class="toast-body">'+esc(body)+'</div>' : '')+'</div>';
+  $('toasts').appendChild(el); setTimeout(() => el.remove(), 5200);
+}
+
+const OPENERS = {
+  'Safe Resident Handling': ['Can I do a hoist transfer on my own?', 'How do I pick the right sling?', 'When should I stop a transfer?'],
+  'HIPAA Training': ['What actually counts as protected information?', 'A relative rang asking about a resident — what do I say?', 'I think I said something I should not have'],
+  'Infection Prevention': ['Gel or soap and water?', 'Do I change gloves between tasks?', 'What do I do at an isolation room door?']
+};
+
+function turnHtml(t) {
+  if (t.me) return '<div class="turn is-me"><div class="bub">'+esc(t.s)+'</div></div>';
+  if (t.kind === 'care') {
+    return '<div class="turn"><div class="refuse is-care"><b>I am not the right thing to ask.</b>' +
+      'That is a care decision about a resident, not a training question. Ask the nurse in charge now &mdash; ' +
+      'and if it cannot wait, ring them rather than typing.</div>' +
+      '<div class="handoff"><button class="btn btn-surface is-sm" data-nurse="1">Who is in charge today?</button></div></div>';
+  }
+  if (t.kind === 'gap') {
+    return '<div class="turn"><div class="refuse is-gap"><b>That is not in this course.</b>' +
+      'I only answer from ' + esc(S.course) + ', so I would be guessing. Ask a person and it gets ' +
+      'answered properly &mdash; and if a few people ask the same thing, it shows up as a gap in the ' +
+      'course rather than sitting in one inbox.</div>' +
+      '<div class="handoff"><button class="btn btn-solid is-sm" data-ask="'+esc(t.q)+'">Ask a person</button>' +
+      '<button class="btn btn-surface is-sm" data-other="1">Try another course</button></div></div>';
+  }
+  return '<div class="turn"><div class="bub">'+esc(t.s)+
+    '<span class="cite">'+ic('book', 13)+' from <b>'+esc(t.l)+'</b>, in '+esc(S.course)+'</span></div></div>';
+}
+
+function render() {
+  const names = Object.keys(COURSES);
+  const picker = '<div class="pick"><label class="sr-only" for="cSel">Course</label>' +
+    '<select class="select" id="cSel">' +
+      '<option value=""'+(S.course ? '' : ' selected')+'>Choose the course you are taking&hellip;</option>' +
+      names.map(n => '<option'+(n === S.course ? ' selected' : '')+'>'+esc(n)+'</option>').join('') +
+    '</select>' +
+    (S.course ? '<span class="tally">' +
+      COURSES[S.course].lessons.length + ' lessons, and I answer from those only.</span>' : '') +
+  '</div>';
+
+  const body = !S.course
+    ? '<div class="chat"><div class="chat-b"><div class="empty-pick">' +
+        '<h2>Pick the course you are on</h2>' +
+        '<p>I answer from that course&rsquo;s material and tell you which lesson it came from, ' +
+        'so you can go and read it yourself.</p></div></div></div>'
+    : '<div class="chat"><div class="chat-b">' +
+        (S.turns.length
+          ? S.turns.map(turnHtml).join('')
+          : '<div class="starters">' + (OPENERS[S.course] || []).map(o =>
+              '<button class="starter" data-say="'+esc(o)+'">'+esc(o)+'</button>').join('') + '</div>') +
+      '</div>' +
+      '<div class="chat-w"><label class="sr-only" for="ask">Ask about ' + esc(S.course) + '</label>' +
+        '<textarea class="input" id="ask" rows="1" placeholder="Ask about '+esc(S.course)+'&hellip;"></textarea>' +
+        '<button class="btn btn-solid" id="sendBtn" disabled>'+ic('send', 15)+' Send</button></div>' +
+    '</div>';
+
+  $('view').innerHTML = picker + body;
+  $('clearBtn').disabled = !S.turns.length;
+  wire();
+}
+
+function say(q) {
+  if (!q.trim()) return;
+  S.turns.push({ me:true, s:q.trim() });
+  const r = answer(S.course, q);
+  S.turns.push(r.kind === 'answer' ? { s:r.a, l:r.l } : { kind:r.kind, q:q.trim() });
+  render();
+}
+
+function wire() {
+  const v = $('view');
+  const sel = $('cSel');
+  if (sel) sel.onchange = () => { S.course = sel.value; S.turns = []; render(); };
+
+  v.querySelectorAll('[data-say]').forEach(b => b.onclick = () => say(b.dataset.say));
+  v.querySelectorAll('[data-ask]').forEach(b => b.onclick = () => {
+    recordGap(b.dataset.ask);
+    const same = readGaps().filter(g => g.course === S.course).length;
+    toast('Sent to Discussions',
+      same > 1
+        ? same + ' questions about ' + S.course + ' are now waiting there, grouped together. ' +
+          'That reads as a gap in the course rather than one person being stuck.'
+        : 'It goes to whoever looks after ' + S.course + '. If others ask the same thing ' +
+          'it gets grouped with theirs.');
+  });
+  v.querySelectorAll('[data-other]').forEach(b => b.onclick = () => {
+    S.course = ''; S.turns = []; render();
+  });
+  v.querySelectorAll('[data-nurse]').forEach(b => b.onclick = () =>
+    toast('Charge nurse today', 'Greta Lindqvist, Lakeside Manor. Extension 2214.'));
+
+  const box = $('ask'), send = $('sendBtn');
+  if (box && send) {
+    box.oninput = () => { send.disabled = !box.value.trim(); };
+    box.onkeydown = e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (box.value.trim()) say(box.value); }
+    };
+    send.onclick = () => say(box.value);
+  }
+}
+
+$('clearBtn').onclick = () => { S.turns = []; render(); };
+
+$('themeBtn').addEventListener('click', () => {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+  $('themeBtn').setAttribute('aria-label', dark ? 'Switch to dark theme' : 'Switch to light theme');
+});
+
+render();
+
+const viewAsBtn = document.getElementById('viewAsBtn');
+if (viewAsBtn) {
+  const menu = document.getElementById('viewAs');
+  viewAsBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = !menu.hidden;
+    menu.hidden = open;
+    viewAsBtn.setAttribute('aria-expanded', String(!open));
+  });
+  document.addEventListener('click', () => {
+    if (!menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+}
+
+/* Collapsing the rail is shell behaviour, so every page does it. It was
+   markup on twenty pages and wired on one, and standardising the nav dropped
+   the id the one handler depended on. */
+const railBtn = document.getElementById('railBtn');
+if (railBtn) {
+  railBtn.addEventListener('click', () => {
+    const shell = document.querySelector('.app-shell');
+    const side  = document.querySelector('.app-sidebar');
+    const on = shell.style.gridTemplateColumns === '0px 1fr';
+    shell.style.gridTemplateColumns = on ? '256px 1fr' : '0px 1fr';
+    if (side) side.style.visibility = on ? 'visible' : 'hidden';
+    railBtn.setAttribute('aria-label', on ? 'Collapse navigation' : 'Expand navigation');
+  });
+}
+</script>
+</body>
+</html>

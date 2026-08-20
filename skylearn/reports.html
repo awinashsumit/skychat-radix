@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<!--
+  skyLearn - Reports, Radix flavour.
+  The screens as they are, restyled: Overview, Training Matrix, Timeline,
+  Export, Custom Reports, the six report types, and the two drill-downs.
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>skyLearn &middot; Reports</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../tokens.css?v=102" />
+<link rel="stylesheet" href="../dashboard.css?v=102" />
+<style>
+  /* Shell bits shared with the other skyLearn screens */
+  .ph-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-5); flex-wrap: wrap; }
+  .ph-text { flex: 1; min-width: 0; }
+  .ph-acts { display: flex; gap: var(--space-3); flex: 0 0 auto; margin-left: auto; }
+  .num { font-variant-numeric: tabular-nums; }
+  .tally { font-size: var(--fs-2); color: var(--fg-low); }
+
+  /* Tab bar, as the screens have it */
+  .rtabs { display: flex; align-items: stretch; gap: var(--space-1); overflow-x: auto;
+    border-bottom: var(--stroke-thin) solid var(--border-subtle); margin-bottom: var(--space-5); }
+  .rtab { display: inline-flex; align-items: center; height: 42px; padding: 0 var(--space-3);
+    border: 0; background: transparent; cursor: pointer; white-space: nowrap;
+    font-family: var(--font-base); font-size: var(--fs-3); color: var(--fg-low);
+    border-bottom: 2px solid transparent; }
+  .rtab:hover { color: var(--fg-high); }
+  .rtab.is-on { color: var(--fg-high); font-weight: var(--weight-semibold); border-bottom-color: var(--accent-9); }
+
+  /* Overview: the stat line, the period switcher, the chart, the rail */
+  .statline { font-size: var(--fs-3); color: var(--fg-low); line-height: 1.6; }
+  .statline b { font-size: var(--fs-5); font-weight: var(--weight-bold); color: var(--accent-11);
+    font-variant-numeric: tabular-nums; }
+  .periods { display: inline-flex; border-radius: var(--radius-3); overflow: hidden;
+    box-shadow: inset 0 0 0 1px var(--border-ui); }
+  .period { height: 34px; padding: 0 var(--space-4); border: 0; background: transparent; cursor: pointer;
+    font-family: var(--font-base); font-size: var(--fs-2); color: var(--fg-low); }
+  .period + .period { box-shadow: inset 1px 0 0 var(--border-subtle); }
+  .period:hover { background: var(--gray-2); color: var(--fg-high); }
+  .period.is-on { background: var(--gray-4); color: var(--fg-high); font-weight: var(--weight-medium); }
+  .ov-wrap { display: flex; gap: var(--space-5); align-items: flex-start; flex-wrap: wrap; }
+  .ov-chart { flex: 1; min-width: 420px; }
+  .rail { width: 236px; flex: 0 0 auto; display: flex; flex-direction: column; gap: var(--space-3); }
+  .rail-b { display: flex; align-items: center; gap: var(--space-3); width: 100%; text-align: left;
+    padding: var(--space-4); border-radius: var(--radius-3); cursor: pointer;
+    background: var(--color-panel-solid); box-shadow: inset 0 0 0 1px var(--border-subtle);
+    font-size: var(--fs-1); font-weight: var(--weight-medium); text-transform: uppercase;
+    letter-spacing: .05em; color: var(--fg-low); }
+  .rail-b:hover { box-shadow: inset 0 0 0 1px var(--border-strong); color: var(--fg-high); }
+  .rail-b svg { flex: 0 0 auto; color: var(--fg-subtle); }
+  .legend-row { display: flex; gap: var(--space-5); justify-content: center; flex-wrap: wrap;
+    margin-top: var(--space-4); font-size: var(--fs-2); color: var(--fg-low); }
+  .legend-row span { display: inline-flex; align-items: center; gap: var(--space-2); }
+  .lk { width: 18px; height: 2px; border-radius: 2px; display: inline-block; }
+
+  /* KPI strip on the report tabs, as the screens have it: five equal cells
+     in one bordered row rather than five separate cards. */
+
+  /* Training matrix, with the slanted course headers from the screen */
+  /* Training matrix.
+
+     Rotation is what you do when you have more columns than horizontal room.
+     With six courses there is plenty of room, and the rotation was costing
+     210px of header height and truncating every title anyway. Horizontal,
+     wrapped labels are shorter, straighter and complete.
+
+     Status is ordered -- not enrolled, then started, then done -- so it takes
+     the sequential ramp rather than three unrelated hues. One glance reads
+     "how far along" without a legend. */
+  .mtx-wrap { overflow-x: auto; border-radius: var(--radius-4);
+    border: var(--stroke-thin) solid var(--border-subtle); background: var(--color-panel-solid); }
+  .mtx { border-collapse: collapse; table-layout: fixed; width: 100%; min-width: 720px; }
+  .mtx th, .mtx td { border-bottom: var(--stroke-thin) solid var(--border-subtle); }
+
+  .mtx thead th { height: 62px; padding: var(--space-3) var(--space-3); vertical-align: bottom;
+    background: var(--gray-2); text-align: center; font-weight: var(--weight-medium); }
+  .mtx .mtx-c { width: 132px; }
+  .mtx-cn { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; font-size: var(--fs-1); line-height: 1.35; color: var(--fg-high); }
+  .mtx-cc { display: block; margin-top: var(--space-1); font-size: var(--fs-1);
+    color: var(--fg-subtle); font-variant-numeric: tabular-nums; }
+
+  /* The name column stays put while the courses scroll under it. Collapsed
+     borders drop out from beneath sticky cells, so the edge is drawn. */
+  .mtx .mtx-who { position: sticky; left: 0; z-index: 2; width: 216px; text-align: left;
+    padding: 0 var(--space-4); background: var(--color-panel-solid);
+    box-shadow: 1px 0 0 var(--border-subtle); }
+  .mtx thead .mtx-who { background: var(--gray-2); z-index: 3; }
+  .mtx tbody tr:hover td, .mtx tbody tr:hover .mtx-who { background: var(--row-accent); }
+  .mtx tbody td { height: 46px; text-align: center; }
+  .mtx-n { font-size: var(--fs-2); color: var(--fg-high); white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; display: block; }
+
+  /* A dot for every intersection, filled or not: an empty cell should read as
+     "checked, nothing there" rather than as a rendering gap.
+
+     Status uses the semantic tokens, so these three stay in step with every
+     other success/info/danger in the app and follow the theme on their own.
+     Completed keeps its tick: green and red are the pair most readers with
+     colour blindness confuse, so the one that matters most carries a shape
+     as well as a hue. */
+  .dot { display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: var(--radius-full); color: #ffffff; }
+  .dot.is-none { width: 6px; height: 6px; background: var(--gray-5); }
+  .dot.is-open { background: var(--danger-solid); }
+  .dot.is-prog { background: var(--info-solid); }
+  .dot.is-done { background: var(--success-solid); }
+  .dot svg { width: 13px; height: 13px; }
+
+  /* Row and column totals. The matrix answers "who has what"; the totals
+     answer "how bad is it", which is the reason anyone opened the screen. */
+  .mtx .mtx-sum { width: 108px; padding-right: var(--space-4); }
+  .sum { display: flex; align-items: center; gap: var(--space-3); justify-content: flex-end; }
+  .sum-v { font-size: var(--fs-2); color: var(--fg-low); font-variant-numeric: tabular-nums; }
+  .sum-t { width: 42px; height: 6px; border-radius: var(--radius-full); background: var(--gray-4); overflow: hidden; }
+  .sum-f { display: block; height: 100%; border-radius: var(--radius-full); background: var(--success-solid); }
+
+  .mtx-legend { display: flex; align-items: center; gap: var(--space-5); flex-wrap: wrap;
+    margin-top: var(--space-4); font-size: var(--fs-2); color: var(--fg-low); }
+  .mtx-legend span { display: inline-flex; align-items: center; gap: var(--space-2); }
+
+  /* Timeline */
+  .tl { display: flex; flex-direction: column; }
+  .tl-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) 0; }
+  .tl-row + .tl-row { border-top: var(--stroke-thin) solid var(--border-subtle); }
+  .tl-kind { flex: 0 0 auto; height: 22px; padding: 0 var(--space-2); border-radius: var(--radius-2);
+    font-size: var(--fs-1); font-weight: var(--weight-semibold); letter-spacing: .04em;
+    display: inline-flex; align-items: center; color: #fff; }
+  .tl-kind.is-enrolled { background: var(--blue-9); }
+  .tl-kind.is-created  { background: var(--chart-4); }
+  .tl-kind.is-updated  { background: var(--warning-solid); }
+  .tl-when { flex: 0 0 auto; width: 96px; font-size: var(--fs-2); color: var(--fg-low); }
+  .tl-txt { flex: 1; min-width: 0; font-size: var(--fs-2); color: var(--fg-high); }
+  .tl-txt b { font-weight: var(--weight-semibold); }
+  .tl-txt i { color: var(--fg-low); }
+
+  /* Export cards */
+  .ex-head { margin-bottom: var(--space-5); }
+  .ex-head h2 { font-size: var(--fs-5); line-height: var(--lh-5); font-weight: var(--weight-semibold); }
+  .ex-head p { margin-top: var(--space-2); color: var(--fg-low); font-size: var(--fs-3); }
+  .ex-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); }
+  @media (max-width: 1000px) { .ex-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 680px)  { .ex-grid { grid-template-columns: 1fr; } }
+  .ex { display: flex; align-items: flex-start; gap: var(--space-4); padding: var(--space-4);
+    border-radius: var(--radius-4); background: var(--color-panel-solid);
+    box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .ex-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .ex-n { font-size: var(--fs-3); font-weight: var(--weight-semibold); color: var(--fg-high); }
+  .ex-w { font-size: var(--fs-2); color: var(--fg-low); margin-top: var(--space-2); }
+
+  /* Drill-downs */
+  /* Record header: icon-only back, name with a role badge, email beneath,
+     the export on the far right. */
+  .d-head { display: flex; align-items: flex-start; gap: var(--space-4); margin-bottom: var(--space-5); }
+  .d-back { width: 40px; height: 40px; flex: 0 0 auto; padding: 0; justify-content: center; }
+  .d-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+  .d-n { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
+    font-size: var(--fs-6); line-height: var(--lh-6); font-weight: var(--weight-bold); color: var(--fg-high); }
+  .d-role { font-size: var(--fs-1); font-weight: var(--weight-medium); letter-spacing: .05em;
+    text-transform: uppercase; color: var(--fg-low); background: var(--gray-3);
+    border-radius: var(--radius-2); padding: 3px var(--space-2); }
+  .d-s { font-size: var(--fs-2); color: var(--fg-low); }
+
+  /* Overview: the activity chart, and the progress ring beside it. */
+  .ov-2 { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: var(--space-5); align-items: start; }
+  @media (max-width: 1100px) { .ov-2 { grid-template-columns: 1fr; } }
+  .ring { width: 210px; height: 210px; margin: 0 auto; }
+  .ring svg { width: 100%; height: 100%; display: block; }
+  .ring circle { fill: none; stroke-width: 12; }
+  .ring-track { stroke: var(--gray-4); }
+  .ring-fill { stroke: var(--blue-9); stroke-linecap: round; }
+  .ring-l { font-size: 11px; fill: var(--fg-low); }
+  .ring-v { font-size: 24px; font-weight: var(--weight-bold); fill: var(--fg-high);
+    font-variant-numeric: tabular-nums; }
+  .prog-card { padding: var(--space-5); border-radius: var(--radius-4); background: var(--color-panel-solid);
+    box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .prog-t { display: block; text-align: center; margin-bottom: var(--space-4);
+    font-size: var(--fs-3); font-weight: var(--weight-semibold); color: var(--fg-high); }
+
+  /* Gamification: three small cards, sized to their content. */
+  .g-cards { display: flex; gap: var(--space-4); flex-wrap: wrap; }
+  .g-card { min-width: 118px; padding: var(--space-4) var(--space-5); border-radius: var(--radius-4);
+    text-align: center; background: var(--color-panel-solid);
+    box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .g-v { display: flex; align-items: center; justify-content: center; gap: var(--space-2);
+    font-size: var(--fs-6); font-weight: var(--weight-bold); color: var(--fg-high); }
+  .g-v.is-brand { color: var(--accent-11); }
+  .g-v svg { color: var(--fg-low); }
+  .g-l { display: block; margin-top: var(--space-1); font-size: var(--fs-2); color: var(--fg-low); }
+
+  /* Transcript: a document, so it says what it is and when it was printed. */
+  .tr-head { display: flex; align-items: flex-start; gap: var(--space-4); flex-wrap: wrap;
+    margin-bottom: var(--space-5); }
+  .tr-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+  .tr-t h2 { font-size: var(--fs-5); line-height: var(--lh-5); font-weight: var(--weight-bold); }
+  .tr-meta { font-size: var(--fs-2); color: var(--fg-low); }
+  .tr-sec { font-size: var(--fs-4); font-weight: var(--weight-semibold); color: var(--fg-high);
+    margin-bottom: var(--space-4); }
+  .tr-empty { padding: var(--space-8) 0; text-align: center; color: var(--fg-low); font-size: var(--fs-3); }
+
+  /* ---- The infographic. A printable poster, not an app screen: it keeps
+     its own blue palette in both themes, the way a certificate would. ---- */
+  .ig { border-radius: var(--radius-4); overflow: hidden; background: #ffffff;
+    box-shadow: inset 0 0 0 1px var(--border-subtle); color: #1b2733; }
+  .ig-hero { position: relative; overflow: hidden; padding: var(--space-6);
+    background: linear-gradient(115deg, #1668c8 0%, #0b47a0 55%, #0a3d8f 100%); color: #ffffff; }
+  .ig-hero i { position: absolute; border-radius: 50%; background: rgba(255,255,255,.07); }
+  .ig-hero i:nth-of-type(1) { width: 260px; height: 260px; right: -60px; top: -90px; }
+  .ig-hero i:nth-of-type(2) { width: 210px; height: 210px; left: -70px; bottom: -120px; }
+  .ig-who { position: relative; display: flex; align-items: center; gap: var(--space-4);
+    margin-bottom: var(--space-6); }
+  .ig-av { width: 62px; height: 62px; border-radius: 50%; flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center; background: #f2820a;
+    font-size: var(--fs-5); font-weight: var(--weight-bold); color: #ffffff; }
+  .ig-who-t { display: flex; flex-direction: column; gap: 2px; }
+  .ig-who-t b { font-size: var(--fs-3); font-weight: var(--weight-semibold); }
+  .ig-who-t span { font-size: var(--fs-2); color: rgba(255,255,255,.75); }
+  .ig-hero h2 { position: relative; font-size: var(--fs-8); line-height: var(--lh-8);
+    font-weight: var(--weight-bold); }
+  .ig-tag { position: relative; display: flex; align-items: center; gap: var(--space-4);
+    margin-top: var(--space-3); font-size: var(--fs-3); color: rgba(255,255,255,.9); }
+  .ig-tag i { position: static; width: 46px; height: 3px; border-radius: 2px; background: #f2820a; }
+  .ig-dl { position: absolute; top: var(--space-5); right: var(--space-5); width: 40px; height: 40px;
+    border: 0; border-radius: 50%; cursor: pointer; display: flex; align-items: center;
+    justify-content: center; background: rgba(255,255,255,.92); color: #0b47a0; }
+  .ig-dl:hover { background: #ffffff; }
+
+  .ig-strip { display: grid; grid-template-columns: repeat(5, 1fr); border-bottom: 1px solid #e7ecf2; }
+  @media (max-width: 760px) { .ig-strip { grid-template-columns: repeat(2, 1fr); } }
+  .ig-cell { padding: var(--space-5) var(--space-3); text-align: center; border-right: 1px solid #e7ecf2; }
+  .ig-cell:last-child { border-right: 0; }
+  .ig-ic { display: block; font-size: 22px; line-height: 1; margin-bottom: var(--space-2); }
+  .ig-cell b { display: block; font-size: var(--fs-6); line-height: 1; font-weight: var(--weight-bold);
+    color: #1668c8; font-variant-numeric: tabular-nums; }
+  .ig-cell span { display: block; margin-top: var(--space-2); font-size: var(--fs-1);
+    letter-spacing: .06em; text-transform: uppercase; color: #7a8797; }
+
+  .ig-body { padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-7); }
+  .ig-sec { display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-4);
+    font-size: var(--fs-1); font-weight: var(--weight-semibold); letter-spacing: .1em;
+    text-transform: uppercase; color: #98a3b1; }
+  .ig-sec i { flex: 1; height: 1px; background: #e7ecf2; }
+
+  .ig-time { padding: var(--space-7) var(--space-6); border-radius: var(--radius-4);
+    background: linear-gradient(120deg, #eaf3fd 0%, #f6fafe 100%); }
+  .ig-time b { display: block; font-size: var(--fs-7); line-height: 1; font-weight: var(--weight-bold);
+    color: #1668c8; font-variant-numeric: tabular-nums; }
+  .ig-time b em { font-size: var(--fs-4); font-style: normal; color: #1668c8; }
+  .ig-time span { display: block; margin-top: var(--space-2); font-size: var(--fs-1);
+    letter-spacing: .06em; text-transform: uppercase; color: #7a8797; }
+
+  .ig-perf { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); }
+  @media (max-width: 860px) { .ig-perf { grid-template-columns: 1fr; } }
+  .ig-p { padding: var(--space-6); border-radius: var(--radius-4); background: #f6f7f9; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: var(--space-4); }
+  .ig-disc { width: 140px; height: 140px; border-radius: 50%; background: #ffffff;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+  .ig-disc b { font-size: var(--fs-6); font-weight: var(--weight-bold); font-variant-numeric: tabular-nums; }
+  .ig-disc span { font-size: var(--fs-2); color: #7a8797; }
+  .ig-p h3 { font-size: var(--fs-3); font-weight: var(--weight-semibold); color: #1b2733; }
+  .ig-pair { display: flex; gap: var(--space-6); }
+  .ig-pair span { display: flex; flex-direction: column; gap: var(--space-1);
+    font-size: var(--fs-1); color: #7a8797; }
+  .ig-pair span b { font-size: var(--fs-5); font-weight: var(--weight-bold); font-variant-numeric: tabular-nums; }
+  .is-blue { color: #1668c8; }
+  .is-green { color: #10a35a; }
+
+  .ig-badge-box { padding: var(--space-6); border-radius: var(--radius-4); text-align: center;
+    background: linear-gradient(120deg, #fff3e0 0%, #fff9f0 100%); }
+  .ig-unlocked { font-size: var(--fs-3); color: #7a8797; }
+  .ig-unlocked b { font-size: var(--fs-6); font-weight: var(--weight-bold); color: #f2820a;
+    margin-right: var(--space-2); }
+  .ig-locks { display: flex; justify-content: center; gap: var(--space-3); flex-wrap: wrap;
+    margin-top: var(--space-5); }
+  .ig-lock { width: 46px; height: 46px; border-radius: 50%; background: rgba(0,0,0,.045);
+    display: flex; align-items: center; justify-content: center; font-size: 17px; }
+
+  .ig-cmp { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-6); }
+  @media (max-width: 760px) { .ig-cmp { grid-template-columns: 1fr; } }
+  .ig-rank { display: flex; flex-direction: column; gap: var(--space-3); text-align: center; }
+  .ig-rank b { font-size: var(--fs-6); font-weight: var(--weight-bold); font-variant-numeric: tabular-nums; }
+  .ig-bar { height: 8px; border-radius: var(--radius-full); background: #e7ecf2; overflow: hidden; }
+  .ig-bar i { display: block; height: 100%; border-radius: var(--radius-full); }
+  .ig-rank span { font-size: var(--fs-1); letter-spacing: .06em; text-transform: uppercase; color: #7a8797; }
+
+  .toast-stack { position: fixed; left: 50%; bottom: var(--space-6); transform: translateX(-50%);
+    display: flex; flex-direction: column; gap: var(--space-2); z-index: 1400; }
+  .toast-stack .toast { animation: t-in .2s ease-out; }
+  @keyframes t-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header is-dark">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect width="24" height="24" rx="6" fill="var(--accent-9)"/><text x="12" y="16.5" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-contrast)">S</text></svg>
+      <span>skyLearn</span>
+    </div>
+    <div class="search hdr-search">
+      <span class="search-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+      <label class="sr-only" for="q">Search</label>
+      <input class="input" id="q" type="search" placeholder="Search courses and learners" autocomplete="off" />
+    </div>
+    <div class="header-right">
+      <span class="presence"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg><span><strong class="pt-num">4</strong> points</span></span>
+      <button class="icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="ic-badge">3</span></button>
+      <button class="icon-btn" id="themeBtn" aria-label="Switch to dark theme"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+      <span class="divider-v"></span>
+      <span class="header-wrap">
+        <button class="header-user" id="viewAsBtn" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar c6">SA</span>
+          <span class="hu-id"><span class="hu-name">Sumit Awinash</span><span class="hu-role">Administrator</span></span>
+        </button>
+        <div class="view-as" id="viewAs" role="menu" hidden>
+          <div class="view-as-t">View as</div>
+          <a href="index.html" role="menuitem" aria-current="true"><span class="vr"></span>
+            <span class="vw">Administrator<span>Everything, across all six communities</span></span></a>
+          <a href="teach.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Instructor<span>Your courses, learners and sessions</span></span></a>
+          <a href="learn.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Learner<span>What you have to do, and by when</span></span></a>
+          <div class="vs">
+            <a href="signin.html" role="menuitem">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
+              Sign out</a>
+          </div>
+        </div>
+      </span>
+    </div>
+  </header>
+
+  <nav class="app-sidebar" aria-label="Primary">
+    <button class="sidebar-toggle" id="railBtn" aria-label="Collapse navigation"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>
+    <a class="nav-item" href="index.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg><span class="nav-label">Dashboard</span></a>
+    <a class="nav-item" href="courses.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg><span class="nav-label">Courses</span></a>
+    <a class="nav-item" href="learners.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg><span class="nav-label">Learners</span></a>
+    <a class="nav-item" href="certificate.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg><span class="nav-label">Certifications</span></a>
+    <a class="nav-item" href="sessions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg><span class="nav-label">Sessions</span></a>
+    <a class="nav-item" href="groups.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg><span class="nav-label">Groups</span></a>
+    <a class="nav-item" href="recognition.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0z"/></svg><span class="nav-label">Recognition</span></a>
+    <a class="nav-item" href="discussions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6V2H8"/><path d="m8 18-4 4V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2Z"/><path d="M2 12h2"/><path d="M9 11v2"/><path d="M15 11v2"/><path d="M20 12h2"/></svg><span class="nav-label">Discussions</span></a>
+    <a class="nav-item is-active" href="reports.html" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span class="nav-label">Reports</span></a>
+    <a class="nav-item" href="automations.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/><path d="m2 2 20 20"/></svg><span class="nav-label">Automations</span></a>
+    <a class="nav-item" href="surveys.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/><rect x="3" y="4" width="18" height="16" rx="2"/></svg><span class="nav-label">Surveys</span></a>
+    <a class="nav-item" href="grading.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="m9 11-1.5 1.5L9 14"/><path d="M16 16h-4"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg><span class="nav-label">Grading Hub</span></a>
+    <a class="nav-item" href="files.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span class="nav-label">Reference library</span></a>
+    <a class="nav-item nav-tail" href="#"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="nav-label">Help and support</span></a>
+  </nav>
+
+  <main class="app-content">
+    <div class="breadcrumbs"><a href="index.html">Home</a><span class="sep"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span><span class="current">Reports</span></div>
+    <div class="content-body">
+      <header class="page-header ph-row">
+        <div class="ph-text"><h1>Reports</h1>
+          <p>Learning activity, completions and compliance across every course and learner.</p></div>
+        <div class="ph-acts"><button class="btn btn-surface" id="topCsv">Export CSV</button></div>
+      </header>
+      <div id="view"></div>
+    </div>
+  </main>
+</div>
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+
+<script>
+/* ==============================================================
+   The data from the screens, kept as it is.
+   ============================================================== */
+const USERS = [
+  { n:'Sumit Awinash',    email:'sumit.awinash@skypointcloud.com',  assigned:3, done:0, score:null, pts:4,  lvl:1, badges:null, last:'17/8/2026' },
+  { n:'Ravi Chandran',    email:'ravi.chandran@skypoint.ai',        assigned:1, done:0, score:null, pts:70, lvl:1, badges:1,    last:'4/8/2026'  },
+  { n:'Anjali Deshmukh',  email:'anjali.deshmukh@skypoint.ai',      assigned:1, done:0, score:null, pts:29, lvl:1, badges:1,    last:'4/8/2026'  },
+  { n:'Nikhil Raut',      email:'nikhil.raut@skypoint.ai',          assigned:2, done:0, score:null, pts:41, lvl:1, badges:null, last:'8/6/2026'  },
+  { n:'Priya Nadar',      email:'priya.nadar@skypoint.ai',          assigned:1, done:0, score:null, pts:3,  lvl:1, badges:null, last:'25/3/2026' },
+  { n:'Devendra Joshi',   email:'devendra.joshi@skypoint.ai',       assigned:2, done:2, score:null, pts:94, lvl:2, badges:5,    last:'25/3/2026' },
+  { n:'Elias Varghese',   email:'elias.varghese@skypoint.ai',       assigned:1, done:0, score:null, pts:14, lvl:1, badges:null, last:'25/3/2026' }
+];
+
+const COURSES = [
+  { t:'Resident Engagement & Wellness',            cat:'Onboarding',               assigned:3, done:1, rate:33, score:null,
+    desc:'Introduction: Resident Engagement & Wellness training focuses on enhancing the overall quality of life for residents by …' },
+  { t:'Resident Care & Clinical Training',         cat:'Onboarding',               assigned:2, done:1, rate:50, score:null },
+  { t:'HIPAA Training',                            cat:'Compliance',               assigned:2, done:0, rate:0,  score:null },
+  { t:'Applying a Wrist Restraint: A Competency-Ba…', cat:'Uncategorized',    assigned:1, done:0, rate:0,  score:null },
+  { t:'Test',                                      cat:'Uncategorized',            assigned:1, done:0, rate:0,  score:null },
+  { t:'Caregiver Well-Being: Preventing Burnout in …', cat:'Professional Development', assigned:0, done:0, rate:0, score:null },
+  { t:'Connecting with the Person: Communication …',   cat:'Professional Development', assigned:0, done:0, rate:0, score:null },
+  { t:'Pain: An Overview',                         cat:'Professional Development', assigned:0, done:0, rate:0,  score:null },
+  { t:'Personal Protective Equipment (PPE) for Dire…', cat:'Safety & Health',  assigned:0, done:0, rate:0,  score:null },
+  { t:'Adverse Drug Events: Recognition and Preve…',   cat:'Compliance',       assigned:0, done:0, rate:0,  score:null },
+  { t:'Understanding Dementia’s Impact: Supporting Families', cat:'Professional Development', assigned:0, done:0, rate:0, score:null },
+  { t:'Wandering and Elopement: Recognition, Prevention, and Response', cat:'Safety & Health', assigned:0, done:0, rate:0, score:null },
+  { t:'Ethical Foundations of Dementia Care',      cat:'Professional Development', assigned:0, done:0, rate:0,  score:null },
+  { t:'Infection Control Essentials',              cat:'Safety & Health',          assigned:0, done:0, rate:0,  score:null },
+  { t:'Resident Rights and Abuse Prevention',      cat:'Compliance',               assigned:0, done:0, rate:0,  score:null },
+  { t:'Medication Administration',                 cat:'Clinical',                 assigned:0, done:0, rate:0,  score:null },
+  { t:'Safe Lifting and Transfers',                cat:'Safety & Health',          assigned:0, done:0, rate:0,  score:null },
+  { t:'Emergency Preparedness',                    cat:'Safety & Health',          assigned:0, done:0, rate:0,  score:null }
+];
+
+/* The matrix grid from the screen: six course columns, seven learners. */
+const MX_COURSES = ['Resident Engagement & Welln…', 'HIPAA Training', 'Resident Care & Clinical Training',
+                    'Applying a Wrist Restraint: A C…', 'Test', 'Test'];
+const MX_USERS = [
+  { n:'Priya Nadar',       cells:['prog', '', '', '', '', ''] },
+  { n:'Nikhil Raut',        cells:['prog', 'prog', '', '', '', ''] },
+  { n:'Elias Varghese',        cells:['', '', 'prog', '', '', ''] },
+  { n:'Anjali Deshmukh', cells:['', 'prog', '', '', '', ''] },
+  { n:'Ravi Chandran',    cells:['', '', '', 'prog', '', ''] },
+  { n:'Devendra Joshi',       cells:['done', '', 'done', '', '', ''] },
+  { n:'Sumit Awinash',        cells:['', '', '', '', 'prog', 'prog'] }
+];
+
+/* Who is on what. Both drill-downs read this, so a learner's course list and
+   a course's learner list can never disagree with each other. */
+const ENROLL = [
+  { u:'Devendra Joshi',       c:'Resident Engagement & Wellness',    st:'done', on:'25/3/2026' },
+  { u:'Devendra Joshi',       c:'Resident Care & Clinical Training', st:'done', on:'25/3/2026' },
+  { u:'Priya Nadar',       c:'Resident Engagement & Wellness',    st:'prog', on:'25/3/2026' },
+  { u:'Nikhil Raut',        c:'Resident Engagement & Wellness',    st:'prog', on:'8/6/2026' },
+  { u:'Nikhil Raut',        c:'HIPAA Training',                    st:'prog', on:'8/6/2026' },
+  { u:'Elias Varghese',        c:'Resident Care & Clinical Training', st:'prog', on:'25/3/2026' },
+  { u:'Anjali Deshmukh', c:'HIPAA Training',                    st:'prog', on:'4/8/2026' },
+  { u:'Ravi Chandran',    c:'Applying a Wrist Restraint: A Competency-Ba…', st:'prog', on:'4/8/2026' },
+  { u:'Sumit Awinash',        c:'Test',                              st:'prog', on:'17/8/2026' },
+  { u:'Sumit Awinash',        c:'Test',                              st:'prog', on:'17/8/2026' }
+];
+const forUser   = n => ENROLL.filter(e => e.u === n);
+const forCourse = c => ENROLL.filter(e => e.c === c);
+
+const EVENTS = [
+  { k:'enrolled', when:'Yesterday',  who:'Sumit Awinash',     verb:'was enrolled in',   what:'Test' },
+  { k:'created',  when:'Yesterday',  who:'Sumit Awinash',     verb:'created the course', what:'Test' },
+  { k:'updated',  when:'2 days ago', who:'Ravi Chandran', verb:'updated the course', what:'Pain: An Overview' },
+  { k:'updated',  when:'2 days ago', who:'Sumit Awinash',     verb:'updated the course', what:'Test' },
+  { k:'enrolled', when:'2 days ago', who:'Sumit Awinash',     verb:'was enrolled in',    what:'Test' },
+  { k:'created',  when:'2 days ago', who:'Sumit Awinash',     verb:'created the course', what:'Test' },
+  { k:'created',  when:'5 days ago', who:'Ravi Chandran', verb:'created the course', what:'Pain: An Overview' },
+  { k:'updated',  when:'5 days ago', who:'Ravi Chandran', verb:'updated the course', what:'Understanding Dementia’s Impact: Supporting Families' },
+  { k:'updated',  when:'5 days ago', who:'Ravi Chandran', verb:'updated the course', what:'Personal Protective Equipment (PPE) for Direct Care Staff' },
+  { k:'updated',  when:'5 days ago', who:'Ravi Chandran', verb:'updated the course', what:'Adverse Drug Events: Recognition and Prevention in Older Adults' },
+  { k:'updated',  when:'5 days ago', who:'Ravi Chandran', verb:'updated the course', what:'Connecting with the Person: Communication Skills for Dementia Care' },
+  { k:'updated',  when:'5 days ago', who:'Ravi Chandran', verb:'updated the course', what:'Caregiver Well-Being: Preventing Burnout in Dementia Care' },
+  { k:'updated',  when:'5 days ago', who:'Ravi Chandran', verb:'updated the course', what:'Wandering and Elopement: Recognition, Prevention, and Response' },
+  { k:'updated',  when:'5 days ago', who:'Ravi Chandran', verb:'updated the course', what:'Ethical Foundations of Dementia Care' },
+  { k:'updated',  when:'5 days ago', who:'Ravi Chandran', verb:'updated the course', what:'Infection Control Essentials' },
+  { k:'enrolled', when:'6 days ago', who:'Nikhil Raut',     verb:'was enrolled in',    what:'HIPAA Training' },
+  { k:'enrolled', when:'6 days ago', who:'Elias Varghese',     verb:'was enrolled in',    what:'Resident Care & Clinical Training' },
+  { k:'created',  when:'8 days ago', who:'Devendra Joshi',    verb:'created the course', what:'Resident Engagement & Wellness' }
+];
+const EVENT_TOTAL = 48;
+
+const EXPORTS = [
+  { n:'All Enrollments',   w:'All learner-course enrollments with status, score, and dates.' },
+  { n:'Completions Only',  w:'All completed enrollments with score and completion date.' },
+  { n:'Learner Summary',   w:'Per-learner summary: total courses, completions, avg score.' },
+  { n:'Group Report',      w:'Per-group member count, completion rate, and avg score.' },
+  { n:'Activities Report', w:'Learning activities breakdown by unit type.' },
+  { n:'Course Statistics', w:'Per-course enrollments, completions, and avg score.' },
+  { n:'Training Matrix',   w:'Full learner-course matrix with status and score.' },
+  { n:'Compliance Report', w:'Mandatory course enrollments with overdue flags.' },
+  { n:'Overdue Report',    w:'All enrollments past their due date.' }
+];
+
+const RAIL = [
+  { k:'user',     n:'User reports',     ic:'users' },
+  { k:'course',   n:'Course reports',   ic:'book' },
+  { k:'group',    n:'Group reports',    ic:'group' },
+  { k:'activity', n:'Activity reports', ic:'check' },
+  { k:'compliance', n:'Compliance',     ic:'shield' },
+  { k:'overdue',  n:'Overdue',          ic:'alert' }
+];
+
+/* The chart series behind the Overview graph. */
+const SERIES = {
+  labels:['Jul 22','Jul 24','Jul 26','Jul 28','Jul 30','Aug 1','Aug 3','Aug 5','Aug 7','Aug 9','Aug 11','Aug 13','Aug 15','Aug 17','Aug 19'],
+  enrollments:[7,5,1,4,2,5,3,3,3,1,5,3,1,3,2],
+  completions:[0,0,0,0,0,0,2,0,0,0,0,0,0,3,2],
+  logins:     [0,0,0,0,0,0,0,0,0,0,0,0,0,2,2]
+};
+
+const $   = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const dash = v => (v === null || v === undefined || v === '') ? '&mdash;' : v;
+
+const S = { tab:'overview', period:'Month', evFilter:'All Events', mxPage:1, q:'',
+            userPage:1, coursePage:1, openUser:null, openCourse:null,
+            userTab:'overview', courseTab:'overview' };
+</script>
+<script>
+/* ==============================================================
+   Icons, chrome
+   ============================================================== */
+const IC = {
+  users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/>',
+  book:'<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
+  group:'<path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/>',
+  check:'<path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+  shield:'<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+  alert:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  down:'<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>',
+  spark:'<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>',
+  file:'<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/>',
+  search:'<path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/>',
+  left:'<path d="m15 18-6-6 6-6"/>', right:'<path d="m9 18 6-6-6-6"/>',
+  back:'<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+  trophy:'<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0z"/>'
+};
+const ic = (n, s) => '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+IC[n]+'</svg>';
+function toast(title, body) {
+  const el = document.createElement('div'); el.className = 'toast';
+  el.innerHTML = '<div><div class="toast-title">'+esc(title)+'</div>'+(body ? '<div class="toast-body">'+esc(body)+'</div>' : '')+'</div>';
+  $('toasts').appendChild(el); setTimeout(() => el.remove(), 4200);
+}
+const kstrip = cells => '<div class="kstrip" style="grid-template-columns:repeat('+cells.length+',1fr);">' +
+  cells.map(c => '<div class="kcell"><b>'+c[0]+'</b><span>'+c[1]+'</span></div>').join('') + '</div>';
+
+/* An area chart drawn straight into SVG: three series, smoothed, on the
+   same axis as the screen it replaces. */
+function areaChart(series, w, h) {
+  const pad = { l:34, r:12, t:12, b:26 };
+  const keys = [['enrollments','var(--gray-9)'], ['completions','var(--accent-9)'], ['logins','var(--blue-9)']];
+  const max = Math.max(8, Math.max.apply(null, keys.reduce((a, k) => a.concat(series[k[0]]), [])));
+  const n = series.labels.length;
+  const x = i => pad.l + i * (w - pad.l - pad.r) / (n - 1);
+  const y = v => pad.t + (1 - v / max) * (h - pad.t - pad.b);
+  const path = arr => arr.map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ');
+  const grid = [0, max / 4, max / 2, max * 0.75, max].map(v =>
+    '<line x1="'+pad.l+'" x2="'+(w - pad.r)+'" y1="'+y(v)+'" y2="'+y(v)+'" stroke="var(--border-subtle)" stroke-dasharray="2 4"/>' +
+    '<text x="'+(pad.l - 8)+'" y="'+(y(v) + 4)+'" text-anchor="end" font-size="11" fill="var(--fg-subtle)">'+Math.round(v)+'</text>').join('');
+  const ticks = series.labels.map((l, i) => i % 2 === 0
+    ? '<text x="'+x(i)+'" y="'+(h - 8)+'" text-anchor="middle" font-size="11" fill="var(--fg-subtle)">'+esc(l)+'</text>' : '').join('');
+  const areas = keys.map(([k, col]) =>
+    '<path d="'+path(series[k])+' L '+x(n - 1)+' '+y(0)+' L '+x(0)+' '+y(0)+' Z" fill="'+col+'" fill-opacity=".18"/>' +
+    '<path d="'+path(series[k])+'" fill="none" stroke="'+col+'" stroke-width="2" stroke-linejoin="round"/>').join('');
+  return '<svg viewBox="0 0 '+w+' '+h+'" style="width:100%;height:auto;" role="img" aria-label="Activity over the period">' +
+    grid + areas + ticks + '</svg>';
+}
+</script>
+
+<script>
+/* ==============================================================
+   Overview
+   ============================================================== */
+function tOverview() {
+  const PERIODS = ['All time','Today','Yesterday','Week','Month','Year','Period'];
+  return '<div class="statline">' +
+      '<b>7</b> active users &middot; <b>3</b> certificates issued &middot; ' +
+      '<b>18</b> courses &middot; <b>18%</b> completion rate &middot; <b>0%</b> avg score' +
+    '</div>' +
+    '<div style="margin:var(--space-5) 0;"><span class="periods">' + PERIODS.map(x =>
+      '<button class="period'+(S.period === x ? ' is-on' : '')+'" data-period="'+x+'">'+x+'</button>').join('') +
+    '</span></div>' +
+    '<div class="ov-wrap">' +
+      '<div class="ov-chart"><div class="panel-title" style="margin-bottom:var(--space-4);">Overall</div>' +
+        areaChart(SERIES, 900, 380) +
+        '<div class="legend-row">' +
+          '<span><i class="lk" style="background:var(--accent-9);"></i> Course completions</span>' +
+          '<span><i class="lk" style="background:var(--gray-9);"></i> Enrollments</span>' +
+          '<span><i class="lk" style="background:var(--blue-9);"></i> Logins</span>' +
+        '</div></div>' +
+      '<div class="rail">' + RAIL.map(r =>
+        '<button class="rail-b" data-rail="'+r.k+'">'+ic(r.ic, 18)+' '+esc(r.n)+'</button>').join('') +
+      '</div>' +
+    '</div>';
+}
+
+/* ==============================================================
+   Training Matrix
+   ============================================================== */
+const DOT = {
+  done: { cls:'is-done', label:'Completed' },
+  prog: { cls:'is-prog', label:'In progress' },
+  open: { cls:'is-open', label:'Enrolled, not started' }
+};
+const ORDER = { done:3, prog:2, open:1 };
+
+/* Worst first. A matrix sorted alphabetically makes you read all of it to
+   find the person you need to chase. */
+function mtxRows(q) {
+  return MX_USERS.filter(u => hit(q, [u.n])).map(function (u) {
+    const on   = u.cells.filter(Boolean).length;
+    const done = u.cells.filter(c => c === 'done').length;
+    return { u:u, on:on, done:done, pct: on ? done / on * 100 : 0 };
+  }).sort((a, b) => a.pct - b.pct || b.on - a.on || a.u.n.localeCompare(b.u.n));
+}
+function colDone(i) { return MX_USERS.filter(u => u.cells[i] === 'done').length; }
+function colOn(i)   { return MX_USERS.filter(u => u.cells[i]).length; }
+
+function tMatrix() {
+  const rows = mtxRows(S.q);
+  const gaps = MX_USERS.reduce((s, u) => s + u.cells.filter(c => c && c !== 'done').length, 0);
+
+  return '<div class="table-toolbar">' +
+      '<div class="search" style="min-width:280px;"><span class="search-icon">'+ic('search', 16)+'</span>' +
+        '<label class="sr-only" for="mxq">Search users</label>' +
+        '<input class="input" id="mxq" placeholder="Search users..." /></div>' +
+      '<span class="tally">'+gaps+' course'+(gaps === 1 ? '' : 's')+' still outstanding</span>' +
+      '<span class="toolbar-spacer"></span>' +
+      '<button class="btn btn-surface" data-csv="Training Matrix">'+ic('down', 16)+' Export CSV</button>' +
+    '</div>' +
+    (rows.length
+      ? '<div class="mtx-wrap"><table class="mtx"><thead><tr>' +
+          '<th class="mtx-who" scope="col"><span class="mtx-n">Learner</span></th>' +
+          MX_COURSES.map(function (c, i) {
+            return '<th class="mtx-c" scope="col"><span class="mtx-cn">'+esc(c)+'</span>' +
+              '<span class="mtx-cc">'+colDone(i)+'/'+colOn(i)+'</span></th>';
+          }).join('') +
+          '<th class="mtx-sum" scope="col"><span class="mtx-cn" style="text-align:right;">Complete</span></th>' +
+        '</tr></thead><tbody>' + rows.map(function (r) {
+          return '<tr><th class="mtx-who" scope="row">' +
+            '<a href="#" class="mtx-n" data-user="'+esc(r.u.n)+'">'+esc(r.u.n)+'</a></th>' +
+            r.u.cells.map(function (c, i) {
+              const d = DOT[c];
+              return '<td>' + (d
+                ? '<span class="dot '+d.cls+'" title="'+esc(MX_COURSES[i])+': '+d.label+'">' +
+                  (c === 'done' ? ic('check', 13) : '')+'</span>'
+                : '<span class="dot is-none" title="'+esc(MX_COURSES[i])+': not enrolled"></span>') + '</td>';
+            }).join('') +
+            '<td class="mtx-sum"><span class="sum"><span class="sum-v">'+r.done+' of '+r.on+'</span>' +
+              '<span class="sum-t"><i class="sum-f" style="width:'+r.pct.toFixed(0)+'%;"></i></span></span></td></tr>';
+        }).join('') + '</tbody></table></div>'
+      : '<div class="card"><div class="empty-state"><div class="empty-art">'+ic('search', 30)+'</div>' +
+        '<h2>No learners match &ldquo;'+esc(S.q)+'&rdquo;</h2><p>Try a shorter search.</p>' +
+        '<button class="btn btn-surface" id="clearQ">Clear search</button></div></div>') +
+    '<div class="mtx-legend">' +
+      '<span><i class="dot is-done">'+ic('check', 13)+'</i> Completed</span>' +
+      '<span><i class="dot is-prog"></i> In progress</span>' +
+      '<span><i class="dot is-open"></i> Enrolled, not started</span>' +
+      '<span><i class="dot is-none"></i> Not enrolled</span>' +
+    '</div>';
+}
+
+/* ==============================================================
+   Timeline
+   ============================================================== */
+function tTimeline() {
+  const KINDS = ['All Events','Enrolled','Course created','Course updated'];
+  const map = { enrolled:'ENROLLED', created:'COURSE_CREATED', updated:'COURSE_UPDATED' };
+  const rows = S.evFilter === 'All Events' ? EVENTS
+    : EVENTS.filter(e => map[e.k].toLowerCase().replace('_', ' ') === S.evFilter.toLowerCase());
+  return '<div style="display:flex;align-items:center;gap:var(--space-4);margin-bottom:var(--space-4);">' +
+      '<label class="sr-only" for="evf">Event type</label>' +
+      '<select class="select" id="evf" style="min-width:180px;">' + KINDS.map(k =>
+        '<option'+(k === S.evFilter ? ' selected' : '')+'>'+k+'</option>').join('') + '</select>' +
+      '<span class="tally">'+EVENT_TOTAL+' events</span>' +
+    '</div>' +
+    '<div class="card"><div class="tl">' + rows.map(e =>
+      '<div class="tl-row"><span class="tl-kind is-'+e.k+'">'+map[e.k]+'</span>' +
+      '<span class="tl-when">'+esc(e.when)+'</span>' +
+      '<span class="tl-txt"><b>'+esc(e.who)+'</b> '+esc(e.verb)+' <i>'+esc(e.what)+'</i></span></div>').join('') +
+    '</div></div>';
+}
+
+/* ==============================================================
+   Export
+   ============================================================== */
+function tExport() {
+  return '<div class="ex-head"><h2>Export data</h2>' +
+      '<p>Download any report as CSV for offline analysis, Excel import, or BI tools.</p></div>' +
+    '<div class="ex-grid">' + EXPORTS.map(x =>
+      '<div class="ex"><span class="ex-t"><span class="ex-n">'+esc(x.n)+'</span>' +
+      '<span class="ex-w">'+esc(x.w)+'</span></span>' +
+      '<button class="btn btn-solid is-sm" data-csv="'+esc(x.n)+'">'+ic('down', 15)+' CSV</button></div>').join('') +
+    '</div>';
+}
+
+/* ==============================================================
+   Custom Reports
+   ============================================================== */
+function tCustom() {
+  return '<div style="display:flex;align-items:center;gap:var(--space-4);margin-bottom:var(--space-4);">' +
+      '<span class="tally">0 custom reports</span><span style="flex:1;"></span>' +
+      '<button class="btn btn-solid" id="mkAi">'+ic('spark', 16)+' Create with AI</button>' +
+    '</div>' +
+    '<div class="card"><div class="empty-state"><div class="empty-art">'+ic('file', 36)+'</div>' +
+      '<h2>No custom reports yet</h2>' +
+      '<p>Use &ldquo;Create with AI&rdquo; to build your first custom report.</p></div></div>';
+}
+</script>
+<script>
+/* ==============================================================
+   The six rail reports. Same shape as the screens they replace:
+   a bordered KPI strip, then the table, then the house pager.
+   ============================================================== */
+/* An empty table with a filter in the box looks broken. Say so instead. */
+const noRows = (cols, what) =>
+  '<tr><td colspan="'+cols+'" style="height:auto;padding:0;"><div class="empty-state">' +
+    '<div class="empty-art">'+ic('search', 30)+'</div><h2>No '+what+' match &ldquo;'+esc(S.q)+'&rdquo;</h2>' +
+    '<p>Try a shorter search, or clear it to see everything.</p>' +
+    '<button class="btn btn-surface" id="clearQ">Clear search</button></div></td></tr>';
+
+const hit = (q, fields) => !q || fields.some(f => String(f).toLowerCase().indexOf(q.toLowerCase()) >= 0);
+
+function toolbar(placeholder, id, csvId) {
+  return '<div class="table-toolbar">' +
+      '<div class="search" style="min-width:280px;"><span class="search-icon">'+ic('search', 16)+'</span>' +
+      '<label class="sr-only" for="'+id+'">'+esc(placeholder)+'</label>' +
+      '<input class="input" id="'+id+'" placeholder="'+esc(placeholder)+'" value="'+esc(S.q)+'" /></div>' +
+      '<span class="toolbar-spacer"></span>' +
+      '<button class="btn btn-surface" data-csv="'+esc(csvId)+'">'+ic('down', 16)+' Export CSV</button>' +
+    '</div>';
+}
+function pager(total, page, per, noun) {
+  const pages = Math.max(1, Math.ceil(total / per));
+  const from  = total ? (page - 1) * per + 1 : 0;
+  const to    = Math.min(total, page * per);
+  let win = []; for (let i = 1; i <= pages; i++) win.push(i);
+  if (pages > 7) win = [1, 2, 3, '...', pages];
+  return '<div class="pagination"><span class="page-spacer"></span>' +
+    '<span class="page-info">'+from+'&ndash;'+to+' of '+total+' '+noun+'</span>' +
+    '<span class="page-controls">' +
+      '<button class="btn btn-surface is-sm" data-pg="prev"'+(page === 1 ? ' disabled' : '')+' aria-label="Previous page">'+ic('left', 14)+'</button>' +
+      win.map(x => x === '...' ? '<span class="page-info">&hellip;</span>'
+        : '<button class="btn '+(x === page ? 'btn-solid' : 'btn-surface')+' is-sm" data-pg="'+x+'" style="min-width:30px;justify-content:center;"'+(x === page ? ' aria-current="page"' : '')+'>'+x+'</button>').join('') +
+      '<button class="btn btn-surface is-sm" data-pg="next"'+(page === pages ? ' disabled' : '')+' aria-label="Next page">'+ic('right', 14)+'</button>' +
+    '</span></div>';
+}
+
+function tUser() {
+  const per = 10, page = S.userPage;
+  const all  = USERS.filter(u => hit(S.q, [u.n, u.email]));
+  const rows = all.slice((page - 1) * per, page * per);
+  return kstrip([['7','Total learners'], ['11','Course assignments'], ['2','Completed courses'],
+                 ['2','Courses in progress'], ['0%','Avg score']]) +
+    toolbar('Search learners...', 'uq', 'Learner Summary') +
+    '<div class="table-wrap"><table class="table"><thead><tr>' +
+      '<th>Learner</th><th>Assigned</th><th>Completed</th><th>Avg score</th>' +
+      '<th>Points</th><th>Level</th><th>Badges</th><th>Last active</th>' +
+    '</tr></thead><tbody>' + rows.map(u =>
+      '<tr data-href="#" data-user="'+esc(u.n)+'">' +
+      '<td><b>'+esc(u.n)+'</b><div class="cell-sub">'+esc(u.email)+'</div></td>' +
+      '<td class="num">'+u.assigned+'</td><td class="num">'+u.done+'</td>' +
+      '<td class="num">'+dash(u.score)+'</td><td class="num">'+u.pts+'</td>' +
+      '<td class="num">'+u.lvl+'</td><td class="num">'+dash(u.badges)+'</td>' +
+      '<td>'+esc(u.last)+'</td></tr>').join('') +
+    '</tbody></table></div>'
+      + (rows.length ? '' : noRows(8, 'learners')) + pager(all.length, page, per, 'learners');
+}
+
+function tCourse() {
+  const per = 10, page = S.coursePage;
+  const all  = COURSES.filter(c => hit(S.q, [c.t, c.cat]));
+  const rows = all.slice((page - 1) * per, page * per);
+  return kstrip([['18','Total courses'], ['9','Assigned learners'], ['2','Completed learners'],
+                 ['7','Learners in progress'], ['5%','Avg completion']]) +
+    toolbar('Search courses...', 'cq', 'Course Statistics') +
+    '<div class="table-wrap"><table class="table"><thead><tr>' +
+      '<th>Course</th><th>Category</th><th>Assigned</th><th>Completed</th>' +
+      '<th>Completion rate</th><th>Avg score</th>' +
+    '</tr></thead><tbody>' + rows.map(c =>
+      '<tr data-href="#" data-course="'+esc(c.t)+'"><td>'+esc(c.t)+'</td>' +
+      '<td><span class="badge">'+esc(c.cat)+'</span></td>' +
+      '<td class="num">'+c.assigned+'</td><td class="num">'+c.done+'</td>' +
+      '<td class="num">'+c.rate+'%</td><td class="num">'+dash(c.score)+'</td></tr>').join('') +
+    '</tbody></table></div>'
+      + (rows.length ? '' : noRows(6, 'courses')) + pager(all.length, page, per, 'courses');
+}
+
+/* Groups, activities, compliance and overdue read from the same seven
+   learners and eighteen courses, so nothing here can disagree with the
+   two tables above. */
+const GROUPS = [
+  { n:'All CNAs',                 members:2, rate:50, score:null },
+  { n:'All caregivers',           members:2, rate:0,  score:null },
+  { n:'Licensed nurses',          members:1, rate:0,  score:null },
+  { n:'Medication technicians',   members:1, rate:0,  score:null },
+  { n:'Support staff',            members:0, rate:0,  score:null },
+  { n:'Lakeside Manor, everyone', members:3, rate:33, score:null },
+  { n:'Cedar Ridge, everyone',    members:2, rate:0,  score:null },
+  { n:'Care Givers',              members:3, rate:0,  score:null },
+  { n:'Fall prevention committee',members:0, rate:0,  score:null }
+];
+function tGroup() {
+  return kstrip([['9','Groups'], ['7','Learners in a group'], ['11','Assignments'],
+                 ['2','Completions'], ['18%','Avg completion']]) +
+    toolbar('Search groups...', 'gq', 'Group Report') +
+    '<div class="table-wrap"><table class="table"><thead><tr>' +
+      '<th>Group</th><th>Members</th><th>Completion rate</th><th>Avg score</th>' +
+    '</tr></thead><tbody>' + GROUPS.filter(g => hit(S.q, [g.n])).map(g =>
+      '<tr><td>'+esc(g.n)+'</td><td class="num">'+g.members+'</td>' +
+      '<td class="num">'+g.rate+'%</td><td class="num">'+dash(g.score)+'</td></tr>').join('') +
+    '</tbody></table></div>'
+      + (GROUPS.some(g => hit(S.q, [g.n])) ? '' : noRows(4, 'groups')) + pager(GROUPS.filter(g => hit(S.q, [g.n])).length, 1, 10, 'groups');
+}
+
+const ACTS = [
+  { n:'Video',      total:34, done:6, rate:18 },
+  { n:'Reading',    total:29, done:5, rate:17 },
+  { n:'Quiz',       total:21, done:3, rate:14 },
+  { n:'SCORM',      total:8,  done:1, rate:13 },
+  { n:'Assignment', total:5,  done:0, rate:0 },
+  { n:'Live session', total:3, done:0, rate:0 }
+];
+function tActivity() {
+  return kstrip([['100','Activities'], ['15','Completed'], ['6','Unit types'],
+                 ['15%','Completion rate'], ['0%','Avg score']]) +
+    toolbar('Search activities...', 'aq', 'Activities Report') +
+    '<div class="table-wrap"><table class="table"><thead><tr>' +
+      '<th>Unit type</th><th>Activities</th><th>Completed</th><th>Completion rate</th>' +
+    '</tr></thead><tbody>' + ACTS.filter(a => hit(S.q, [a.n])).map(a =>
+      '<tr><td>'+esc(a.n)+'</td><td class="num">'+a.total+'</td>' +
+      '<td class="num">'+a.done+'</td><td class="num">'+a.rate+'%</td></tr>').join('') +
+    '</tbody></table></div>'
+      + (ACTS.some(a => hit(S.q, [a.n])) ? '' : noRows(4, 'unit types'));
+}
+
+const MANDATORY = [
+  { c:'HIPAA Training',                      cat:'Compliance', assigned:2, done:0, overdue:1 },
+  { c:'Resident Rights and Abuse Prevention',cat:'Compliance', assigned:0, done:0, overdue:0 },
+  { c:'Adverse Drug Events: Recognition and Preve…', cat:'Compliance', assigned:0, done:0, overdue:0 },
+  { c:'Infection Control Essentials',        cat:'Safety & Health', assigned:0, done:0, overdue:0 },
+  { c:'Emergency Preparedness',              cat:'Safety & Health', assigned:0, done:0, overdue:0 }
+];
+function tCompliance() {
+  return kstrip([['5','Mandatory courses'], ['2','Enrollments'], ['0','Completed'],
+                 ['1','Overdue'], ['0%','Compliance rate']]) +
+    toolbar('Search mandatory courses...', 'mq', 'Compliance Report') +
+    '<div class="table-wrap"><table class="table"><thead><tr>' +
+      '<th>Course</th><th>Category</th><th>Enrolled</th><th>Completed</th><th>Overdue</th>' +
+    '</tr></thead><tbody>' + MANDATORY.filter(m => hit(S.q, [m.c, m.cat])).map(m =>
+      '<tr><td>'+esc(m.c)+'</td><td><span class="badge">'+esc(m.cat)+'</span></td>' +
+      '<td class="num">'+m.assigned+'</td><td class="num">'+m.done+'</td>' +
+      '<td class="num">' + (m.overdue
+        ? '<span class="badge is-danger">'+m.overdue+'</span>' : '0') + '</td></tr>').join('') +
+    '</tbody></table></div>'
+      + (MANDATORY.some(m => hit(S.q, [m.c, m.cat])) ? '' : noRows(5, 'courses'));
+}
+
+const OVERDUE = [
+  { who:'Nikhil Raut',   course:'HIPAA Training', due:'8/8/2026',  days:11 },
+  { who:'Priya Nadar',  course:'Resident Engagement & Wellness', due:'1/8/2026', days:18 },
+  { who:'Elias Varghese',   course:'Resident Care & Clinical Training', due:'25/7/2026', days:25 }
+];
+function tOverdue() {
+  return kstrip([['3','Overdue enrollments'], ['3','Learners affected'], ['3','Courses affected'],
+                 ['18','Avg days overdue'], ['25','Longest overdue']]) +
+    toolbar('Search overdue...', 'oq', 'Overdue Report') +
+    '<div class="table-wrap"><table class="table"><thead><tr>' +
+      '<th>Learner</th><th>Course</th><th>Due</th><th>Days overdue</th>' +
+    '</tr></thead><tbody>' + OVERDUE.filter(o => hit(S.q, [o.who, o.course])).map(o =>
+      '<tr data-href="#" data-user="'+esc(o.who)+'"><td>'+esc(o.who)+'</td>' +
+      '<td>'+esc(o.course)+'</td><td>'+esc(o.due)+'</td>' +
+      '<td class="num"><span class="badge is-danger">'+o.days+'</span></td></tr>').join('') +
+    '</tbody></table></div>'
+      + (OVERDUE.some(o => hit(S.q, [o.who, o.course])) ? '' : noRows(4, 'enrollments'));
+}
+</script>
+<script>
+/* ==============================================================
+   Drill-downs
+   ============================================================== */
+function ring(pct, label) {
+  const r = 52, c = 2 * Math.PI * r;
+  return '<div class="ring"><svg viewBox="0 0 130 130" role="img" ' +
+      'aria-label="'+esc(label)+': '+pct.toFixed(1)+' percent">' +
+      '<circle class="ring-track" cx="65" cy="65" r="'+r+'" />' +
+      '<circle class="ring-fill" cx="65" cy="65" r="'+r+'" stroke-dasharray="'+c.toFixed(1)+'" ' +
+        'stroke-dashoffset="'+(c * (1 - pct / 100)).toFixed(1)+'" transform="rotate(-90 65 65)" />' +
+      '<text class="ring-l" x="65" y="57" text-anchor="middle" dy=".35em">'+esc(label)+'</text>' +
+      '<text class="ring-v" x="65" y="76" text-anchor="middle" dy=".35em">'+pct.toFixed(1)+'%</text>' +
+    '</svg></div>';
+}
+const TABS_U = ['Overview','Courses','Gamification','Infographic','Transcript'];
+const TABS_C = ['Overview','Users'];
+
+/* A transcript that leaves the screen loses every clue about how current it
+   is, so it carries the print stamp with it. */
+const PRINTED = 'Skypoint Demo &middot; Printed: Wed, Aug 19, 2026 at 5:21 PM GMT+5:30';
+const IG_DATE = '08/19/2026';
+const initials = n => n.split(/\s+/).slice(0, 2).map(w => w.charAt(0)).join('').toUpperCase();
+const LOCKS = 10;
+
+function dRecord(role, title, sub, strip, tabs, active, attr, panel) {
+  return '<div class="d-head">' +
+      '<button class="btn btn-surface d-back" id="dBack" aria-label="Back to reports">'+ic('back', 18)+'</button>' +
+      '<div class="d-t"><span class="d-n">'+esc(title)+'<span class="d-role">'+esc(role)+'</span></span>' +
+        '<span class="d-s">'+esc(sub)+'</span></div>' +
+      '<button class="btn btn-surface" data-csv="'+esc(title)+'">'+ic('down', 16)+' Export CSV</button>' +
+    '</div>' + strip +
+    '<div class="rtabs" role="tablist">' + tabs.map(x =>
+      '<button class="rtab'+(active === x ? ' is-on' : '')+'" role="tab" aria-selected="'+(active === x)+'" ' +
+      'data-'+attr+'="'+x+'" aria-controls="panel">'+x+'</button>').join('') +
+    '</div><div class="stack-3" id="panel" role="tabpanel" tabindex="0">' + panel + '</div>';
+}
+
+function dUser(name) {
+  const u  = USERS.filter(x => x.n === name)[0] || USERS[0];
+  const en = forUser(u.n);
+  const nDone = en.filter(e => e.st === 'done').length;
+  const nProg = en.length - nDone;
+  const nTot  = u.assigned;              /* the table's number, kept as the screen has it */
+  const pct   = nTot ? (nDone / nTot) * 100 : 0;
+  const badges = u.badges || 0;
+
+  const body = {
+    Overview: () =>
+      '<div class="ov-2">' +
+        '<div><div class="panel-title" style="margin-bottom:var(--space-4);">Activity (Last 90 Days)</div>' +
+          areaChart({ labels:SERIES.labels,
+                      enrollments:SERIES.enrollments.map(() => en.length ? 1 : 0),
+                      completions:SERIES.completions.map(v => Math.min(v, nDone)),
+                      logins:SERIES.logins.map(v => Math.min(v, nTot)) }, 900, 380) +
+          '<div class="legend-row">' +
+            '<span><i class="lk" style="background:var(--accent-9);"></i> Completions</span>' +
+            '<span><i class="lk" style="background:var(--gray-9);"></i> Enrollments</span>' +
+            '<span><i class="lk" style="background:var(--blue-9);"></i> Logins</span>' +
+          '</div></div>' +
+        '<div class="prog-card"><span class="prog-t">Progress Overview</span>' + ring(pct, 'Completed') + '</div>' +
+      '</div>',
+
+    Courses: () => en.length
+      ? '<div class="table-wrap"><table class="table"><thead><tr>' +
+          '<th>Course</th><th>Progress</th><th>Score</th><th>Enrolled on</th><th>Completed</th>' +
+        '</tr></thead><tbody>' + en.map(e =>
+          '<tr data-href="#" data-course="'+esc(e.c)+'"><td><b>'+esc(e.c)+'</b></td>' +
+          '<td><span class="badge '+(e.st === 'done' ? 'is-success' : 'is-neutral')+'">' +
+            (e.st === 'done' ? 'COMPLETED' : 'ENROLLED')+'</span></td>' +
+          '<td class="num">&mdash;</td><td>'+esc(e.on)+'</td>' +
+          '<td class="num">'+(e.st === 'done' ? esc(e.on) : '&mdash;')+'</td></tr>').join('') +
+        '</tbody></table></div>' + pager(en.length, 1, 10, 'courses')
+      : '<div class="card"><div class="empty-state"><div class="empty-art">'+ic('book', 34)+'</div>' +
+        '<h2>No courses assigned</h2><p>Assign one from Courses or through a group.</p></div></div>',
+
+    Gamification: () =>
+      '<div class="g-cards">' +
+        '<div class="g-card"><span class="g-v is-brand">'+u.pts+'</span><span class="g-l">Total Points</span></div>' +
+        '<div class="g-card"><span class="g-v">'+ic('trophy', 18)+u.lvl+'</span><span class="g-l">Level</span></div>' +
+        '<div class="g-card"><span class="g-v">'+badges+'</span><span class="g-l">Badges Earned</span></div>' +
+      '</div>' +
+      (badges
+        ? '<div class="card"><div class="empty-state"><div class="empty-art">'+ic('trophy', 34)+'</div>' +
+          '<h2>'+badges+' badge'+(badges === 1 ? '' : 's')+' earned</h2>' +
+          '<p>Awarded on course completion.</p></div></div>'
+        : '<div class="tr-empty">No badges earned yet.</div>'),
+
+    Infographic: () => {
+      const rank = '13th';
+      return '<div class="ig">' +
+        '<div class="ig-hero"><i></i><i></i>' +
+          '<button class="ig-dl" data-csv="Infographic" aria-label="Download infographic">'+ic('down', 18)+'</button>' +
+          '<div class="ig-who"><span class="ig-av">'+esc(initials(u.n))+'</span>' +
+            '<span class="ig-who-t"><b>'+esc(u.n)+'</b><span>'+IG_DATE+'</span></span></div>' +
+          '<h2>Training Infographic</h2>' +
+          '<div class="ig-tag"><i></i> Your learning journey at a glance</div>' +
+        '</div>' +
+        '<div class="ig-strip">' + [
+          ['\u{1F4DA}', nTot, 'Courses'], ['\u{1F393}', nDone, 'Certificates'],
+          ['⭐', u.pts, 'Points'], ['\u{1F6E1}️', badges, 'Badges'],
+          ['\u{1F4CA}', u.lvl + (u.lvl === 1 ? 'st' : u.lvl === 2 ? 'nd' : u.lvl === 3 ? 'rd' : 'th'), 'Level']
+        ].map(c => '<div class="ig-cell"><span class="ig-ic">'+c[0]+'</span>' +
+          '<b>'+c[1]+'</b><span>'+c[2]+'</span></div>').join('') + '</div>' +
+        '<div class="ig-body">' +
+          '<div><div class="ig-sec">Training time <i></i></div>' +
+            '<div class="ig-time"><b>0<em>h</em> 0<em>m</em></b><span>Total time</span></div></div>' +
+          '<div><div class="ig-sec">Performance <i></i></div>' +
+            '<div class="ig-perf">' +
+              '<div class="ig-p"><span class="ig-disc"><b class="is-blue">'+pct.toFixed(1)+'%</b>' +
+                '<span>Completed</span></span><h3>Course Completion</h3>' +
+                '<span class="ig-pair"><span><b class="is-blue">'+nTot+'</b>Courses</span>' +
+                '<span><b class="is-blue">'+nDone+'</b>Completed</span></span></div>' +
+              '<div class="ig-p"><span class="ig-disc"><b class="is-green">0.0%</b>' +
+                '<span>Pass Rate</span></span><h3>Test Pass Rate</h3>' +
+                '<span class="ig-pair"><span><b class="is-green">0</b>Tests</span>' +
+                '<span><b class="is-green">0%</b>Avg Score</span></span></div>' +
+            '</div></div>' +
+          '<div><div class="ig-sec">Badges <i></i></div>' +
+            '<div class="ig-badge-box">' +
+              '<div class="ig-unlocked"><b>'+Math.round(badges / LOCKS * 100)+'%</b>Unlocked</div>' +
+              '<div class="ig-locks">' + Array.from({ length: LOCKS }, (_, i) =>
+                '<span class="ig-lock">'+(i < badges ? '\u{1F3C5}' : '\u{1F512}')+'</span>').join('') +
+            '</div></div></div>' +
+          '<div><div class="ig-sec">Compared to others <i></i></div>' +
+            '<div class="ig-cmp">' + [
+              [rank, 'Points', '#f5b301', 45], [rank, 'Badges', '#10a35a', 45], [rank, 'Level', '#1668c8', 45]
+            ].map(r => '<div class="ig-rank"><b style="color:'+r[2]+';">'+r[0]+'</b>' +
+              '<span class="ig-bar"><i style="width:'+r[3]+'%;background:'+r[2]+';"></i></span>' +
+              '<span>'+r[1]+'</span></div>').join('') + '</div></div>' +
+        '</div></div>';
+    },
+
+    Transcript: () =>
+      '<div class="tr-head"><div class="tr-t"><h2>'+esc(u.n)+'&rsquo;s Transcript</h2>' +
+        '<span class="tr-meta">'+PRINTED+'</span></div>' +
+        '<button class="btn btn-surface" data-csv="Transcript (PDF)">'+ic('down', 16)+' Download all (PDF)</button></div>' +
+      '<div class="tr-sec">Courses</div>' +
+      (nDone
+        ? '<div class="table-wrap"><table class="table"><thead><tr>' +
+            '<th>Course</th><th>Completed</th><th>Score</th></tr></thead><tbody>' +
+          en.filter(e => e.st === 'done').map(e =>
+            '<tr><td>'+esc(e.c)+'</td><td>'+esc(e.on)+'</td><td class="num">&mdash;</td></tr>').join('') +
+          '</tbody></table></div>'
+        : '<div class="tr-empty">No completed training yet.</div>')
+  };
+
+  return dRecord('Learner', u.n, u.email,
+    kstrip([[nDone, 'completed courses'], [nProg, 'in progress'], [nTot, 'total courses'],
+            [u.score === null ? '0%' : u.score, 'avg score'],
+            [u.pts, 'points'], ['Lv ' + u.lvl, 'level']]),
+    TABS_U, S.userTab, 'utab', body[S.userTab]());
+}
+
+
+function dCourse(title) {
+  const c  = COURSES.filter(x => x.t === title)[0] || COURSES[0];
+  const en = forCourse(c.t);
+  const nDone = en.filter(e => e.st === 'done').length;
+  const nProg = en.length - nDone;
+  const nTot  = c.assigned;
+  const pct   = nTot ? (nDone / nTot) * 100 : 0;
+
+  const body = {
+    Overview: () =>
+      '<div class="ov-2">' +
+        '<div><div class="panel-title" style="margin-bottom:var(--space-4);">Activity (Last 90 Days)</div>' +
+          areaChart({ labels:SERIES.labels,
+                      enrollments:SERIES.enrollments.map(() => nTot ? 1 : 0),
+                      completions:SERIES.completions.map(v => Math.min(v, nDone)),
+                      logins:SERIES.logins.map(v => Math.min(v, nTot)) }, 900, 380) +
+          '<div class="legend-row">' +
+            '<span><i class="lk" style="background:var(--accent-9);"></i> Completions</span>' +
+            '<span><i class="lk" style="background:var(--gray-9);"></i> Enrollments</span>' +
+            '<span><i class="lk" style="background:var(--blue-9);"></i> Logins</span>' +
+          '</div></div>' +
+        '<div class="prog-card"><span class="prog-t">Progress Overview</span>' + ring(pct, 'Completed') + '</div>' +
+      '</div>' +
+      (c.desc ? '<div class="card" style="padding:var(--space-5);"><div class="tr-sec">About this course</div>' +
+        '<p style="font-size:var(--fs-3);color:var(--fg-low);">'+esc(c.desc)+'</p></div>' : ''),
+
+    Users: () => en.length
+      ? '<div class="table-wrap"><table class="table"><thead><tr>' +
+          '<th>Learner</th><th>Progress</th><th>Score</th><th>Enrolled on</th><th>Completed</th>' +
+        '</tr></thead><tbody>' + en.map(e =>
+          '<tr data-href="#" data-user="'+esc(e.u)+'"><td><b>'+esc(e.u)+'</b></td>' +
+          '<td><span class="badge '+(e.st === 'done' ? 'is-success' : 'is-neutral')+'">' +
+            (e.st === 'done' ? 'COMPLETED' : 'ENROLLED')+'</span></td>' +
+          '<td class="num">&mdash;</td><td>'+esc(e.on)+'</td>' +
+          '<td class="num">'+(e.st === 'done' ? esc(e.on) : '&mdash;')+'</td></tr>').join('') +
+        '</tbody></table></div>' + pager(en.length, 1, 10, 'learners')
+      : '<div class="card"><div class="empty-state"><div class="empty-art">'+ic('users', 34)+'</div>' +
+        '<h2>Nobody is enrolled</h2><p>Assign this course from Courses or from a group.</p></div></div>'
+  };
+
+  return dRecord('Course', c.t, c.cat,
+    kstrip([[nDone, 'completed learners'], [nProg, 'in progress'], [nTot, 'total learners'],
+            [c.score === null ? '0%' : c.score, 'avg score'], [c.rate + '%', 'completion rate']]),
+    TABS_C, S.courseTab, 'ctab', body[S.courseTab]());
+}
+</script>
+
+<script>
+/* ==============================================================
+   Render and wiring
+   ============================================================== */
+const BASE = [
+  { k:'overview', n:'Overview',        fn:tOverview },
+  { k:'matrix',   n:'Training Matrix', fn:tMatrix },
+  { k:'timeline', n:'Timeline',        fn:tTimeline },
+  { k:'export',   n:'Export',          fn:tExport },
+  { k:'custom',   n:'Custom Reports',  fn:tCustom }
+];
+const RAIL_TAB = {
+  user:       { n:'User Reports',     fn:tUser },
+  course:     { n:'Course Reports',   fn:tCourse },
+  group:      { n:'Group Reports',    fn:tGroup },
+  activity:   { n:'Activity Reports', fn:tActivity },
+  compliance: { n:'Compliance',       fn:tCompliance },
+  overdue:    { n:'Overdue',          fn:tOverdue }
+};
+const opened = [];   /* rail reports become tabs as you open them */
+
+function tabList() {
+  return BASE.concat(opened.map(k => ({ k:k, n:RAIL_TAB[k].n, fn:RAIL_TAB[k].fn })));
+}
+
+function render() {
+  const root = $('view');
+  if (S.openUser)   { root.innerHTML = dUser(S.openUser);     return wire(); }
+  if (S.openCourse) { root.innerHTML = dCourse(S.openCourse); return wire(); }
+  const tabs = tabList();
+  const cur  = tabs.filter(t => t.k === S.tab)[0] || tabs[0];
+  root.innerHTML =
+    '<div class="rtabs" role="tablist">' + tabs.map(t =>
+      '<button class="rtab'+(t.k === cur.k ? ' is-on' : '')+'" role="tab" aria-selected="'+(t.k === cur.k)+'" data-tab="'+t.k+'" aria-controls="panel">'+esc(t.n)+'</button>').join('') +
+    '</div><div class="stack-3" id="panel" role="tabpanel" tabindex="0">' + cur.fn() + '</div>';
+  wire();
+}
+
+function wire() {
+  const root = $('view');
+  root.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { S.tab = b.dataset.tab; S.q = ''; render(); });
+  root.querySelectorAll('[data-utab]').forEach(b => b.onclick = () => { S.userTab = b.dataset.utab; render(); });
+  root.querySelectorAll('[data-ctab]').forEach(b => b.onclick = () => { S.courseTab = b.dataset.ctab; render(); });
+  root.querySelectorAll('[data-period]').forEach(b => b.onclick = () => { S.period = b.dataset.period; render(); });
+  root.querySelectorAll('[data-rail]').forEach(b => b.onclick = () => {
+    const k = b.dataset.rail;
+    if (opened.indexOf(k) < 0) opened.push(k);
+    S.tab = k; S.q = ''; render();
+  });
+  root.querySelectorAll('[data-user]').forEach(a => a.onclick = e => {
+    e.preventDefault(); S.openUser = a.dataset.user; S.userTab = 'Overview'; render();
+  });
+  root.querySelectorAll('[data-course]').forEach(a => a.onclick = e => {
+    e.preventDefault(); S.openCourse = a.dataset.course; S.courseTab = 'Overview'; render();
+  });
+  root.querySelectorAll('[data-csv]').forEach(b => b.onclick = () =>
+    toast('Preparing ' + b.dataset.csv, 'The CSV will download when it is ready.'));
+  root.querySelectorAll('[data-pg]').forEach(b => b.onclick = () => {
+    const key = S.tab === 'course' ? 'coursePage' : 'userPage';
+    const v = b.dataset.pg;
+    S[key] = v === 'prev' ? Math.max(1, S[key] - 1) : v === 'next' ? S[key] + 1 : parseInt(v, 10);
+    render();
+  });
+  const back = $('dBack');
+  if (back) back.onclick = () => { S.openUser = null; S.openCourse = null; render(); };
+  ['mxq','uq','cq','gq','aq','mq','oq'].forEach(id => {
+    const box = $(id);
+    if (!box) return;
+    box.oninput = () => {
+      S.q = box.value; S.userPage = 1; S.coursePage = 1;
+      render();
+      const again = $(id);
+      if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); }
+    };
+  });
+  const clr = $('clearQ');
+  if (clr) clr.onclick = () => { S.q = ''; render(); };
+  const evf = $('evf');
+  if (evf) evf.onchange = () => { S.evFilter = evf.value; render(); };
+  const ai = $('mkAi');
+  if (ai) ai.onclick = () => toast('Describe your report', 'Custom reports are generated from a prompt.');
+}
+
+$('themeBtn').addEventListener('click', () => {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+  $('themeBtn').setAttribute('aria-label', dark ? 'Switch to dark theme' : 'Switch to light theme');
+});
+
+const topCsv = $('topCsv');
+topCsv.onclick = () => {
+  const cur = tabList().filter(x => x.k === S.tab)[0] || tabList()[0];
+  toast('Preparing ' + cur.n, 'The CSV will download when it is ready.');
+};
+
+render();
+
+const viewAsBtn = document.getElementById('viewAsBtn');
+if (viewAsBtn) {
+  const menu = document.getElementById('viewAs');
+  viewAsBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = !menu.hidden;
+    menu.hidden = open;
+    viewAsBtn.setAttribute('aria-expanded', String(!open));
+  });
+  document.addEventListener('click', () => {
+    if (!menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+}
+
+/* Collapsing the rail is shell behaviour, so every page does it. It was
+   markup on twenty pages and wired on one, and standardising the nav dropped
+   the id the one handler depended on. */
+const railBtn = document.getElementById('railBtn');
+if (railBtn) {
+  railBtn.addEventListener('click', () => {
+    const shell = document.querySelector('.app-shell');
+    const side  = document.querySelector('.app-sidebar');
+    const on = shell.style.gridTemplateColumns === '0px 1fr';
+    shell.style.gridTemplateColumns = on ? '256px 1fr' : '0px 1fr';
+    if (side) side.style.visibility = on ? 'visible' : 'hidden';
+    railBtn.setAttribute('aria-label', on ? 'Collapse navigation' : 'Expand navigation');
+  });
+}
+</script>
+</body>
+</html>

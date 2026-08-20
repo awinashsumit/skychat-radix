@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<!--
+  skyLearn - Courses > [course] > Assign, Radix flavour.
+  Pick an audience by role, community, group or person, then see exactly who
+  that resolves to before committing. See ASSIGN-IA.md.
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>skyLearn &middot; Assign a course</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../tokens.css?v=102" />
+<link rel="stylesheet" href="../dashboard.css?v=102" />
+<style>
+  .split-2 { gap: var(--space-5); align-items: start; }
+  .ph-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-5); flex-wrap: wrap; }
+  .ph-text { min-width: 0; }
+
+  .wrap { display: grid; grid-template-columns: 1fr 360px; gap: var(--space-5); align-items: start; }
+  @media (max-width: 1100px) { .wrap { grid-template-columns: 1fr; } }
+  .rail { position: sticky; top: var(--space-5); }
+
+  /* --- Audience picker ---------------------------------------------- */
+  .pick-list { display: flex; flex-direction: column; margin-top: var(--space-3); }
+  .pick { display: flex; align-items: center; gap: var(--space-3); width: 100%;
+    padding: var(--space-3) var(--space-2); border-radius: var(--radius-3);
+    cursor: pointer; transition: background-color .12s ease-out; }
+  .pick + .pick { border-top: var(--stroke-thin) solid var(--border-subtle); }
+  .pick:hover { background: var(--gray-2); }
+  .pick[aria-pressed="true"] { background: var(--row-accent); }
+  .pick:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
+  .pick-box { width: 18px; height: 18px; flex: 0 0 auto; border-radius: 5px;
+    display: inline-flex; align-items: center; justify-content: center;
+    box-shadow: inset 0 0 0 1px var(--border-ui); background: var(--color-surface); color: transparent; }
+  .pick[aria-pressed="true"] .pick-box { background: var(--accent-9); box-shadow: none; color: var(--accent-contrast); }
+  .pick-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .pick-name { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+  .pick-sub { font-size: var(--fs-1); color: var(--fg-low); margin-top: 1px; }
+  .pick-count { flex: 0 0 auto; font-size: var(--fs-2); color: var(--fg-low); font-variant-numeric: tabular-nums; }
+  .pick.is-empty .pick-name { color: var(--fg-subtle); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
+
+  /* --- Resolution rail ---------------------------------------------- */
+  .res-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+  .res-big { font-size: var(--fs-8); line-height: 1; font-weight: var(--weight-bold); color: var(--fg-high); font-variant-numeric: tabular-nums; }
+  .res-cap { font-size: var(--fs-2); color: var(--fg-low); }
+  .res-row { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3) 0; }
+  .res-row + .res-row { border-top: var(--stroke-thin) solid var(--border-subtle); }
+  .res-n { flex: 0 0 auto; min-width: 26px; font-size: var(--fs-3); font-weight: var(--weight-medium);
+    color: var(--fg-high); font-variant-numeric: tabular-nums; text-align: right; }
+  .res-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .res-l { font-size: var(--fs-2); color: var(--fg-high); }
+  .res-w { font-size: var(--fs-1); color: var(--fg-low); margin-top: 1px; }
+  .res-row.is-skip .res-n, .res-row.is-skip .res-l { color: var(--fg-low); }
+  .res-dot { width: 8px; height: 8px; border-radius: var(--radius-full); margin-top: 6px; flex: 0 0 auto; }
+  .res-row.is-go   .res-dot { background: var(--success-solid); }
+  .res-row.is-warn .res-dot { background: var(--warning-solid); }
+  .res-row.is-skip .res-dot { background: var(--gray-6); }
+
+  .who { max-height: 260px; overflow: auto; margin-top: var(--space-3); }
+  .who-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) 0; font-size: var(--fs-2); }
+  .who-row + .who-row { border-top: var(--stroke-thin) solid var(--border-subtle); }
+  .who-name { flex: 1; min-width: 0; color: var(--fg-high); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .who-why { flex: 0 0 auto; font-size: var(--fs-1); color: var(--fg-low); }
+
+  .opts { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+  @media (max-width: 700px) { .opts { grid-template-columns: 1fr; } }
+  .toast-stack { position: fixed; left: 50%; bottom: var(--space-6); transform: translateX(-50%);
+    display: flex; flex-direction: column; gap: var(--space-2); z-index: 1400; }
+  .toast-stack .toast { animation: t-in .2s ease-out; }
+  @keyframes t-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header is-dark">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect width="24" height="24" rx="6" fill="var(--accent-9)"/><text x="12" y="16.5" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-contrast)">S</text></svg>
+      <span>skyLearn</span>
+    </div>
+    <div class="search hdr-search">
+      <span class="search-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+      <label class="sr-only" for="q">Search</label>
+      <input class="input" id="q" type="search" placeholder="Search courses and learners" autocomplete="off" />
+    </div>
+    <div class="header-right">
+      <span class="presence"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg><span><strong class="pt-num">4</strong> points</span></span>
+      <button class="icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="ic-badge">3</span></button>
+      <button class="icon-btn" id="themeBtn" aria-label="Switch to dark theme"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+      <span class="divider-v"></span>
+      <span class="header-wrap">
+        <button class="header-user" id="viewAsBtn" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar c6">SA</span>
+          <span class="hu-id"><span class="hu-name">Sumit Awinash</span><span class="hu-role">Administrator</span></span>
+        </button>
+        <div class="view-as" id="viewAs" role="menu" hidden>
+          <div class="view-as-t">View as</div>
+          <a href="index.html" role="menuitem" aria-current="true"><span class="vr"></span>
+            <span class="vw">Administrator<span>Everything, across all six communities</span></span></a>
+          <a href="teach.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Instructor<span>Your courses, learners and sessions</span></span></a>
+          <a href="learn.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Learner<span>What you have to do, and by when</span></span></a>
+          <div class="vs">
+            <a href="signin.html" role="menuitem">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
+              Sign out</a>
+          </div>
+        </div>
+      </span>
+    </div>
+  </header>
+
+  <nav class="app-sidebar" aria-label="Primary">
+    <button class="sidebar-toggle" id="railBtn" aria-label="Collapse navigation"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>
+    <a class="nav-item" href="index.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg><span class="nav-label">Dashboard</span></a>
+    <a class="nav-item is-active" href="courses.html" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg><span class="nav-label">Courses</span></a>
+    <a class="nav-item" href="learners.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg><span class="nav-label">Learners</span></a>
+    <a class="nav-item" href="certificate.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg><span class="nav-label">Certifications</span></a>
+    <a class="nav-item" href="sessions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg><span class="nav-label">Sessions</span></a>
+    <a class="nav-item" href="groups.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg><span class="nav-label">Groups</span></a>
+    <a class="nav-item" href="recognition.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0z"/></svg><span class="nav-label">Recognition</span></a>
+    <a class="nav-item" href="discussions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6V2H8"/><path d="m8 18-4 4V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2Z"/><path d="M2 12h2"/><path d="M9 11v2"/><path d="M15 11v2"/><path d="M20 12h2"/></svg><span class="nav-label">Discussions</span></a>
+    <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span class="nav-label">Reports</span></a>
+    <a class="nav-item" href="automations.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/><path d="m2 2 20 20"/></svg><span class="nav-label">Automations</span></a>
+    <a class="nav-item" href="surveys.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/><rect x="3" y="4" width="18" height="16" rx="2"/></svg><span class="nav-label">Surveys</span></a>
+    <a class="nav-item" href="grading.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="m9 11-1.5 1.5L9 14"/><path d="M16 16h-4"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg><span class="nav-label">Grading Hub</span></a>
+    <a class="nav-item" href="files.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span class="nav-label">Reference library</span></a>
+    <a class="nav-item nav-tail" href="#"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="nav-label">Help and support</span></a>
+  </nav>
+
+  <main class="app-content">
+    <div class="breadcrumbs">
+      <a href="index.html">Home</a>
+      <span class="sep"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+      <a href="courses.html">Courses</a>
+      <span class="sep"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+      <span class="current">Assign</span>
+    </div>
+
+    <div class="content-body">
+      <header class="page-header ph-row">
+        <div class="ph-text">
+          <h1>Assign this course</h1>
+          <p><strong>Preventing Falls in Senior Living</strong>. 6 modules, about 25 minutes. Required for clinical roles.</p>
+        </div>
+      </header>
+
+      <div class="wrap">
+        <div class="stack-5">
+          <section class="card">
+            <div class="panel-head"><div>
+              <div class="panel-title">Who gets it</div>
+              <div class="panel-sub">Pick as many as you like. Someone in two of them is only counted once.</div>
+            </div></div>
+            <div class="segmented" role="tablist" aria-label="Pick by" id="tabs">
+              <button class="segmented-item is-active" role="tab" data-tab="role" aria-selected="true">By role</button>
+              <button class="segmented-item" role="tab" data-tab="comm" aria-selected="false">By community</button>
+              <button class="segmented-item" role="tab" data-tab="group" aria-selected="false">Groups</button>
+              <button class="segmented-item" role="tab" data-tab="person" aria-selected="false">People</button>
+            </div>
+            <div id="picker"></div>
+            <div class="chips" id="chips"></div>
+          </section>
+
+          <section class="card">
+            <div class="panel-head"><div>
+              <div class="panel-title">When it is due</div>
+              <div class="panel-sub">A due date is what makes a course overdue, and overdue is what a survey looks at.</div>
+            </div></div>
+            <div class="opts">
+              <div class="field"><span class="field-label">Finish within</span>
+                <div class="segmented" role="tablist" aria-label="Finish within" id="due">
+                  <button class="segmented-item" role="tab" data-due="7" aria-selected="false">7 days</button>
+                  <button class="segmented-item is-active" role="tab" data-due="30" aria-selected="true">30 days</button>
+                  <button class="segmented-item" role="tab" data-due="90" aria-selected="false">90 days</button>
+                </div>
+                <span class="field-hint" id="dueWhen"></span></div>
+              <div class="field"><span class="field-label">Repeat</span>
+                <div class="segmented" role="tablist" aria-label="Repeat" id="rep">
+                  <button class="segmented-item is-active" role="tab" data-rep="0" aria-selected="true">Once</button>
+                  <button class="segmented-item" role="tab" data-rep="12" aria-selected="false">Every year</button>
+                  <button class="segmented-item" role="tab" data-rep="24" aria-selected="false">Every 2 years</button>
+                </div>
+                <span class="field-hint">Ohio requires fall prevention annually.</span></div>
+            </div>
+            <hr class="divider" />
+            <label class="checkbox"><input type="checkbox" id="incLeave" /> Include the 2 people currently on leave</label>
+            <label class="checkbox" style="margin-top:var(--space-3);"><input type="checkbox" id="autoNew" checked /> Assign automatically to anyone who joins these roles later</label>
+          </section>
+        </div>
+
+        <aside class="card rail" aria-live="polite">
+          <div id="rail"></div>
+        </aside>
+      </div>
+    </div>
+
+    <footer class="app-footer">
+      skyLearn, a Skypoint product. Assigning never overwrites a completion that is still valid.
+    </footer>
+  </main>
+</div>
+
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+
+<script>
+/* ==============================================================
+   Roster. 44 people, built so every edge case below is real rather
+   than hypothetical.
+   ============================================================== */
+const RAW = `Dana Whitfield|CNA|Lakeside Manor|care,night|active|none
+Rosalind Vega|CNA|Lakeside Manor|care|active|expired
+Marcus Ellery|Med Tech|Northgate|medpass|active|overdue
+Aurelie Bonnet|CNA|Northgate|care,night|active|expired
+Piotr Zawadzki|Caregiver|Northgate|care|active|none
+Desmond Achebe|Caregiver|Lakeside Manor|care|active|assigned
+Imani Sowande|LPN|Willow Creek|medpass|active|done
+Yusuf Demirci|Caregiver|Willow Creek|care|active|none
+Theo Brannigan|Caregiver|Sunrise Terrace|new26|active|none
+Fenella Wick|LPN|Sunrise Terrace|new26,medpass|active|none
+Nadia Kerr|CNA|Harborview|new26|active|none
+Oren Kaplan|Med Tech|Harborview|medpass|active|done
+Callum Reyes|Med Tech|Cedar Ridge|medpass|active|assigned
+Greta Lindqvist|CNA|Cedar Ridge|care|active|none
+Ines Halvorsen|CNA|Cedar Ridge|care,night|active|none
+Tomas Ruiz|Caregiver|Cedar Ridge|night|active|none
+Priya Raghavan|LPN|Cedar Ridge|medpass|leave|none
+Bea Ferreira|CNA|Harborview|care|active|none
+Idris Mensah|Caregiver|Harborview|night|active|expired
+Lena Vogt|CNA|Harborview|care|inactive|none
+Sofia Grandi|LPN|Willow Creek|medpass|active|none
+Hamid Nazari|Caregiver|Willow Creek|care,night|active|none
+Ruth Okonkwo|CNA|Willow Creek|care|active|done
+Malik Osei|Med Tech|Willow Creek|medpass|active|none
+Clara Bianchi|CNA|Sunrise Terrace|care|active|none
+Jonas Aalto|Caregiver|Sunrise Terrace|night|active|none
+Mira Solberg|LPN|Sunrise Terrace|medpass|leave|none
+Ade Balogun|CNA|Northgate|care|active|none
+Freya Lindholm|Caregiver|Northgate|night,new26|active|none
+Rafael Duarte|Med Tech|Northgate|medpass|active|assigned
+Zainab Farah|CNA|Lakeside Manor|care,new26|active|none
+Otto Reinhardt|Caregiver|Lakeside Manor|night|active|none
+Silvia Marchetti|LPN|Lakeside Manor|medpass|active|overdue
+Kwame Boateng|CNA|Lakeside Manor|care|inactive|none
+Elena Petrova|CNA|Cedar Ridge|care|active|none
+Noor Haddad|Caregiver|Cedar Ridge|night|active|none
+Bram de Vries|Med Tech|Harborview|medpass|active|none
+Aiko Tanaka|CNA|Harborview|care,night|active|none
+Miguel Santos|Caregiver|Willow Creek|care|active|none
+Hana Novak|CNA|Sunrise Terrace|care|active|none
+Grace Mbeki|Housekeeping|Cedar Ridge|house|active|none
+Viktor Novikov|Housekeeping|Northgate|house|active|none
+Tara Sullivan|Administrator|Cedar Ridge|lead|active|none
+Owen Fitzgerald|Administrator|Harborview|lead|active|none`;
+
+const PEOPLE = RAW.split('\n').map((l, i) => {
+  const [n, role, comm, groups, status, state] = l.split('|');
+  return { i, n, role, comm, groups: groups.split(','), status, state };
+});
+
+/* The course is required for clinical roles. Assigning it to anyone else is
+   allowed, but it is worth saying out loud rather than silently doing it. */
+const REQUIRED_ROLES = ['CNA','LPN','Med Tech','Caregiver'];
+
+const ROLES = [...new Set(PEOPLE.map(p => p.role))];
+const COMMS = [...new Set(PEOPLE.map(p => p.comm))].sort();
+const GROUPS = [
+  { k:'care',    n:'Care Givers',        d:'Everyone giving direct resident care' },
+  { k:'night',   n:'Night Shift',        d:'10pm to 6am across all communities' },
+  { k:'medpass', n:'Med Pass Certified', d:'Cleared to administer medication' },
+  { k:'new26',   n:'New Hires 2026',     d:'Started in the last 90 days' },
+  { k:'house',   n:'Housekeeping Team',  d:'Not a clinical role' },
+  { k:'lead',    n:'Leadership',         d:'Administrators and directors' },
+  { k:'relief',  n:'Weekend Relief',     d:'Nobody has been added to this group yet' }
+];
+
+const IC = {
+  check:'<path d="M20 6 9 17l-5-5"/>',
+  x:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  alert:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/>'
+};
+const ic = (n,s) => '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+IC[n]+'</svg>';
+</script>
+
+<script>
+/* ==============================================================
+   Resolution. This is the whole point of the screen: turn a loose
+   selection into the exact list of people, and name every person
+   the system decided to leave out.
+   ============================================================== */
+const S = { tab:'role', sel:{ role:new Set(), comm:new Set(), group:new Set(), person:new Set() },
+            due:30, rep:0, incLeave:false, autoNew:true, q:'' };
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function audience() {
+  /* A Set, so a person picked by role AND by group is still one person. */
+  const out = new Set();
+  PEOPLE.forEach(p => {
+    if (S.sel.role.has(p.role))   out.add(p.i);
+    if (S.sel.comm.has(p.comm))   out.add(p.i);
+    if (p.groups.some(g => S.sel.group.has(g))) out.add(p.i);
+    if (S.sel.person.has(p.i))    out.add(p.i);
+  });
+  return [...out].map(i => PEOPLE[i]);
+}
+
+const BUCKETS = [
+  { k:'assign',   cls:'is-go',   l:'Will be assigned',        w:'They do not have this course yet.' },
+  { k:'reassign', cls:'is-go',   l:'Re-assigned, expired',    w:'They passed it once, but the certificate has lapsed.' },
+  { k:'notReq',   cls:'is-warn', l:'Not required for the role',w:'Allowed, but this course is written for clinical staff.' },
+  { k:'has',      cls:'is-skip', l:'Already assigned',        w:'Skipped, so nobody gets it twice.' },
+  { k:'overdue',  cls:'is-skip', l:'Already overdue',         w:'Skipped. Chase the existing assignment instead.' },
+  { k:'done',     cls:'is-skip', l:'Completed and still valid',w:'Skipped, and their certificate is untouched.' },
+  { k:'leave',    cls:'is-skip', l:'On leave',                w:'Skipped unless you include them below.' },
+  { k:'inactive', cls:'is-skip', l:'Deactivated account',     w:'Always skipped. They cannot sign in.' }
+];
+
+function resolve() {
+  const r = {}; BUCKETS.forEach(b => r[b.k] = []);
+  audience().forEach(p => {
+    if (p.status === 'inactive')                    return r.inactive.push(p);
+    if (p.status === 'leave' && !S.incLeave)        return r.leave.push(p);
+    if (p.state === 'done')                         return r.done.push(p);
+    if (p.state === 'overdue')                      return r.overdue.push(p);
+    if (p.state === 'assigned')                     return r.has.push(p);
+    if (p.state === 'expired')                      return r.reassign.push(p);
+    if (!REQUIRED_ROLES.includes(p.role))           return r.notReq.push(p);
+    r.assign.push(p);
+  });
+  return r;
+}
+const totalGetting = r => r.assign.length + r.reassign.length + r.notReq.length;
+
+function toast(t, b) {
+  const el = document.createElement('div'); el.className = 'toast';
+  el.innerHTML = '<div><div class="toast-title">'+esc(t)+'</div>'+(b?'<div class="toast-body">'+esc(b)+'</div>':'')+'</div>';
+  $('toasts').appendChild(el); setTimeout(()=>el.remove(), 4200);
+}
+</script>
+
+<script>
+/* ==============================================================
+   Render
+   ============================================================== */
+function countRole(v)  { return PEOPLE.filter(p => p.role === v).length; }
+function countComm(v)  { return PEOPLE.filter(p => p.comm === v).length; }
+function countGroup(k) { return PEOPLE.filter(p => p.groups.includes(k)).length; }
+
+function pickRow(id, name, sub, count, on, empty) {
+  return '<button type="button" class="pick'+(empty?' is-empty':'')+'" data-pick="'+id+'" aria-pressed="'+on+'">' +
+    '<span class="pick-box">'+ic('check',13)+'</span>' +
+    '<span class="pick-text"><span class="pick-name">'+esc(name)+'</span>' +
+    (sub ? '<span class="pick-sub">'+esc(sub)+'</span>' : '') + '</span>' +
+    '<span class="pick-count">'+count+'</span></button>';
+}
+
+function renderPicker() {
+  const t = S.tab;
+  let html = '';
+  if (t === 'role') html = ROLES.map(r =>
+    pickRow('role:'+r, r, REQUIRED_ROLES.includes(r) ? 'This course is required for them' : 'Not required for this role',
+            countRole(r), S.sel.role.has(r), false)).join('');
+  if (t === 'comm') html = COMMS.map(c =>
+    pickRow('comm:'+c, c, '', countComm(c), S.sel.comm.has(c), false)).join('');
+  if (t === 'group') html = GROUPS.map(g => {
+    const n = countGroup(g.k);
+    return pickRow('group:'+g.k, g.n, g.d, n, S.sel.group.has(g.k), n === 0);
+  }).join('');
+  if (t === 'person') {
+    const q = S.q.toLowerCase();
+    const list = PEOPLE.filter(p => !q || p.n.toLowerCase().includes(q) || p.role.toLowerCase().includes(q));
+    html = '<div class="search" style="width:100%;margin-top:var(--space-3);">' +
+      '<span class="search-icon">'+ic('users',16)+'</span>' +
+      '<label class="sr-only" for="pq">Search people</label>' +
+      '<input class="input" id="pq" placeholder="Search by name or role" value="'+esc(S.q)+'" /></div>' +
+      (list.length ? list.slice(0,40).map(p =>
+        pickRow('person:'+p.i, p.n, p.role + ', ' + p.comm +
+          (p.status !== 'active' ? ' · ' + (p.status === 'leave' ? 'on leave' : 'deactivated') : ''),
+          '', S.sel.person.has(p.i), p.status === 'inactive')).join('')
+        : '<p class="field-hint" style="margin-top:var(--space-4);">Nobody matches that.</p>');
+  }
+  $('picker').innerHTML = '<div class="pick-list">'+html+'</div>';
+
+  const chips = [];
+  S.sel.role.forEach(v => chips.push(['role:'+v, v]));
+  S.sel.comm.forEach(v => chips.push(['comm:'+v, v]));
+  S.sel.group.forEach(v => chips.push(['group:'+v, (GROUPS.find(g=>g.k===v)||{}).n || v]));
+  S.sel.person.forEach(v => chips.push(['person:'+v, PEOPLE[v].n]));
+  $('chips').innerHTML = chips.length
+    ? chips.map(c => '<span class="tag">'+esc(c[1])+
+        '<span class="tag-dismiss" role="button" tabindex="0" data-drop="'+c[0]+'" aria-label="Remove '+esc(c[1])+'">'+ic('x',12)+'</span></span>').join('')
+      + '<button class="btn btn-ghost is-sm" id="clearSel">Clear all</button>'
+    : '';
+}
+
+function renderRail() {
+  const r = resolve(), going = totalGetting(r), picked = audience().length;
+  const due = new Date('2026-08-17'); due.setDate(due.getDate() + S.due);
+  const dueStr = due.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  $('dueWhen').textContent = 'Due ' + dueStr + '.';
+
+  if (!picked) {
+    $('rail').innerHTML =
+      '<div class="empty-state"><div class="empty-art">'+ic('users',36)+'</div>' +
+      '<h2>Nobody selected yet</h2><p>Pick a role, a community or a group and this panel will show exactly who gets the course, and who does not.</p></div>';
+    return;
+  }
+
+  const rows = BUCKETS.filter(b => r[b.k].length).map(b =>
+    '<div class="res-row '+b.cls+'"><span class="res-dot"></span>' +
+    '<span class="res-n">'+r[b.k].length+'</span>' +
+    '<span class="res-t"><span class="res-l">'+b.l+'</span><span class="res-w">'+b.w+'</span></span></div>').join('');
+
+  const named = [].concat(r.reassign, r.notReq, r.has, r.overdue, r.done, r.leave, r.inactive);
+  const why = { reassign:'certificate expired', notReq:'role not required', has:'already assigned',
+                overdue:'already overdue', done:'completed', leave:'on leave', inactive:'deactivated' };
+  const whyOf = p => Object.keys(why).find(k => r[k].includes(p));
+
+  $('rail').innerHTML =
+    '<div class="res-head"><span class="res-big">'+going+'</span>' +
+    '<span class="res-cap">of '+picked+' selected</span></div>' +
+    '<div class="res-cap" style="margin-top:var(--space-1);">will get this course</div>' +
+    '<hr class="divider" />' + rows +
+    (named.length
+      ? '<hr class="divider" /><div class="panel-sub">The '+named.length+' the system handled for you</div>' +
+        '<div class="who scroll-area">' + named.map(p =>
+          '<div class="who-row"><span class="who-name">'+esc(p.n)+'</span>' +
+          '<span class="who-why">'+why[whyOf(p)]+'</span></div>').join('') + '</div>'
+      : '') +
+    '<hr class="divider" />' +
+    '<button class="btn btn-solid" id="go" style="width:100%;justify-content:center;"'+(going?'':' disabled')+'>' +
+      (going ? 'Assign to '+going+' learner'+(going===1?'':'s') : 'Nobody to assign') + '</button>' +
+    (going ? '<div class="field-hint" style="margin-top:var(--space-2);text-align:center;">Due '+dueStr +
+      (S.rep ? ', repeating every '+(S.rep===12?'year':'2 years') : '') + '.</div>' : '');
+}
+
+function render() { renderPicker(); renderRail(); }
+</script>
+
+<script>
+/* ==============================================================
+   Behaviour
+   ============================================================== */
+document.addEventListener('click', e => {
+  const t = e.target;
+
+  const tab = t.closest('[data-tab]');
+  if (tab) { S.tab = tab.dataset.tab;
+    [...$('tabs').children].forEach(c => { const on = c === tab;
+      c.classList.toggle('is-active', on); c.setAttribute('aria-selected', String(on)); });
+    return render(); }
+
+  const p = t.closest('[data-pick]');
+  if (p) { const [kind, val] = p.dataset.pick.split(/:(.+)/);
+    const set = S.sel[kind]; const v = kind === 'person' ? +val : val;
+    set.has(v) ? set.delete(v) : set.add(v);
+    return render(); }
+
+  const drop = t.closest('[data-drop]');
+  if (drop) { const [kind, val] = drop.dataset.drop.split(/:(.+)/);
+    S.sel[kind].delete(kind === 'person' ? +val : val);
+    return render(); }
+
+  if (t.closest('#clearSel')) { Object.values(S.sel).forEach(s => s.clear()); return render(); }
+
+  const due = t.closest('[data-due]');
+  if (due) { S.due = +due.dataset.due;
+    [...$('due').children].forEach(c => { const on = c === due;
+      c.classList.toggle('is-active', on); c.setAttribute('aria-selected', String(on)); });
+    return renderRail(); }
+
+  const rep = t.closest('[data-rep]');
+  if (rep) { S.rep = +rep.dataset.rep;
+    [...$('rep').children].forEach(c => { const on = c === rep;
+      c.classList.toggle('is-active', on); c.setAttribute('aria-selected', String(on)); });
+    return renderRail(); }
+
+  if (t.closest('#go')) {
+    const r = resolve();
+    const bits = [];
+    if (r.reassign.length) bits.push(r.reassign.length + ' re-assigned after an expired certificate');
+    if (r.done.length)     bits.push(r.done.length + ' skipped, already completed');
+    if (r.has.length + r.overdue.length) bits.push((r.has.length + r.overdue.length) + ' skipped, already had it');
+    toast('Assigned to ' + totalGetting(r) + ' learners.',
+          bits.length ? bits.join('. ') + '.' : 'Nobody was skipped.');
+    return;
+  }
+});
+
+document.addEventListener('input', e => {
+  if (e.target.id === 'pq') { S.q = e.target.value; renderPicker();
+    const box = $('pq'); if (box) { box.focus(); box.setSelectionRange(box.value.length, box.value.length); } }
+});
+
+document.addEventListener('change', e => {
+  if (e.target.id === 'incLeave') { S.incLeave = e.target.checked; return renderRail(); }
+  if (e.target.id === 'autoNew')  { S.autoNew  = e.target.checked; return; }
+});
+
+$('themeBtn').addEventListener('click', () => {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+  $('themeBtn').setAttribute('aria-label', dark ? 'Switch to dark theme' : 'Switch to light theme');
+});
+
+/* Open on the happy path: the course's required roles already ticked. */
+REQUIRED_ROLES.forEach(r => S.sel.role.add(r));
+render();
+
+const viewAsBtn = document.getElementById('viewAsBtn');
+if (viewAsBtn) {
+  const menu = document.getElementById('viewAs');
+  viewAsBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = !menu.hidden;
+    menu.hidden = open;
+    viewAsBtn.setAttribute('aria-expanded', String(!open));
+  });
+  document.addEventListener('click', () => {
+    if (!menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+}
+
+/* Collapsing the rail is shell behaviour, so every page does it. It was
+   markup on twenty pages and wired on one, and standardising the nav dropped
+   the id the one handler depended on. */
+const railBtn = document.getElementById('railBtn');
+if (railBtn) {
+  railBtn.addEventListener('click', () => {
+    const shell = document.querySelector('.app-shell');
+    const side  = document.querySelector('.app-sidebar');
+    const on = shell.style.gridTemplateColumns === '0px 1fr';
+    shell.style.gridTemplateColumns = on ? '256px 1fr' : '0px 1fr';
+    if (side) side.style.visibility = on ? 'visible' : 'hidden';
+    railBtn.setAttribute('aria-label', on ? 'Collapse navigation' : 'Expand navigation');
+  });
+}
+</script>
+</body>
+</html>

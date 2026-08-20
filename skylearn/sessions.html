@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<!--
+  skyLearn - Sessions, Radix flavour.
+  Instructor-led training. Two views in one file: the schedule
+  and one session. See SESSIONS-IA.md for the research.
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>skyLearn &middot; Sessions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../tokens.css?v=102" />
+<link rel="stylesheet" href="../dashboard.css?v=102" />
+<style>
+  /* Shell bits shared with the other skyLearn screens */
+  .ph-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-5); flex-wrap: wrap; }
+  .ph-text { min-width: 0; }
+  .ph-cta { flex: 0 0 auto; margin-left: auto; }
+
+  /* --- Toolbar --- */
+  .tbar { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-4); }
+  .tbar .spacer { flex: 1; }
+  .bulkbar { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;
+    margin-bottom: var(--space-4); padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-4); background: var(--accent-2); box-shadow: inset 0 0 0 1px var(--accent-7); }
+  .bulkbar .spacer { flex: 1; }
+  .bulk-count { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--accent-11); }
+
+  /* --- Schedule table. Sessions are a temporal object, so the rows are
+     grouped by day and the group header carries the day, not a column. --- */
+  .day-row td { background: var(--color-panel-solid); padding: 0; height: auto; }
+  /* Lines up with the 24px cell padding the table now uses */
+  .day-cell { display: flex; align-items: baseline; gap: var(--space-3);
+    padding: var(--space-3) var(--space-5); }
+  .day-lbl { font-size: var(--fs-1); font-weight: var(--weight-semibold); color: var(--fg-high);
+    text-transform: uppercase; letter-spacing: .06em; }
+  .day-note { font-size: var(--fs-1); color: var(--fg-low); }
+
+  .s-title { display: flex; flex-direction: column; min-width: 0; }
+  .s-name { font-size: var(--fs-2); color: var(--fg-high); font-weight: var(--weight-medium); text-decoration: none; }
+  .s-name:hover { text-decoration: underline; }
+  .s-meta { font-size: var(--fs-1); color: var(--fg-low); margin-top: 1px; }
+  .when-main { font-variant-numeric: tabular-nums; }
+  .when-sub { font-size: var(--fs-1); color: var(--fg-low); margin-top: 1px; }
+  .mode { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--fs-2); color: var(--fg-high); }
+  .mode svg { color: var(--fg-subtle); flex: 0 0 auto; }
+  .place { font-size: var(--fs-1); color: var(--fg-low); margin-top: 1px; }
+  .seats { min-width: 92px; }
+  .seats-n { font-size: var(--fs-2); font-variant-numeric: tabular-nums; color: var(--fg-high); }
+  .seats .progress { margin-top: 5px; height: 4px; }
+  .seats .progress-fill.is-full { background: var(--green-9); }
+  .seats .progress-fill.is-low  { background: var(--warning-solid); }
+  .seats-note { font-size: var(--fs-1); color: var(--fg-low); margin-top: 2px; }
+  .seats-note.is-low { color: var(--warning-text); }
+
+  /* One control per row, the same chevron the learners table uses. The
+     exception is a session that owes a record: that row gets the action
+     itself, always visible, because it is work the coordinator is late on. */
+  .row-go { display: inline-flex; color: var(--fg-subtle); opacity: 0; transition: opacity .12s; }
+  tr:hover .row-go, tr:focus-within .row-go { opacity: 1; }
+  @media (hover: none) { .row-go { opacity: 1; } }
+  .row-end { text-align: right; white-space: nowrap; }
+
+  .pagination .rows { display: flex; align-items: center; gap: var(--space-2); }
+  .pagination .dropdown.is-per { min-width: 72px; height: 26px; }
+  .pagination .page-no { min-width: 30px; justify-content: center; }
+  .pagination .page-gap { color: var(--fg-subtle); padding: 0 var(--space-1); }
+
+  /* --- One session --- */
+  .back-link { display: inline-flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-4);
+    font-size: var(--fs-2); color: var(--fg-low); text-decoration: none; }
+  .back-link:hover { color: var(--fg-high); }
+  .d-title-row { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+  .d-when { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-2);
+    font-size: var(--fs-3); color: var(--fg-low); }
+  .d-when svg { flex: 0 0 auto; }
+  .d-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; flex: 0 0 auto; margin-left: auto; }
+  .meta-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-5); }
+  @media (max-width: 900px) { .meta-grid { grid-template-columns: repeat(2, 1fr); } }
+  .meta-l { font-size: var(--fs-1); font-weight: var(--weight-medium); text-transform: uppercase;
+    letter-spacing: .06em; color: var(--fg-low); }
+  .meta-v { font-size: var(--fs-3); color: var(--fg-high); margin-top: var(--space-2); }
+  .meta-sub { font-size: var(--fs-1); color: var(--fg-low); margin-top: 2px; }
+  .rule-line { font-size: var(--fs-2); color: var(--fg-high); }
+  .rule-line .tag { margin: 0 2px; }
+  .flag-list { display: flex; flex-direction: column; gap: var(--space-2); width: 100%; }
+  .flag-item { display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap; }
+  .flag-item .btn { flex: 0 0 auto; }
+  .desc { font-size: var(--fs-3); color: var(--fg-low); }
+
+  /* Attendance. Three states plus unmarked, because a tick and a cross
+     cannot tell "absent" from "nobody has looked at this yet". */
+  .att { display: inline-flex; gap: 2px; padding: 3px; background: var(--gray-3); border-radius: var(--radius-3); }
+  .att-btn { display: inline-flex; align-items: center; height: 26px; padding: 0 var(--space-2);
+    border-radius: var(--radius-2); font-size: var(--fs-1); font-weight: var(--weight-medium);
+    color: var(--fg-low); cursor: pointer; white-space: nowrap; }
+  .att-btn:hover { color: var(--fg-high); }
+  .att-btn.is-on { background: var(--color-panel-solid); box-shadow: var(--shadow-2); }
+  .att-btn.is-on.is-present { color: var(--success-text); }
+  .att-btn.is-on.is-absent  { color: var(--danger-text); }
+  .att-btn.is-on.is-excused { color: var(--info-text); }
+  tr.is-unmarked td:first-child { box-shadow: inset 3px 0 0 var(--warning-solid); }
+  .learner { display: flex; flex-direction: column; min-width: 0; }
+  .learner-n { font-size: var(--fs-2); color: var(--fg-high); font-weight: var(--weight-medium); }
+  .learner-e { font-size: var(--fs-1); color: var(--fg-low); margin-top: 1px; }
+
+  /* Close-out. The action that credits hours lives with the evidence, not
+     in the header where it could be pressed before anyone was marked. */
+  .closeout { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap;
+    margin-top: var(--space-4); padding: var(--space-4);
+    border-radius: var(--radius-4); background: var(--color-panel-solid); box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .closeout.is-ready { background: var(--success-bg); box-shadow: inset 0 0 0 1px var(--success-solid); }
+  .co-nums { display: flex; gap: var(--space-5); flex-wrap: wrap; }
+  .co-num { font-size: var(--fs-2); color: var(--fg-high); }
+  .co-num strong { font-variant-numeric: tabular-nums; }
+  .co-hint { flex-basis: 100%; font-size: var(--fs-1); color: var(--fg-low); }
+  .closeout .spacer { flex: 1; }
+  .print-note { font-size: var(--fs-1); color: var(--fg-subtle); margin-top: var(--space-3); }
+
+  /* The scheduling dialog. Wider than the default because date, start and
+     end belong on one line: they are one decision, not three. */
+  .dialog.is-wide { max-width: 640px; }
+  .dialog.is-wide .dialog-body { max-height: 62vh; overflow: auto; }
+  .nw-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+  .nw-3 { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: var(--space-4); }
+  @media (max-width: 640px) { .nw-2, .nw-3 { grid-template-columns: 1fr; } }
+  .nw-shifts { display: flex; gap: var(--space-5); flex-wrap: wrap; margin-top: var(--space-2); }
+  .stack-2 { display: flex; flex-direction: column; gap: var(--space-2); }
+
+  .toast-stack { position: fixed; left: 50%; bottom: var(--space-6); transform: translateX(-50%);
+    display: flex; flex-direction: column; gap: var(--space-2); z-index: 1400; }
+  .toast-stack .toast { animation: t-in .2s ease-out; }
+  @keyframes t-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header is-dark">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect width="24" height="24" rx="6" fill="var(--accent-9)"/><text x="12" y="16.5" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-contrast)">S</text></svg>
+      <span>skyLearn</span>
+    </div>
+    <div class="search hdr-search">
+      <span class="search-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+      <label class="sr-only" for="q">Search</label>
+      <input class="input" id="q" type="search" placeholder="Search courses and learners" autocomplete="off" />
+    </div>
+    <div class="header-right">
+      <span class="presence"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg><span><strong class="pt-num">4</strong> points</span></span>
+      <button class="icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="ic-badge">3</span></button>
+      <button class="icon-btn" id="themeBtn" aria-label="Switch to dark theme"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+      <span class="divider-v"></span>
+      <span class="header-wrap">
+        <button class="header-user" id="viewAsBtn" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar c6">SA</span>
+          <span class="hu-id"><span class="hu-name">Sumit Awinash</span><span class="hu-role">Administrator</span></span>
+        </button>
+        <div class="view-as" id="viewAs" role="menu" hidden>
+          <div class="view-as-t">View as</div>
+          <a href="index.html" role="menuitem" aria-current="true"><span class="vr"></span>
+            <span class="vw">Administrator<span>Everything, across all six communities</span></span></a>
+          <a href="teach.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Instructor<span>Your courses, learners and sessions</span></span></a>
+          <a href="learn.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Learner<span>What you have to do, and by when</span></span></a>
+          <div class="vs">
+            <a href="signin.html" role="menuitem">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
+              Sign out</a>
+          </div>
+        </div>
+      </span>
+    </div>
+  </header>
+
+  <nav class="app-sidebar" aria-label="Primary">
+    <button class="sidebar-toggle" id="railBtn" aria-label="Collapse navigation"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>
+    <a class="nav-item" href="index.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg><span class="nav-label">Dashboard</span></a>
+    <a class="nav-item" href="courses.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg><span class="nav-label">Courses</span></a>
+    <a class="nav-item" href="learners.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg><span class="nav-label">Learners</span></a>
+    <a class="nav-item" href="certificate.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg><span class="nav-label">Certifications</span></a>
+    <a class="nav-item is-active" href="sessions.html" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg><span class="nav-label">Sessions</span></a>
+    <a class="nav-item" href="groups.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg><span class="nav-label">Groups</span></a>
+    <a class="nav-item" href="recognition.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0z"/></svg><span class="nav-label">Recognition</span></a>
+    <a class="nav-item" href="discussions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6V2H8"/><path d="m8 18-4 4V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2Z"/><path d="M2 12h2"/><path d="M9 11v2"/><path d="M15 11v2"/><path d="M20 12h2"/></svg><span class="nav-label">Discussions</span></a>
+    <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span class="nav-label">Reports</span></a>
+    <a class="nav-item" href="automations.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/><path d="m2 2 20 20"/></svg><span class="nav-label">Automations</span></a>
+    <a class="nav-item" href="surveys.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/><rect x="3" y="4" width="18" height="16" rx="2"/></svg><span class="nav-label">Surveys</span></a>
+    <a class="nav-item" href="grading.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="m9 11-1.5 1.5L9 14"/><path d="M16 16h-4"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg><span class="nav-label">Grading Hub</span></a>
+    <a class="nav-item" href="files.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span class="nav-label">Reference library</span></a>
+    <a class="nav-item nav-tail" href="#"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="nav-label">Help and support</span></a>
+  </nav>
+
+  <main class="app-content">
+    <div class="breadcrumbs" id="crumbs"></div>
+    <div class="content-body"><div id="view"></div></div>
+    <footer class="app-footer">
+      skyLearn, a Skypoint product. A class nobody signed for is a class that never happened, as far as a surveyor is concerned.
+    </footer>
+  </main>
+</div>
+
+<div class="overlay" id="overlay" hidden></div>
+<div class="dropdown-menu" id="menu" role="listbox" style="position:fixed;z-index:1200;" hidden></div>
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+
+<script>
+/* ==============================================================
+   Time. Everything on this screen is relative to one instant, so
+   there is a single NOW and every "in 2 days" derives from it.
+   ============================================================== */
+const NOW   = new Date('2026-08-17T09:40:00');
+const TODAY = new Date('2026-08-17T00:00:00');
+const DAY   = 86400000;
+const dayOf = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const at    = (date, hm) => new Date(date + 'T' + hm + ':00');
+const daysBetween = (a, b) => Math.round((dayOf(b) - dayOf(a)) / DAY);
+
+const fmtTime = hm => {
+  const [h, m] = hm.split(':').map(Number);
+  const ap = h >= 12 ? 'PM' : 'AM', h12 = h % 12 === 0 ? 12 : h % 12;
+  return h12 + ':' + String(m).padStart(2, '0') + ' ' + ap;
+};
+const fmtDate = date => at(date, '00:00')
+  .toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+const fmtShort = date => at(date, '00:00')
+  .toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+
+/* "6/8/2026" was the bug on the screen this replaces: in a US-facing
+   product it reads as 8 June and the session was 6 August. Every date
+   here is spelled with the month in words for that reason. */
+const relDay = date => {
+  const n = daysBetween(TODAY, at(date, '00:00'));
+  if (n === 0)  return 'Today';
+  if (n === 1)  return 'Tomorrow';
+  if (n === -1) return 'Yesterday';
+  return fmtShort(date);
+};
+/* The group header says which day. This says how far away it is, without
+   repeating the day itself. */
+const dayNote = date => {
+  const n = daysBetween(TODAY, at(date, '00:00'));
+  if (n === 0) return fmtDate(date);
+  if (Math.abs(n) === 1) return fmtDate(date);
+  return n > 0 ? 'in ' + plural(n, 'day') : plural(-n, 'day') + ' ago';
+};
+const relNote = date => {
+  const n = daysBetween(TODAY, at(date, '00:00'));
+  if (n === 0) return fmtDate(date);
+  if (n > 0)   return fmtDate(date) + ' · in ' + n + ' day' + (n === 1 ? '' : 's');
+  return fmtDate(date) + ' · ' + (-n) + ' day' + (n === -1 ? '' : 's') + ' ago';
+};
+
+const mins  = s => (at(s.date, s.end) - at(s.date, s.start)) / 60000;
+/* Rounded once, here, so the credited hours are always the number shown
+   on the session. 2:32 to 6:30 is 3.97 hours; if the card says 4.0 and
+   the close-out multiplies 3.97, two learners come to 7.9 and the
+   arithmetic on screen looks wrong. */
+const hrs   = s => Math.round(mins(s) / 60 * 10) / 10;
+const durTx = s => { const m = mins(s), h = Math.floor(m / 60), r = m % 60;
+  return (h ? h + ' hr' + (r ? ' ' : '') : '') + (r ? r + ' min' : ''); };
+
+/* A start time that is not on a quarter hour is almost always a machine
+   timestamp that was saved as the schedule. 2:32 PM is nobody's class. */
+const oddStart = s => Number(s.start.slice(3)) % 15 !== 0;
+</script>
+
+<script>
+/* ==============================================================
+   Communities. Hours are the compliance currency in OH, TX and FL,
+   which is why a session credits hours rather than a completion.
+   ============================================================== */
+const COMMS = {
+  'Cedar Ridge':    { state: 'CA', tz: 'PT' },
+  'Lakeside Manor': { state: 'OH', tz: 'ET' },
+  'Northgate':      { state: 'TX', tz: 'CT' },
+  'Willow Creek':   { state: 'FL', tz: 'ET' },
+  'Harborview':     { state: 'WA', tz: 'PT' },
+  'Sunrise Terrace':{ state: 'AZ', tz: 'MT' }
+};
+const HOURS_STATES = ['OH', 'TX', 'FL'];
+
+/* The same 44 people as the assign and learners screens. */
+const PEOPLE = `Dana Whitfield|CNA|Lakeside Manor
+Rosalind Vega|CNA|Lakeside Manor
+Marcus Ellery|Med Tech|Northgate
+Aurelie Bonnet|CNA|Northgate
+Piotr Zawadzki|Caregiver|Northgate
+Desmond Achebe|Caregiver|Lakeside Manor
+Imani Sowande|LPN|Willow Creek
+Yusuf Demirci|Caregiver|Willow Creek
+Theo Brannigan|Caregiver|Sunrise Terrace
+Fenella Wick|LPN|Sunrise Terrace
+Nadia Kerr|CNA|Harborview
+Oren Kaplan|Med Tech|Harborview
+Callum Reyes|Med Tech|Cedar Ridge
+Greta Lindqvist|CNA|Cedar Ridge
+Ines Halvorsen|CNA|Cedar Ridge
+Tomas Ruiz|Caregiver|Cedar Ridge
+Priya Raghavan|LPN|Cedar Ridge
+Bea Ferreira|CNA|Harborview
+Idris Mensah|Caregiver|Harborview
+Lena Vogt|CNA|Harborview
+Sofia Grandi|LPN|Willow Creek
+Hamid Nazari|Caregiver|Willow Creek
+Ruth Okonkwo|CNA|Willow Creek
+Malik Osei|Med Tech|Willow Creek
+Clara Bianchi|CNA|Sunrise Terrace
+Jonas Aalto|Caregiver|Sunrise Terrace
+Mira Solberg|LPN|Sunrise Terrace
+Ade Balogun|CNA|Northgate
+Freya Lindholm|Caregiver|Northgate
+Rafael Duarte|Med Tech|Northgate
+Zainab Farah|CNA|Lakeside Manor
+Otto Reinhardt|Caregiver|Lakeside Manor
+Silvia Marchetti|LPN|Lakeside Manor
+Kwame Boateng|CNA|Lakeside Manor
+Elena Petrova|CNA|Cedar Ridge
+Noor Haddad|Caregiver|Cedar Ridge
+Bram de Vries|Med Tech|Harborview
+Aiko Tanaka|CNA|Harborview
+Miguel Santos|Caregiver|Willow Creek
+Hana Novak|CNA|Sunrise Terrace
+Grace Mbeki|Housekeeping|Cedar Ridge
+Viktor Novikov|Housekeeping|Northgate
+Tara Sullivan|Administrator|Cedar Ridge
+Owen Fitzgerald|Administrator|Harborview`
+  .trim().split('\n').map(l => { const [n, role, comm] = l.split('|'); return { n, role, comm }; });
+
+const mailOf = n => n.toLowerCase().replace(/[^a-z ]/g, '').replace(/ /g, '.') + '@skypoint.ai';
+
+/* Registrations are generated from that pool so every roster is a real
+   mix of roles and communities, and stays the same on every reload. */
+function roster(date, n, offset, absentIdx) {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const p = PEOPLE[(offset + i * 3) % PEOPLE.length];
+    out.push({
+      n: p.n, role: p.role, comm: p.comm, email: mailOf(p.n),
+      on: new Date(at(date, '00:00') - (3 + (i * 5) % 21) * DAY).toISOString().slice(0, 10),
+      att: absentIdx ? (absentIdx.includes(i) ? 'absent' : 'present') : null
+    });
+  }
+  return out;
+}
+</script>
+
+<script>
+/* ==============================================================
+   Twenty sessions. s1 is the one from the screens, kept exactly as
+   it was recorded, odd start time and all, so the new screen can be
+   judged on what it makes of real data rather than tidy data.
+   ============================================================== */
+const SESSIONS = [
+  { id:'s1', t:'Data security Training', course:'HIPAA and Data Security',
+    mode:'in-person', place:'Cedar Ridge, Training Room A', comm:'Cedar Ridge',
+    instr:['Anjali Deshmukh','Suresh Balan'], cap:50,
+    date:'2026-08-06', start:'14:32', end:'18:30', cert:'Fancy', noShow:'HIPAA Training',
+    status:'open', reminded:null,
+    note:'This is a instructor led Training, the instructors will cover the data security concepts in this course.',
+    reg:[ { n:'Anjali Deshmukh', role:'Instructor', comm:'Cedar Ridge', email:'anjali.deshmukh@skypoint.ai', on:'2026-08-06', att:null },
+          { n:'Ravi Chandran', role:'Med Tech', comm:'Cedar Ridge', email:'ravi.chandran@skypoint.ai', on:'2026-08-06', att:null },
+          { n:'Suresh Balan', role:'Instructor', comm:'Cedar Ridge', email:'suresh.balan@skypoint.ai', on:'2026-08-06', att:null } ],
+    wait:[] },
+
+  { id:'s2', t:'Safe resident transfer and Hoyer lift', course:'Safe Resident Handling',
+    mode:'in-person', place:'Lakeside Manor, Skills Lab', comm:'Lakeside Manor',
+    instr:['Priya Raghavan'], cap:16, date:'2026-08-12', start:'09:00', end:'11:00',
+    cert:'In-service record', noShow:'Safe Resident Handling refresher', status:'open', reminded:'2026-08-11',
+    note:'Hands-on. Every learner performs one full transfer with the lift and one two-person assist.',
+    reg:roster('2026-08-12', 14, 0), wait:[] },
+
+  { id:'s3', t:'Fire drill and evacuation procedure', course:'Emergency Preparedness',
+    mode:'in-person', place:'Willow Creek, Main Hall', comm:'Willow Creek',
+    instr:['Imani Sowande'], cap:30, date:'2026-08-14', start:'07:00', end:'08:00',
+    cert:'In-service record', noShow:null, status:'open', reminded:'2026-08-13',
+    note:'Annual drill for the night and early shift. Fire marshal attends.',
+    reg:roster('2026-08-14', 22, 6), wait:[] },
+
+  { id:'s4', t:'CPR and first aid recertification', course:'CPR and First Aid',
+    mode:'in-person', place:'Northgate, Skills Lab', comm:'Northgate',
+    instr:['Dr Elaine Rusk, RN (external)'], cap:12, date:'2026-08-17', start:'08:00', end:'12:00',
+    cert:'AHA card', noShow:'CPR and First Aid', status:'open', reminded:'2026-08-16',
+    note:'American Heart Association certification. Cards are issued on the day.',
+    reg:roster('2026-08-17', 12, 2), wait:roster('2026-08-17', 3, 39) },
+
+  { id:'s5', t:'Dementia care, de-escalation practice', course:'Dementia Care Essentials',
+    mode:'in-person', place:'Harborview, Activity Room', comm:'Harborview',
+    instr:['Mira Solberg'], cap:14, date:'2026-08-17', start:'14:00', end:'16:30',
+    cert:'In-service record', noShow:'Dementia Care Essentials', status:'open', reminded:'2026-08-16',
+    note:'Role play in pairs. Three scripted scenarios, then debrief.',
+    reg:roster('2026-08-17', 9, 10), wait:[] },
+
+  { id:'s6', t:'Medication pass observation', course:'Medication Administration',
+    mode:'in-person', place:'Cedar Ridge, Medication Room', comm:'Cedar Ridge',
+    instr:['Priya Raghavan'], cap:6, date:'2026-08-18', start:'07:00', end:'09:00',
+    cert:'Competency sign-off', noShow:null, status:'open', reminded:null,
+    note:'One-to-one observation during the morning pass. Six seats only.',
+    reg:roster('2026-08-18', 6, 12), wait:roster('2026-08-18', 2, 25) },
+
+  { id:'s7', t:'Infection control update', course:'Infection Prevention',
+    mode:'virtual', place:'Microsoft Teams', comm:null,
+    instr:['Tara Sullivan'], cap:100, date:'2026-08-18', start:'15:00', end:'16:00',
+    cert:'In-service record', noShow:'Infection Prevention', status:'open', reminded:null,
+    note:'Quarterly update, all communities. Recorded for anyone on shift.',
+    reg:roster('2026-08-18', 31, 4), wait:[] },
+
+  { id:'s8', t:'New hire orientation, day 1', course:'Onboarding',
+    mode:'blended', place:'Lakeside Manor, Conference Room and Teams', comm:'Lakeside Manor',
+    instr:['Tara Sullivan','Priya Raghavan'], cap:20, date:'2026-08-19', start:'09:00', end:'16:00',
+    cert:'In-service record', noShow:null, status:'open', reminded:null,
+    note:'Policies, resident rights, and a tour. Day 2 is the skills lab.',
+    reg:roster('2026-08-19', 8, 20), wait:[] },
+
+  { id:'s9', t:'Safe resident transfer and Hoyer lift', course:'Safe Resident Handling',
+    mode:'in-person', place:'Sunrise Terrace, Skills Lab', comm:'Sunrise Terrace',
+    instr:['Mira Solberg'], cap:16, date:'2026-08-20', start:'09:00', end:'11:00',
+    cert:'In-service record', noShow:'Safe Resident Handling refresher', status:'open', reminded:null,
+    note:'Repeat of the Lakeside session for the Sunrise Terrace floor staff.',
+    reg:roster('2026-08-20', 2, 24), wait:[] },
+
+  { id:'s10', t:'Abuse and neglect reporting', course:'Abuse Prevention',
+    mode:'virtual', place:'Microsoft Teams', comm:null,
+    instr:['Tara Sullivan'], cap:100, date:'2026-08-21', start:'13:00', end:'14:30',
+    cert:'In-service record', noShow:'Abuse Prevention', status:'open', reminded:null,
+    note:'Mandatory reporter duties and the escalation path. All roles.',
+    reg:roster('2026-08-21', 45, 8), wait:[] },
+
+  { id:'s11', t:'Dementia care, de-escalation practice', course:'Dementia Care Essentials',
+    mode:'in-person', place:'Willow Creek, Activity Room', comm:'Willow Creek',
+    instr:['Imani Sowande'], cap:14, date:'2026-08-25', start:'14:00', end:'16:30',
+    cert:'In-service record', noShow:'Dementia Care Essentials', status:'open', reminded:null,
+    note:'Role play in pairs. Three scripted scenarios, then debrief.',
+    reg:roster('2026-08-25', 11, 16), wait:[] },
+
+  { id:'s12', t:'CPR and first aid recertification', course:'CPR and First Aid',
+    mode:'in-person', place:'Cedar Ridge, Skills Lab', comm:'Cedar Ridge',
+    instr:['Dr Elaine Rusk, RN (external)'], cap:12, date:'2026-08-27', start:'08:00', end:'12:00',
+    cert:'AHA card', noShow:'CPR and First Aid', status:'open', reminded:null,
+    note:'American Heart Association certification. Cards are issued on the day.',
+    reg:roster('2026-08-27', 4, 30), wait:[] },
+
+  { id:'s13', t:'Fall prevention skills check', course:'Preventing Falls in Senior Living',
+    mode:'in-person', place:'Northgate, Skills Lab', comm:'Northgate',
+    instr:['Priya Raghavan'], cap:16, date:'2026-09-02', start:'10:00', end:'12:00',
+    cert:'Competency sign-off', noShow:null, status:'open', reminded:null,
+    note:'Practical check against the falls course. Book after the online modules.',
+    reg:[], wait:[] },
+
+  { id:'s14', t:'Data security Training', course:'HIPAA and Data Security',
+    mode:'virtual', place:'Microsoft Teams', comm:null,
+    instr:['Anjali Deshmukh'], cap:100, date:'2026-09-10', start:'14:00', end:'16:00',
+    cert:'In-service record', noShow:'HIPAA Training', status:'open', reminded:null,
+    note:'Repeat of the August session, run online for the other five communities.',
+    reg:roster('2026-09-10', 7, 34), wait:[] },
+
+  { id:'s15', t:'Dementia care, de-escalation practice', course:'Dementia Care Essentials',
+    mode:'in-person', place:'Harborview, Activity Room', comm:'Harborview',
+    instr:['Mira Solberg'], cap:14, date:'2026-08-10', start:'14:00', end:'16:30',
+    cert:'In-service record', noShow:null, status:'cancelled', reminded:'2026-08-09',
+    cancelReason: 'Instructor called out sick. Everyone registered was moved to the 25 August session at Willow Creek.',
+    note:'Role play in pairs. Three scripted scenarios, then debrief.',
+    reg:roster('2026-08-10', 12, 26), wait:[] },
+
+  { id:'s16', t:'Infection control update', course:'Infection Prevention',
+    mode:'virtual', place:'Microsoft Teams', comm:null,
+    instr:['Tara Sullivan'], cap:100, date:'2026-08-03', start:'15:00', end:'16:00',
+    cert:'In-service record', noShow:'Infection Prevention', status:'completed', reminded:'2026-08-02',
+    note:'Quarterly update, all communities.',
+    reg:roster('2026-08-03', 28, 0, [3, 17]), wait:[] },
+
+  { id:'s17', t:'Safe resident transfer and Hoyer lift', course:'Safe Resident Handling',
+    mode:'in-person', place:'Cedar Ridge, Skills Lab', comm:'Cedar Ridge',
+    instr:['Priya Raghavan'], cap:16, date:'2026-08-04', start:'09:00', end:'11:00',
+    cert:'In-service record', noShow:'Safe Resident Handling refresher', status:'completed', reminded:'2026-08-03',
+    note:'Hands-on. Every learner performs one full transfer with the lift.',
+    reg:roster('2026-08-04', 15, 12, [7]), wait:[] },
+
+  { id:'s18', t:'CPR and first aid recertification', course:'CPR and First Aid',
+    mode:'in-person', place:'Willow Creek, Skills Lab', comm:'Willow Creek',
+    instr:['Dr Elaine Rusk, RN (external)'], cap:12, date:'2026-08-05', start:'08:00', end:'12:00',
+    cert:'AHA card', noShow:'CPR and First Aid', status:'completed', reminded:'2026-08-04',
+    note:'American Heart Association certification.',
+    reg:roster('2026-08-05', 12, 20, [2]), wait:[] },
+
+  { id:'s19', t:'New hire orientation, day 1', course:'Onboarding',
+    mode:'blended', place:'Lakeside Manor, Conference Room and Teams', comm:'Lakeside Manor',
+    instr:['Tara Sullivan'], cap:20, date:'2026-08-07', start:'09:00', end:'16:00',
+    cert:'In-service record', noShow:null, status:'completed', reminded:'2026-08-06',
+    note:'Policies, resident rights, and a tour.',
+    reg:roster('2026-08-07', 9, 30, []), wait:[] },
+
+  { id:'s20', t:'Abuse and neglect reporting', course:'Abuse Prevention',
+    mode:'virtual', place:'Microsoft Teams', comm:null,
+    instr:['Tara Sullivan'], cap:100, date:'2026-08-10', start:'13:00', end:'14:30',
+    cert:'In-service record', noShow:'Abuse Prevention', status:'completed', reminded:'2026-08-09',
+    note:'Mandatory reporter duties and the escalation path.',
+    reg:roster('2026-08-10', 41, 5, [4, 11, 25]), wait:[] }
+];
+
+/* ==============================================================
+   Scheduling reference data.
+
+   A session is an *instance* of a course that already exists, so creating
+   one is a scheduling job, not an authoring job: which course, when, where,
+   who teaches. That is why it is a dialog and not a stepper like Create
+   course. The three things that make live training fail in senior living
+   are all checked here rather than left to the coordinator's memory:
+   a double-booked instructor, a double-booked room, and a shift that never
+   gets a class because everything is scheduled at nine in the morning.
+   ============================================================== */
+const CATALOG = [
+  /* demand comes from the compliance engine: learners who are required to
+     hold this and are overdue. It is why anyone opens this dialog. */
+  { t:'Safe Resident Handling',            hrs:2, lab:true,  demand:23, top:'Lakeside Manor', topN:14 },
+  { t:'CPR and First Aid',                 hrs:4, lab:true,  demand:18, top:'Northgate',      topN:7 },
+  { t:'Dementia Care Essentials',          hrs:2.5, lab:false, demand:31, top:'Harborview',   topN:12 },
+  { t:'Emergency Preparedness',            hrs:1, lab:false, demand:9,  top:'Willow Creek',   topN:5 },
+  { t:'Medication Administration',         hrs:2, lab:true,  demand:6,  top:'Cedar Ridge',    topN:4 },
+  { t:'Infection Prevention',              hrs:1, lab:false, demand:12, top:'Willow Creek',   topN:6 },
+  { t:'Abuse Prevention',                  hrs:1.5, lab:false, demand:4, top:'Sunrise Terrace', topN:3 },
+  { t:'HIPAA and Data Security',           hrs:2, lab:false, demand:15, top:'Cedar Ridge',    topN:8 },
+  { t:'Preventing Falls in Senior Living', hrs:2, lab:true,  demand:27, top:'Northgate',      topN:11 },
+  { t:'Onboarding',                        hrs:7, lab:false, demand:0,  top:null, topN:0 }
+];
+
+/* Rooms are physical. A skills lab has one lift, which is why its capacity
+   is 16 and not the 50 a training room seats. */
+const ROOMS = {
+  'Cedar Ridge':     [{ n:'Training Room A', cap:50 }, { n:'Skills Lab', cap:16, lab:true }, { n:'Medication Room', cap:6, lab:true }],
+  'Lakeside Manor':  [{ n:'Conference Room', cap:20 }, { n:'Skills Lab', cap:16, lab:true }],
+  'Northgate':       [{ n:'Skills Lab', cap:16, lab:true }, { n:'Day Room', cap:24 }],
+  'Willow Creek':    [{ n:'Main Hall', cap:30 }, { n:'Skills Lab', cap:12, lab:true }],
+  'Harborview':      [{ n:'Activity Room', cap:14 }, { n:'Skills Lab', cap:12, lab:true }],
+  'Sunrise Terrace': [{ n:'Skills Lab', cap:16, lab:true }, { n:'Activity Room', cap:18 }]
+};
+
+const INSTRUCTORS = ['Priya Raghavan','Mira Solberg','Imani Sowande','Tara Sullivan',
+                     'Dr Elaine Rusk, RN (external)','Anjali Deshmukh','Suresh Balan'];
+
+/* Senior living runs 24/7. A class at 9am trains the day shift and nobody
+   else, which is the oldest complaint in the sector: "training is always
+   when I am asleep." */
+const SHIFTS = [
+  { k:'day',     label:'Day shift',     from:7,  to:15, at:'09:00' },
+  { k:'evening', label:'Evening shift', from:15, to:23, at:'15:00' },
+  { k:'night',   label:'Night shift',   from:23, to:7,  at:'23:00' }
+];
+const shiftOf = hm => { const h = Number(hm.slice(0, 2));
+  return h >= 7 && h < 15 ? 'day' : h >= 15 && h < 23 ? 'evening' : 'night'; };
+
+const addMins = (hm, n) => { const [h, m] = hm.split(':').map(Number);
+  const x = (h * 60 + m + n) % 1440;
+  return String(Math.floor(x / 60)).padStart(2, '0') + ':' + String(x % 60).padStart(2, '0'); };
+
+const overlap = (date, a1, a2, b1, b2) => at(date, a1) < at(date, b2) && at(date, b1) < at(date, a2);
+
+/* ==============================================================
+   Derived state. "scheduled" was the only status the old screen had,
+   so a class that finished eleven days ago still called itself
+   scheduled. Phase is computed from the clock and the attendance
+   marks instead, which is what makes the backlog visible.
+   ============================================================== */
+function phase(s) {
+  if (s.status === 'cancelled') return 'cancelled';
+  if (s.status === 'completed') return 'completed';
+  if (NOW < at(s.date, s.start)) return 'upcoming';
+  if (NOW <= at(s.date, s.end))  return 'running';
+  return 'unrecorded';
+}
+const marked   = s => s.reg.filter(r => r.att).length;
+const counted  = (s, k) => s.reg.filter(r => r.att === k).length;
+const allMarked = s => s.reg.length > 0 && marked(s) === s.reg.length;
+const fill     = s => s.cap ? s.reg.length / s.cap : 0;
+const daysLate = s => daysBetween(at(s.date, '00:00'), TODAY);
+const inPerson = s => s.mode !== 'virtual';
+/* Under half full, in person, and close enough that nobody else will
+   book. An instructor driving in for two people is the avoidable cost. */
+const atRisk   = s => phase(s) === 'upcoming' && inPerson(s) &&
+  daysBetween(TODAY, at(s.date, '00:00')) <= 7 && fill(s) < 0.5;
+
+/* Status describes the session, not the coordinator's to-do list. "Attendance
+   due" was a task wearing a status badge, which is why it read oddly and why
+   it repeated whatever else on the row was already saying it. The lifecycle is
+   the standard one every ILT system uses. "Ended" is the one addition: the
+   clock ran out, which is not the same as completed, and calling it Scheduled
+   eleven days later is the bug this module exists to fix. */
+const PHASE_BADGE = {
+  upcoming:   '<span class="badge is-neutral">Scheduled</span>',
+  running:    '<span class="badge is-info">In progress</span>',
+  unrecorded: '<span class="badge is-neutral">Ended</span>',
+  completed:  '<span class="badge is-success">Completed</span>',
+  cancelled:  '<span class="badge is-danger">Cancelled</span>'
+};
+const badgeFor = s => PHASE_BADGE[phase(s)];
+</script>
+
+<script>
+/* ==============================================================
+   Icons and small helpers
+   ============================================================== */
+const IC = {
+  clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  cal:  '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
+  users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/>',
+  alert:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  video:'<path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/>',
+  build:'<rect width="16" height="20" x="4" y="2" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M8 10h.01"/><path d="M16 10h.01"/><path d="M8 14h.01"/><path d="M16 14h.01"/>',
+  blend:'<path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/>',
+  pin:  '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
+  award:'<path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/>',
+  print:'<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3h12v6"/><rect width="12" height="8" x="6" y="14"/>',
+  mail: '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
+  pencil:'<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
+  copy: '<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>',
+  x:    '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  chev: '<path d="m6 9 6 6 6-6"/>',
+  left: '<path d="m15 18-6-6 6-6"/>', right:'<path d="m9 18 6-6-6-6"/>',
+  back: '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+  plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  up:   '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>'
+};
+const ic = (n, s) => '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+IC[n]+'</svg>';
+const MODE_IC = { 'in-person':'build', virtual:'video', blended:'blend' };
+const MODE_TX = { 'in-person':'In person', virtual:'Virtual', blended:'Blended' };
+
+const $   = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+/* Not every plural is +s. `person` was rendering as "13 persons" on five
+   screens; anything else irregular goes in the same map rather than being
+   worked around at the call site. */
+const IRREGULAR = { person:'people' };
+const plural = (n, w) => n + ' ' + (n === 1 ? w : (IRREGULAR[w] || w + 's'));
+
+function toast(title, body) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = '<div><div class="toast-title">'+esc(title)+'</div>'+(body ? '<div class="toast-body">'+esc(body)+'</div>' : '')+'</div>';
+  $('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 4200);
+}
+
+const S = { open:null, q:'', status:'Open sessions', mode:'All modes',
+            per:10, page:1, sel:new Set() };
+</script>
+
+<script>
+/* ==============================================================
+   The schedule
+   ============================================================== */
+function rows() {
+  let out = SESSIONS.slice();
+  /* The default is the worklist: everything still open. Closed and cancelled
+     sessions are history and are reached through the filter, which is what
+     keeps the two statuses on screen down to Scheduled and In progress. */
+  if (S.status === 'Open sessions') out = out.filter(s => ['upcoming','running','unrecorded'].indexOf(phase(s)) > -1);
+  else if (S.status !== 'All sessions') {
+    const want = { 'Scheduled':'upcoming', 'In progress':'running', 'Ended, not recorded':'unrecorded',
+                   'Completed':'completed', 'Cancelled':'cancelled' }[S.status];
+    out = out.filter(s => phase(s) === want);
+  }
+  if (S.mode !== 'All modes') out = out.filter(s => MODE_TX[s.mode] === S.mode);
+  if (S.q) { const q = S.q.toLowerCase();
+    out = out.filter(s => (s.t+' '+s.course+' '+(s.place||'')+' '+s.instr.join(' ')).toLowerCase().includes(q)); }
+
+  /* Plain chronological order. Once history is filtered out by default, the
+     sessions that owe a record are the oldest rows, so they lead the table
+     without needing a pinned banner to put them there. History reads the
+     other way round, most recent first. */
+  const past = S.status === 'Completed' || S.status === 'Cancelled';
+  return out.sort((a, b) => past
+    ? at(b.date, b.start) - at(a.date, a.start)
+    : at(a.date, a.start) - at(b.date, b.start));
+}
+/* Every group header is a date. Nothing else. */
+const groupOf = s => ({ k:s.date, label:relDay(s.date), note:dayNote(s.date) });
+
+/* ==============================================================
+   Schedule table
+   ============================================================== */
+function seatCell(s) {
+  const pct = Math.min(100, Math.round(fill(s) * 100));
+  const full = s.reg.length >= s.cap;
+  const cls = full ? ' is-full' : (atRisk(s) ? ' is-low' : '');
+  return '<div class="seats"><span class="seats-n">'+s.reg.length+' / '+s.cap+'</span>' +
+    '<div class="progress"><div class="progress-fill'+cls+'" style="width:'+pct+'%;"></div></div>' +
+    (s.wait.length ? '<div class="seats-note">'+plural(s.wait.length, 'person')+' waiting</div>'
+     : atRisk(s) ? '<div class="seats-note is-low">under half full</div>'
+     : !s.reg.length && phase(s) === 'upcoming' ? '<div class="seats-note is-low">nobody booked</div>' : '') +
+  '</div>';
+}
+
+function whenCell(s) {
+  const p = phase(s);
+  /* The day header above already carries the date, so this only adds what it
+     cannot: the length, or that it is happening right now. */
+  const sub = p === 'running' ? 'running now' : durTx(s);
+  return '<div class="when-main">'+fmtTime(s.start)+' &ndash; '+fmtTime(s.end)+'</div>' +
+    '<div class="when-sub">'+esc(sub)+'</div>';
+}
+
+function renderTable() {
+  const all = rows();
+  const pages = Math.max(1, Math.ceil(all.length / S.per));
+  if (S.page > pages) S.page = pages;
+  const from = (S.page - 1) * S.per, page = all.slice(from, from + S.per);
+
+  let last = null;
+  const body = page.length ? page.map(s => {
+    const g = groupOf(s);
+    let head = '';
+    if (g.k !== last) {
+      last = g.k;
+      head = '<tr class="day-row"><td colspan="7"><div class="day-cell">' +
+        '<span class="day-lbl">'+esc(g.label)+'</span><span class="day-note">'+esc(g.note)+'</span></div></td></tr>';
+    }
+    return head + '<tr>' +
+      '<td><span class="s-title"><a class="s-name" href="#s/'+s.id+'">'+esc(s.t)+'</a>' +
+        '<span class="s-meta">credits '+esc(s.course)+', '+hrs(s).toFixed(1)+' hrs</span></span></td>' +
+      '<td>'+whenCell(s)+'</td>' +
+      '<td><span class="mode">'+ic(MODE_IC[s.mode], 15)+MODE_TX[s.mode]+'</span>' +
+        '<div class="place">'+esc(s.place)+'</div></td>' +
+      '<td>'+esc(s.instr.join(', '))+'</td>' +
+      '<td>'+seatCell(s)+'</td>' +
+      '<td>'+badgeFor(s)+'</td>' +
+      '<td class="row-end">' + (phase(s) === 'unrecorded'
+        ? '<a class="btn btn-solid is-sm" href="#s/'+s.id+'">Take attendance</a>'
+        : '<span class="row-go">'+ic('chev', 16)+'</span>') + '</td></tr>';
+  }).join('')
+   : '<tr><td colspan="7" style="height:auto;padding:0;"><div class="empty-state">' +
+     '<div class="empty-art">'+ic('cal', 36)+'</div><h2>No sessions match</h2>' +
+     '<p>Try a different search, or clear the filters.</p>' +
+     '<div class="nw-shifts"><button class="btn btn-surface" id="clearAll2">Clear filters</button>' +
+     '<button class="btn btn-solid" id="newSession2">'+ic('plus', 16)+' New session</button></div></div></td></tr>';
+
+  const win = [];
+  for (let p = 1; p <= pages; p++) {
+    if (p === 1 || p === pages || Math.abs(p - S.page) <= 1) win.push(p);
+    else if (win[win.length - 1] !== '...') win.push('...');
+  }
+
+  return '<div class="table-wrap"><table class="table"><thead><tr>' +
+      '<th style="width:26%;">Session</th><th style="width:14%;">Time</th><th style="width:18%;">Mode and place</th>' +
+      '<th>Instructor</th><th style="width:110px;">Seats</th><th style="width:120px;">Status</th><th></th>' +
+    '</tr></thead><tbody>'+body+'</tbody></table></div>' +
+    '<div class="pagination">' +
+      '<span class="rows"><span class="page-info">Rows per page</span>' +
+        '<button class="dropdown is-per" data-menu="per" aria-haspopup="listbox" aria-expanded="false">' +
+        '<span style="flex:1;">'+S.per+'</span><span class="dropdown-chevron">'+ic('chev', 16)+'</span></button></span>' +
+      '<span class="page-spacer"></span>' +
+      '<span class="page-info">'+(all.length ? from + 1 : 0)+'&ndash;'+(from + page.length)+' of '+all.length +
+        (all.length !== SESSIONS.length ? ' filtered, '+SESSIONS.length+' in total' : ' sessions')+'</span>' +
+      '<span class="page-controls">' +
+        '<button class="btn btn-surface is-sm" id="prev"'+(S.page === 1 ? ' disabled' : '')+' aria-label="Previous page">'+ic('left', 14)+'</button>' +
+        win.map(p => p === '...' ? '<span class="page-gap">&hellip;</span>'
+          : '<button class="btn '+(p === S.page ? 'btn-solid' : 'btn-surface')+' is-sm page-no" data-page="'+p+'"' +
+            (p === S.page ? ' aria-current="page"' : '')+'>'+p+'</button>').join('') +
+        '<button class="btn btn-surface is-sm" id="next"'+(S.page === pages ? ' disabled' : '')+' aria-label="Next page">'+ic('right', 14)+'</button>' +
+      '</span></div>';
+}
+
+function renderList() {
+  const dd = (id, val, w) => '<button class="dropdown" data-menu="'+id+'" aria-haspopup="listbox" aria-expanded="false" style="min-width:'+w+'px;">' +
+    '<span style="flex:1;">'+esc(val)+'</span><span class="dropdown-chevron">'+ic('chev', 16)+'</span></button>';
+  const active = S.q || S.status !== 'Open sessions' || S.mode !== 'All modes';
+
+  return '<header class="page-header ph-row"><div class="ph-text"><h1>Sessions</h1>' +
+      '<p>Instructor-led training. Attendance here is the record a surveyor asks for, so a session is not finished until it is marked.</p></div>' +
+      '<button class="btn btn-solid ph-cta" id="newSession">'+ic('plus', 16)+' New session</button></header>' +
+    '<div class="stack-5">' +
+      '<section><div class="tbar">' +
+        '<div class="search" style="min-width:240px;"><span class="search-icon">' +
+          '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>' +
+          '<label class="sr-only" for="tq">Search sessions</label>' +
+          '<input class="input" id="tq" placeholder="Search sessions" value="'+esc(S.q)+'" /></div>' +
+        dd('status', S.status, 175) + dd('mode', S.mode, 150) +
+        '<span class="spacer"></span>' +
+        (active ? '<button class="btn btn-ghost is-sm" id="clearAll">Clear filters</button>' : '') +
+      '</div>' + renderTable() +
+      '</section></div>';
+}
+</script>
+
+<script>
+/* ==============================================================
+   One session.
+
+   Two things changed from the screen this replaces. "COURSES ·
+   ALLOTTED TO NO-SHOWS" is now a sentence, because it describes a
+   rule and a rule reads as a sentence. And "Mark Completed" has left
+   the header: it credits the hours, so it belongs at the foot of the
+   attendance table where the evidence is, disabled until every
+   learner has been marked.
+   ============================================================== */
+function flagsFor(s) {
+  const f = [];
+  const teaching = s.reg.filter(r => s.instr.indexOf(r.n) > -1);
+  teaching.forEach(r => f.push({
+    tone:'warning',
+    text: r.n + ' is teaching this session and is also on the roster.',
+    act:'<button class="btn btn-surface is-sm" data-unreg="'+esc(r.n)+'">Remove from the roster</button>' }));
+  if (phase(s) === 'unrecorded') f.push({
+    tone:'warning',
+    text: 'This session finished ' + plural(daysLate(s), 'day') + ' ago and nobody has been marked. ' +
+          (s.reg.length * hrs(s)).toFixed(1) + ' hours are uncredited until it is.' });
+  if (oddStart(s)) f.push({
+    tone:'info',
+    text: 'It starts at ' + fmtTime(s.start) + ', which is not on a quarter hour. Check the schedule was not saved from the moment the record was created.' });
+  if (atRisk(s)) f.push({
+    tone:'warning',
+    text: s.reg.length + ' of ' + s.cap + ' seats are filled and it runs in ' +
+          plural(daysBetween(TODAY, at(s.date, '00:00')), 'day') + '.',
+    act:'<a class="btn btn-surface is-sm" href="assign.html">Assign more learners</a>' });
+  if (s.cancelReason) f.push({ tone:'danger', text: s.cancelReason });
+  return f;
+}
+
+function metaCell(label, value, sub) {
+  return '<div><div class="meta-l">'+label+'</div><div class="meta-v">'+value+'</div>' +
+    (sub ? '<div class="meta-sub">'+sub+'</div>' : '') + '</div>';
+}
+
+function renderMeta(s) {
+  const c = s.comm ? COMMS[s.comm] : null;
+  const tz = c ? c.tz : 'local time';
+  const hoursState = c && HOURS_STATES.indexOf(c.state) > -1;
+  return '<div class="card"><div class="meta-grid">' +
+    metaCell('When', fmtDate(s.date), fmtTime(s.start)+' &ndash; '+fmtTime(s.end)+' '+tz+', '+durTx(s)) +
+    metaCell('Mode and place', '<span class="mode">'+ic(MODE_IC[s.mode], 16)+MODE_TX[s.mode]+'</span>',
+      esc(s.place) + (c ? ', '+c.state : ', all communities')) +
+    metaCell('Instructor', esc(s.instr.join(', ')), plural(s.instr.length, 'person')+' leading') +
+    metaCell('Seats', s.reg.length+' of '+s.cap,
+      s.wait.length ? plural(s.wait.length, 'person')+' on the waiting list' : (s.reg.length >= s.cap ? 'full' : (s.cap - s.reg.length)+' free')) +
+    metaCell('Credits', hrs(s).toFixed(1)+' hours',
+      'towards '+esc(s.course) + (hoursState ? ', which '+c.state+' counts in hours' : '')) +
+    metaCell('Certificate', esc(s.cert), 'issued to everyone marked present') +
+  '</div>' +
+  (s.noShow
+    ? '<div class="divider" style="margin:var(--space-5) 0;"></div>' +
+      '<p class="rule-line">If someone does not attend, they are enrolled in ' +
+      '<span class="tag">'+esc(s.noShow)+'</span> online, due seven days after this session.</p>'
+    : '') +
+  (s.note ? '<div class="divider" style="margin:var(--space-5) 0;"></div><p class="desc">'+esc(s.note)+'</p>' : '') +
+  '</div>';
+}
+
+const ATT = [['present','Present'], ['absent','No show'], ['excused','Excused']];
+
+function renderRoster(s) {
+  const p = phase(s), editable = p === 'running' || p === 'unrecorded' || p === 'completed';
+  const n = s.reg.length;
+
+  if (!n) return '<div class="card"><div class="panel-head"><div>' +
+    '<div class="panel-title">Registrations</div>' +
+    '<div class="panel-sub">Nobody has booked a seat yet.</div></div></div>' +
+    '<div class="empty-state"><div class="empty-art">'+ic('users', 36)+'</div>' +
+    '<h2>No one is registered</h2><p>An instructor is booked and the room is held. Assign learners, or cancel the session while there is still time to free the room.</p>' +
+    '<a class="btn btn-solid" href="assign.html">Assign learners</a></div></div>';
+
+  const head = '<div class="panel-head"><div>' +
+      '<div class="panel-title">Registrations ('+n+')</div>' +
+      '<div class="panel-sub">' + (editable
+        ? (allMarked(s) ? 'Everyone is marked.' : marked(s) + ' of ' + n + ' marked. Mark the room, then close the session.')
+        : 'Attendance opens when the session starts.') + '</div></div>' +
+    '<div class="d-actions">' +
+      (editable && !allMarked(s) ? '<button class="btn btn-surface is-sm" id="allPresent">'+ic('check', 15)+' Mark everyone present</button>' : '') +
+      '<button class="btn btn-ghost is-sm" id="sheet">'+ic('print', 15)+' Sign-in sheet</button>' +
+    '</div></div>';
+
+  const bulk = S.sel.size
+    ? '<div class="bulkbar"><span class="bulk-count">'+plural(S.sel.size, 'learner')+' selected</span><span class="spacer"></span>' +
+      ATT.map(a => '<button class="btn btn-surface is-sm" data-bulk="'+a[0]+'">'+a[1]+'</button>').join('') +
+      '<button class="btn btn-ghost is-sm" id="selClear">Clear</button></div>'
+    : '';
+
+  const body = s.reg.map(r =>
+    '<tr'+(editable && !r.att ? ' class="is-unmarked"' : '')+'>' +
+      '<td class="col-check"><label class="checkbox"><input type="checkbox" data-pick="'+esc(r.n)+'"'+(S.sel.has(r.n) ? ' checked' : '')+' />' +
+        '<span class="sr-only">Select '+esc(r.n)+'</span></label></td>' +
+      '<td><span class="learner"><span class="learner-n">'+esc(r.n)+'</span>' +
+        '<span class="learner-e">'+esc(r.email)+'</span></span></td>' +
+      '<td>'+esc(r.role)+'<div class="cell-sub">'+esc(r.comm)+'</div></td>' +
+      '<td>'+fmtShort(r.on)+'</td>' +
+      '<td>' + (editable
+        ? '<span class="att">'+ATT.map(a =>
+            '<button class="att-btn is-'+a[0]+(r.att === a[0] ? ' is-on' : '')+'" data-att="'+a[0]+'" data-who="'+esc(r.n)+'" aria-pressed="'+(r.att === a[0])+'">'+a[1]+'</button>').join('')+'</span>'
+        : '<span class="cell-sub">not started</span>') + '</td>' +
+    '</tr>').join('');
+
+  return '<div class="card">' + head + bulk +
+    '<div class="table-wrap"><table class="table"><thead><tr>' +
+      '<th class="col-check"><label class="checkbox"><input type="checkbox" id="checkAll"'+(S.sel.size === n ? ' checked' : '')+' />' +
+      '<span class="sr-only">Select everyone</span></label></th>' +
+      '<th>Learner</th><th>Role and community</th><th style="width:130px;">Registered</th><th style="width:250px;">Attendance</th>' +
+    '</tr></thead><tbody>'+body+'</tbody></table></div>' +
+    '<p class="print-note">The sign-in sheet is the paper version of this table with a signature column. In person, the room signs paper and someone types it in afterwards, which is exactly the gap that leaves attendance unrecorded.</p>' +
+    renderCloseout(s) + '</div>';
+}
+
+function renderCloseout(s) {
+  const p = phase(s);
+  if (p === 'upcoming' || p === 'cancelled') return '';
+  const pres = counted(s, 'present'), abs = counted(s, 'absent'), exc = counted(s, 'excused');
+  const ready = allMarked(s);
+
+  if (p === 'completed') return '<div class="closeout is-ready">' +
+    '<div class="co-nums"><span class="co-num"><strong>'+pres+'</strong> present</span>' +
+      '<span class="co-num"><strong>'+abs+'</strong> no show</span>' +
+      '<span class="co-num"><strong>'+(pres * hrs(s)).toFixed(1)+'</strong> hours credited</span></div>' +
+    '<span class="spacer"></span>' +
+    '<button class="btn btn-surface" id="reopen">Reopen attendance</button>' +
+    '<div class="co-hint">Closed. Certificates went to the '+plural(pres, 'learner')+' marked present' +
+      (abs && s.noShow ? ', and the '+plural(abs, 'no show')+' were enrolled in '+esc(s.noShow)+'.' : '.') + '</div></div>';
+
+  return '<div class="closeout'+(ready ? ' is-ready' : '')+'">' +
+    '<div class="co-nums"><span class="co-num"><strong>'+pres+'</strong> present</span>' +
+      '<span class="co-num"><strong>'+abs+'</strong> no show</span>' +
+      '<span class="co-num"><strong>'+exc+'</strong> excused</span>' +
+      '<span class="co-num"><strong>'+(pres * hrs(s)).toFixed(1)+'</strong> hours to credit</span></div>' +
+    '<span class="spacer"></span>' +
+    '<button class="btn btn-solid" id="close"'+(ready ? '' : ' disabled')+'>Mark completed</button>' +
+    '<div class="co-hint">' + (ready
+      ? 'Closing credits '+(pres * hrs(s)).toFixed(1)+' hours to '+plural(pres, 'learner')+' and issues '+esc(s.cert)+'.' +
+        (abs && s.noShow ? ' The '+plural(abs, 'no show')+' get enrolled in '+esc(s.noShow)+', due seven days from the session date.' : '')
+      : (s.reg.length - marked(s)) + ' still unmarked. Closing now would record them as neither present nor absent, which is the same as no record at all.') +
+    '</div></div>';
+}
+
+function renderWaitlist(s) {
+  if (!s.wait.length) return '';
+  const free = s.cap - s.reg.length;
+  return '<div class="card"><div class="panel-head"><div>' +
+      '<div class="panel-title">Waiting list ('+s.wait.length+')</div>' +
+      '<div class="panel-sub">' + (free > 0
+        ? plural(free, 'seat') + ' free, so the top of the list can move up now.'
+        : 'The room is full. A seat has to come free before anyone moves up.') + '</div></div></div>' +
+    '<div class="table-wrap"><table class="table"><tbody>' +
+      s.wait.map(r => '<tr><td><span class="learner"><span class="learner-n">'+esc(r.n)+'</span>' +
+        '<span class="learner-e">'+esc(r.email)+'</span></span></td>' +
+        '<td>'+esc(r.role)+'<div class="cell-sub">'+esc(r.comm)+'</div></td>' +
+        '<td>joined '+fmtShort(r.on)+'</td>' +
+        '<td style="text-align:right;"><button class="btn btn-surface is-sm" data-promote="'+esc(r.n)+'"'+(free > 0 ? '' : ' disabled')+'>'+ic('up', 14)+' Move up</button></td></tr>').join('') +
+    '</tbody></table></div></div>';
+}
+
+function renderDetail(s) {
+  const p = phase(s);
+  const acts = [];
+  if (p === 'upcoming') {
+    acts.push('<button class="btn btn-solid" id="remind">'+ic('mail', 16)+' Send reminder</button>');
+    acts.push('<button class="btn btn-surface" id="sheet2">'+ic('print', 16)+' Sign-in sheet</button>');
+    acts.push('<button class="btn btn-surface" id="edit">'+ic('pencil', 16)+' Edit</button>');
+    acts.push('<button class="btn btn-ghost" id="cancel">'+ic('x', 16)+' Cancel session</button>');
+  } else if (p === 'running' || p === 'unrecorded') {
+    acts.push('<button class="btn btn-solid" id="take">'+ic('check', 16)+' Take attendance</button>');
+    acts.push('<button class="btn btn-surface" id="sheet2">'+ic('print', 16)+' Sign-in sheet</button>');
+    acts.push('<button class="btn btn-surface" id="edit">'+ic('pencil', 16)+' Edit</button>');
+  } else {
+    acts.push('<button class="btn btn-surface" id="dupe2">'+ic('copy', 16)+' Duplicate and reschedule</button>');
+  }
+
+  const flags = flagsFor(s);
+  const c = s.comm ? COMMS[s.comm] : null;
+
+  return '<a class="back-link" href="#">'+ic('back', 16)+' Back to sessions</a>' +
+    '<header class="page-header ph-row"><div class="ph-text">' +
+      '<div class="d-title-row"><h1>'+esc(s.t)+'</h1>'+badgeFor(s)+'</div>' +
+      '<div class="d-when">'+ic('clock', 16)+relNote(s.date)+', '+fmtTime(s.start)+' &ndash; '+fmtTime(s.end)+' '+(c ? c.tz : 'local time')+'</div>' +
+    '</div><div class="d-actions">'+acts.join('')+'</div></header>' +
+    '<div class="stack-5">' +
+      (flags.length ? flags.map(f =>
+        '<div class="callout is-'+f.tone+'"><span class="co-icon">'+ic(f.tone === 'info' ? 'info' : 'alert', 18)+'</span>' +
+        '<span class="flag-list"><span class="flag-item"><span>'+esc(f.text)+'</span>'+(f.act || '')+'</span></span></div>').join('') : '') +
+      renderMeta(s) + renderRoster(s) + renderWaitlist(s) +
+    '</div>';
+}
+</script>
+
+<script>
+/* ==============================================================
+   Router and behaviour
+   ============================================================== */
+const find = id => SESSIONS.find(s => s.id === id) || null;
+const CRUMB = '<span class="sep"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>';
+
+function render() {
+  const s = S.open ? find(S.open) : null;
+  $('crumbs').innerHTML = s
+    ? '<a href="index.html">Home</a>'+CRUMB+'<a href="#">Sessions</a>'+CRUMB+'<span class="current">'+esc(s.t)+'</span>'
+    : '<a href="index.html">Home</a>'+CRUMB+'<span class="current">Sessions</span>';
+  $('view').innerHTML = s ? renderDetail(s) : renderList();
+  document.title = 'skyLearn · ' + (s ? s.t : 'Sessions');
+}
+
+function route() {
+  const m = /^#s\/(\w+)$/.exec(location.hash || '');
+  const next = m && find(m[1]) ? m[1] : null;
+  if (next !== S.open) S.sel.clear();
+  S.open = next;
+  render();
+  window.scrollTo(0, 0);
+}
+window.addEventListener('hashchange', route);
+
+const menu = $('menu');
+let menuKey = null;
+const OPTS = {
+  status: ['Open sessions','Scheduled','In progress','Ended, not recorded','Completed','Cancelled','All sessions'],
+  mode:   ['All modes','In person','Virtual','Blended'],
+  per:    ['10','20','50']
+};
+function openMenu(btn) {
+  menuKey = btn.dataset.menu;
+  const cur = menuKey === 'status' ? S.status : menuKey === 'mode' ? S.mode : String(S.per);
+  menu.innerHTML = OPTS[menuKey].map(o =>
+    '<div class="list-item'+(o === cur ? ' is-selected' : '')+'" role="option" data-opt="'+esc(o)+'" aria-selected="'+(o === cur)+'">'+esc(o)+'</div>').join('');
+  menu.hidden = false;
+  const r = btn.getBoundingClientRect();
+  menu.style.width = Math.max(150, r.width)+'px';
+  menu.style.top = (r.bottom + 6)+'px';
+  menu.style.left = r.left+'px';
+  btn.setAttribute('aria-expanded', 'true');
+}
+function closeMenu() { menu.hidden = true; menuKey = null;
+  document.querySelectorAll('[data-menu]').forEach(b => b.setAttribute('aria-expanded', 'false')); }
+menu.addEventListener('click', e => {
+  const o = e.target.closest('[data-opt]'); if (!o || !menuKey) return;
+  if (menuKey === 'status')    S.status = o.dataset.opt;
+  else if (menuKey === 'mode') S.mode = o.dataset.opt;
+  else                         S.per = +o.dataset.opt;
+  S.page = 1; closeMenu(); render();
+});
+
+let qt;
+document.addEventListener('input', e => {
+  if (String(e.target.id).slice(0, 2) === 'nw') return renderNewOut();
+  if (e.target.id === 'tq' || e.target.id === 'q') {
+    clearTimeout(qt);
+    qt = setTimeout(() => { S.q = e.target.value.trim(); S.page = 1; render();
+      const f = $('tq'); if (f) { f.focus(); f.setSelectionRange(f.value.length, f.value.length); } }, 200);
+  }
+});
+
+/* Only the readout panel re-renders, never the fields, so nothing steals
+   focus mid-typing. */
+document.addEventListener('change', e => {
+  if (e.target.closest && e.target.closest('#nwT, .dialog') && String(e.target.id).slice(0, 2) === 'nw') {
+    if (e.target.id === 'nwComm') roomOptions();
+    if (e.target.id === 'nwMode') syncMode();
+    if (e.target.id === 'nwRoom') {
+      const r = (ROOMS[val('nwComm')] || []).find(x => x.n === val('nwRoom'));
+      if (r) $('nwCap').value = r.cap;
+    }
+    if (e.target.id === 'nwCourse') {
+      const c = CATALOG.find(x => x.t === val('nwCourse'));
+      if (c && val('nwStart')) $('nwEnd').value = addMins(val('nwStart'), Math.round(c.hrs * 60));
+    }
+    return renderNewOut();
+  }
+  const s = S.open ? find(S.open) : null;
+  const p = e.target.closest('[data-pick]');
+  if (p) { e.target.checked ? S.sel.add(p.dataset.pick) : S.sel.delete(p.dataset.pick); return render(); }
+  if (e.target.id === 'checkAll' && s) {
+    S.sel.clear();
+    if (e.target.checked) s.reg.forEach(r => S.sel.add(r.n));
+    return render();
+  }
+});
+
+function sheetToast() {
+  toast('Sign-in sheet', 'A printable roster with a signature column, one line per registered learner. Not wired up in this prototype.');
+}
+
+document.addEventListener('click', e => {
+  const t = e.target;
+  const s = S.open ? find(S.open) : null;
+
+  const mb = t.closest('[data-menu]');
+  if (mb) { e.stopPropagation(); const was = !menu.hidden && menuKey === mb.dataset.menu; closeMenu(); if (!was) openMenu(mb); return; }
+  if (!menu.hidden && !t.closest('#menu')) closeMenu();
+
+  /* --- schedule --- */
+  const pg = t.closest('[data-page]');
+  if (pg) { S.page = +pg.dataset.page; return render(); }
+  if (t.closest('#prev')) { S.page = Math.max(1, S.page - 1); return render(); }
+  if (t.closest('#next')) { S.page++; return render(); }
+  if (t.closest('#newSession') || t.closest('#newSession2')) return openNew();
+  if (t.closest('#nwCancel')) return closeDialog();
+  if (t.closest('#nwGo'))     return createSession();
+  if (t.closest('#clearAll') || t.closest('#clearAll2')) {
+    S.q = ''; S.status = 'Open sessions'; S.mode = 'All modes'; S.page = 1; return render();
+  }
+  if (!s) return;
+
+  /* --- one session --- */
+  if (t.closest('#sheet') || t.closest('#sheet2')) return sheetToast();
+  if (t.closest('#edit')) return toast('Editing a live session',
+    'Changing the time or room on a session ' + plural(s.reg.length, 'person') + (s.reg.length === 1 ? ' has' : ' have') + ' booked needs a notify step. Not built in this pass.');
+  if (t.closest('#remind')) { s.reminded = '2026-08-17';
+    toast('Reminder sent.', plural(s.reg.length, 'learner') + ', by email and in the app.'); return render(); }
+  if (t.closest('#take')) {
+    const el = document.querySelector('.att'); if (el) el.scrollIntoView({ block:'center' });
+    return;
+  }
+  if (t.closest('#dupe2')) return toast('Duplicated.', 'Same course, instructor and length. Pick a date and it is ready to open for booking.');
+
+  const un = t.closest('[data-unreg]');
+  if (un) { const n = un.dataset.unreg;
+    s.reg = s.reg.filter(r => r.n !== n); S.sel.delete(n);
+    toast(n + ' removed from the roster.', 'Still listed as an instructor. Seats are now ' + s.reg.length + ' of ' + s.cap + '.');
+    return render(); }
+
+  const a = t.closest('[data-att]');
+  if (a) { const r = s.reg.find(x => x.n === a.dataset.who);
+    r.att = r.att === a.dataset.att ? null : a.dataset.att;   /* pressing the same one again un-marks */
+    return render(); }
+
+  const bk = t.closest('[data-bulk]');
+  if (bk) { s.reg.forEach(r => { if (S.sel.has(r.n)) r.att = bk.dataset.bulk; });
+    toast(plural(S.sel.size, 'learner') + ' marked.', null); S.sel.clear(); return render(); }
+  if (t.closest('#selClear')) { S.sel.clear(); return render(); }
+
+  if (t.closest('#allPresent')) {
+    const n = s.reg.filter(r => !r.att).length;
+    s.reg.forEach(r => { if (!r.att) r.att = 'present'; });
+    toast(plural(n, 'learner') + ' marked present.', 'Now flag the exceptions, which is faster than marking one at a time.');
+    return render();
+  }
+
+  const pr = t.closest('[data-promote]');
+  if (pr) { const n = pr.dataset.promote, i = s.wait.findIndex(x => x.n === n);
+    if (i < 0 || s.reg.length >= s.cap) return;
+    const r = s.wait.splice(i, 1)[0]; r.att = null; s.reg.push(r);
+    toast(n + ' moved off the waiting list.', 'Seats are now ' + s.reg.length + ' of ' + s.cap + '.');
+    return render(); }
+
+  if (t.closest('#close')) {
+    if (!allMarked(s)) return;
+    s.status = 'completed';
+    const pres = counted(s, 'present'), abs = counted(s, 'absent');
+    toast('Session closed.',
+      [(pres * hrs(s)).toFixed(1) + ' hours credited to ' + plural(pres, 'learner'),
+       s.cert + ' issued',
+       abs && s.noShow ? plural(abs, 'no show') + ' enrolled in ' + s.noShow : ''
+      ].filter(Boolean).join('. ') + '.');
+    return render();
+  }
+  if (t.closest('#reopen')) { s.status = 'open';
+    toast('Attendance reopened.', 'Hours and certificates stay as they are until you close it again.'); return render(); }
+
+  if (t.closest('#cancel')) return openCancel(s);
+  if (t.closest('#cxClose') || t.closest('#cxBack')) return closeDialog();
+  if (t.closest('#cxGo')) {
+    const why = ($('cxWhy') || {}).value || '';
+    if (!why.trim()) { toast('A reason is needed.', 'The people who booked will be told why, so it cannot be blank.'); return; }
+    s.status = 'cancelled'; s.cancelReason = why.trim();
+    const notify = ($('cxNotify') || {}).checked;
+    closeDialog();
+    toast('Session cancelled.', notify ? plural(s.reg.length, 'learner') + ' told, with the reason.' : 'Nobody was told. They will find out at the door.');
+    return render();
+  }
+});
+
+/* ==============================================================
+   New session.
+
+   Seven fields, one dialog. Nothing is authored here; the course already
+   exists, so this only says when, where and who. The panel underneath the
+   fields is the point of the screen: it answers "should I be scheduling
+   this at all, and does it clash", live, before the button is pressed.
+   ============================================================== */
+const val = id => { const e = $(id); return e ? e.value : ''; };
+
+function draft() {
+  const mode = val('nwMode');
+  const comm = val('nwComm');
+  return { course: val('nwCourse'), date: val('nwDate'), start: val('nwStart'), end: val('nwEnd'),
+    mode: mode, comm: mode === 'virtual' ? null : comm,
+    place: mode === 'virtual' ? (val('nwUrl') || 'Microsoft Teams') : (comm + ', ' + val('nwRoom')),
+    room: val('nwRoom'), instr: val('nwInstr'), cap: Number(val('nwCap')) || 0 };
+}
+
+/* The two bookings that make a live class fail. Both are warnings, not
+   blocks: a room genuinely does get split between two halves of a group,
+   and a coordinator who is told the clash and proceeds anyway meant it. */
+function clashes(d) {
+  if (!d.date || !d.start || !d.end) return [];
+  const out = [];
+  SESSIONS.forEach(s => {
+    if (s.status === 'cancelled' || s.date !== d.date) return;
+    if (!overlap(d.date, d.start, d.end, s.start, s.end)) return;
+    if (d.instr && s.instr.indexOf(d.instr) > -1)
+      out.push(d.instr + ' is already teaching ' + s.t + ', ' + fmtTime(s.start) + ' to ' + fmtTime(s.end) + '.');
+    if (d.mode !== 'virtual' && d.room && s.place === d.place)
+      out.push(d.place + ' is booked for ' + s.t + ', ' + fmtTime(s.start) + ' to ' + fmtTime(s.end) + '.');
+  });
+  return out;
+}
+
+/* Which shifts this course has been taught to, looking back 90 days and
+   forward at everything booked. A shift with no session is a group of
+   people who cannot attend their own required training. */
+function shiftGaps(course) {
+  const seen = {};
+  SESSIONS.forEach(s => {
+    if (s.course !== course || s.status === 'cancelled') return;
+    if (daysBetween(at(s.date, '00:00'), TODAY) > 90) return;
+    seen[shiftOf(s.start)] = true;
+  });
+  return SHIFTS.filter(x => !seen[x.k]);
+}
+
+function renderNewOut() {
+  const box = $('nwOut'); if (!box) return;
+  const d = draft();
+  const cat = CATALOG.find(c => c.t === d.course);
+  const bits = [];
+
+  if (!cat) bits.push({ tone:'info', text:'Pick a course first. It sets the length, and says who is already waiting for it.' });
+  else if (cat.demand)
+    bits.push({ tone:'info', text: cat.demand + ' learners are overdue on ' + cat.t +
+      (cat.top ? ', ' + cat.topN + ' of them at ' + cat.top + '.' : '.') });
+
+  if (d.start && d.end) {
+    const m = (at('2026-01-01', d.end) - at('2026-01-01', d.start)) / 60000;
+    if (m <= 0) bits.push({ tone:'danger', text:'It has to finish after it starts.' });
+    else {
+      const h = Math.round(m / 60 * 10) / 10;
+      const sh = SHIFTS.find(x => x.k === shiftOf(d.start));
+      bits.push({ tone:'success', text: h.toFixed(1) + ' hours, credited to ' + (d.course || 'the course') +
+        '. Runs during the ' + sh.label.toLowerCase() + '.' });
+    }
+  }
+
+  if (cat) {
+    const gaps = shiftGaps(cat.t).filter(x => d.start ? x.k !== shiftOf(d.start) : true);
+    if (gaps.length) bits.push({ tone:'warning',
+      text: 'No ' + gaps.map(x => x.k).join(' or ') + ' session for this course in the last 90 days. ' +
+            'Staff on those shifts cannot attend a class they are required to take.' });
+  }
+
+  const room = d.comm && ROOMS[d.comm] ? ROOMS[d.comm].find(r => r.n === d.room) : null;
+  if (cat && cat.lab && room && !room.lab)
+    bits.push({ tone:'warning', text: cat.t + ' is hands-on. ' + room.n + ' has no equipment for it.' });
+  if (room && d.cap > room.cap)
+    bits.push({ tone:'warning', text: room.n + ' holds ' + room.cap + '. ' + d.cap + ' will not fit.' });
+
+  clashes(d).forEach(c => bits.push({ tone:'danger', text:c }));
+
+  box.innerHTML = bits.length
+    ? bits.map(b => '<div class="callout is-' + b.tone + '"><span class="co-icon">' +
+        ic(b.tone === 'info' ? 'info' : b.tone === 'success' ? 'check' : 'alert', 18) +
+        '</span><span>' + esc(b.text) + '</span></div>').join('')
+    : '<div class="callout"><span class="co-icon">' + ic('info', 18) +
+      '</span><span>Pick a course to see who is waiting for it.</span></div>';
+}
+
+function roomOptions() {
+  const comm = val('nwComm'), sel = val('nwRoom');
+  const list = ROOMS[comm] || [];
+  const el = $('nwRoom'); if (!el) return;
+  el.innerHTML = list.map(r => '<option value="' + esc(r.n) + '"' + (r.n === sel ? ' selected' : '') +
+    '>' + esc(r.n) + ', holds ' + r.cap + (r.lab ? ', equipped' : '') + '</option>').join('');
+  if (!list.some(r => r.n === sel) && list.length) { el.value = list[0].n; $('nwCap').value = list[0].cap; }
+}
+
+function syncMode() {
+  const virtual = val('nwMode') === 'virtual';
+  const a = $('nwWhereRoom'), b = $('nwWhereUrl');
+  if (a) a.hidden = virtual;
+  if (b) b.hidden = !virtual;
+}
+
+function openNew() {
+  const f = (label, req, body, hint, id) =>
+    '<div class="field"><label class="field-label"' + (id ? ' for="' + id + '"' : '') + '>' + label +
+    (req ? '<span class="req">*</span>' : '') + '</label>' + body +
+    (hint ? '<span class="field-hint">' + hint + '</span>' : '') + '</div>';
+  const opts = (list, sel) => list.map(o => '<option value="' + esc(o) + '"' + (o === sel ? ' selected' : '') + '>' + esc(o) + '</option>').join('');
+
+  $('overlay').hidden = false;
+  $('overlay').innerHTML =
+    '<div class="dialog is-wide" role="dialog" aria-modal="true" aria-labelledby="nwT">' +
+      '<div class="dialog-title" id="nwT">New session</div>' +
+      '<div class="dialog-body"><div class="stack-4">' +
+        f('Course', true, '<select class="select" id="nwCourse"><option value="">Choose a course</option>' +
+          opts(CATALOG.map(c => c.t), '') + '</select>',
+          'A session runs a course that already exists. To write a new one, use Create course.', 'nwCourse') +
+        '<div class="nw-3">' +
+          f('Date', true, '<input class="input" type="date" id="nwDate" value="2026-08-24" min="2026-08-17" />', null, 'nwDate') +
+          f('Starts', true, '<input class="input" type="time" id="nwStart" value="09:00" step="900" />', null, 'nwStart') +
+          f('Ends', true, '<input class="input" type="time" id="nwEnd" value="11:00" step="900" />', null, 'nwEnd') +
+        '</div>' +
+        '<div class="nw-2">' +
+          f('Mode', true, '<select class="select" id="nwMode">' +
+            '<option value="in-person">In person</option><option value="virtual">Virtual</option>' +
+            '<option value="blended">Blended</option></select>', null, 'nwMode') +
+          f('Instructor', true, '<select class="select" id="nwInstr">' + opts(INSTRUCTORS, 'Priya Raghavan') + '</select>', null, 'nwInstr') +
+        '</div>' +
+        '<div class="nw-2" id="nwWhereRoom">' +
+          f('Community', true, '<select class="select" id="nwComm">' + opts(Object.keys(ROOMS), 'Lakeside Manor') + '</select>', null, 'nwComm') +
+          f('Room', true, '<select class="select" id="nwRoom"></select>', null, 'nwRoom') +
+        '</div>' +
+        '<div id="nwWhereUrl" hidden>' +
+          f('Link', false, '<input class="input" id="nwUrl" placeholder="Microsoft Teams" />',
+            'Leave it blank and the invitation carries a Teams link.', 'nwUrl') + '</div>' +
+        f('Seats', false, '<input class="input" type="number" id="nwCap" value="16" min="1" style="max-width:120px;" />',
+          'Defaults to what the room holds.', 'nwCap') +
+        '<div class="field"><span class="field-label">Also schedule for</span>' +
+          '<div class="nw-shifts">' +
+            '<label class="checkbox"><input type="checkbox" id="nwEve" /> <span>Evening shift, 3:00 PM</span></label>' +
+            '<label class="checkbox"><input type="checkbox" id="nwNight" /> <span>Night shift, 11:00 PM</span></label>' +
+          '</div>' +
+          '<span class="field-hint">Same course, same room, same day. One class only ever trains one shift.</span></div>' +
+        '<div id="nwOut" class="stack-2"></div>' +
+      '</div></div>' +
+      '<div class="dialog-footer"><button class="btn btn-surface" id="nwCancel">Cancel</button>' +
+        '<button class="btn btn-solid" id="nwGo">Create session</button></div>' +
+    '</div>';
+  roomOptions(); syncMode(); renderNewOut();
+  const c = $('nwCourse'); if (c) c.focus();
+}
+
+function createSession() {
+  const d = draft();
+  if (!d.course) { toast('Pick a course first.', 'A session runs a course that already exists.'); return; }
+  if (!d.date || !d.start || !d.end || at(d.date, d.end) <= at(d.date, d.start)) {
+    toast('Check the times.', 'It has to finish after it starts.'); return; }
+
+  const cat = CATALOG.find(c => c.t === d.course);
+  const dur = (at(d.date, d.end) - at(d.date, d.start)) / 60000;
+  const extra = [];
+  if ($('nwEve') && $('nwEve').checked)   extra.push('15:00');
+  if ($('nwNight') && $('nwNight').checked) extra.push('23:00');
+
+  const made = [d.start].concat(extra).map((st, i) => {
+    const s = { id:'n' + (SESSIONS.length + 1 + i), t:d.course, course:d.course,
+      mode:d.mode, place:d.place, comm:d.comm, instr:[d.instr], cap:d.cap || 16,
+      date:d.date, start:st, end:addMins(st, dur), cert:'In-service record',
+      noShow:cat && cat.demand ? d.course : null, status:'open', reminded:null,
+      note:'', reg:[], wait:[] };
+    SESSIONS.push(s); return s;
+  });
+
+  closeDialog();
+  toast(made.length > 1 ? made.length + ' sessions created.' : 'Session created.',
+    [d.course + ' on ' + fmtDate(d.date),
+     made.map(s => fmtTime(s.start)).join(' and '),
+     cat && cat.demand ? cat.demand + ' learners are overdue on it, so assign them next' : 'Nobody is registered yet'
+    ].join('. ') + '.');
+  location.hash = '#s/' + made[0].id;
+  if (S.open === made[0].id) render();
+}
+
+function openCancel(s) {
+  $('overlay').hidden = false;
+  $('overlay').innerHTML =
+    '<div class="dialog" role="dialog" aria-modal="true" aria-labelledby="cxT" style="max-width:520px;">' +
+      '<div class="dialog-title" id="cxT">Cancel this session?</div>' +
+      '<div class="dialog-body"><div class="stack-4">' +
+        '<p class="desc">' + esc(s.t) + ', ' + relNote(s.date) + '. ' +
+          (s.reg.length ? plural(s.reg.length, 'person') + (s.reg.length === 1 ? ' has' : ' have') + ' booked a seat.' : 'Nobody has booked.') + '</p>' +
+        '<div class="field"><label class="field-label" for="cxWhy">Why <span style="color:var(--danger-text);">*</span></label>' +
+          '<textarea class="textarea" id="cxWhy" rows="3" placeholder="Instructor called out sick. Everyone will be moved to the 25 August session."></textarea>' +
+          '<span class="field-hint">This is what the learners are told, so write it for them.</span></div>' +
+        '<label class="checkbox"><input type="checkbox" id="cxNotify" checked /> ' +
+          '<span>Tell the ' + plural(s.reg.length, 'learner') + ' who booked</span></label>' +
+      '</div></div>' +
+      '<div class="dialog-footer"><button class="btn btn-surface" id="cxBack">Keep it</button>' +
+        '<button class="btn btn-solid" id="cxGo">Cancel session</button></div>' +
+    '</div>';
+  const w = $('cxWhy'); if (w) w.focus();
+}
+function closeDialog() { $('overlay').hidden = true; $('overlay').innerHTML = ''; }
+
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (!menu.hidden) return closeMenu();
+  if (!$('overlay').hidden) return closeDialog();
+});
+
+$('themeBtn').addEventListener('click', () => {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+  $('themeBtn').setAttribute('aria-label', dark ? 'Switch to dark theme' : 'Switch to light theme');
+});
+
+route();
+
+const viewAsBtn = document.getElementById('viewAsBtn');
+if (viewAsBtn) {
+  const menu = document.getElementById('viewAs');
+  viewAsBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = !menu.hidden;
+    menu.hidden = open;
+    viewAsBtn.setAttribute('aria-expanded', String(!open));
+  });
+  document.addEventListener('click', () => {
+    if (!menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+}
+
+/* Collapsing the rail is shell behaviour, so every page does it. It was
+   markup on twenty pages and wired on one, and standardising the nav dropped
+   the id the one handler depended on. */
+const railBtn = document.getElementById('railBtn');
+if (railBtn) {
+  railBtn.addEventListener('click', () => {
+    const shell = document.querySelector('.app-shell');
+    const side  = document.querySelector('.app-sidebar');
+    const on = shell.style.gridTemplateColumns === '0px 1fr';
+    shell.style.gridTemplateColumns = on ? '256px 1fr' : '0px 1fr';
+    if (side) side.style.visibility = on ? 'visible' : 'hidden';
+    railBtn.setAttribute('aria-label', on ? 'Collapse navigation' : 'Expand navigation');
+  });
+}
+</script>
+</body>
+</html>

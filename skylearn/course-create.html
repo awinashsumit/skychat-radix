@@ -1,0 +1,1867 @@
+<!DOCTYPE html>
+<!--
+  skyLearn - Courses > New course, Radix flavour.
+  Shell + components from the shared Radix-Design System (../tokens.css / ../dashboard.css),
+  including the .stepper added there for this screen.
+
+  Two shapes, deliberately: a STEPPER for building the course (each step needs the one
+  before it) and a STATUS for getting it live (which can move backwards when an admin
+  sends it back). See CREATE-COURSE-IA.md.
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>skyLearn &middot; New course</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../tokens.css?v=102" />
+<link rel="stylesheet" href="../dashboard.css?v=102" />
+<style>
+  /* ==========================================================
+     Create course: page-local primitives, all token-built.
+     ========================================================== */
+  .kpi-row, .split-2, .split-even { gap: var(--space-5); }
+  .split-2, .split-even { align-items: stretch; }
+  /* Shell bits shared with the dashboard */
+  .ph-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-5); flex-wrap: wrap; }
+  .ph-text { min-width: 0; }
+
+  /* --- Wizard frame -------------------------------------------------- */
+  .wiz { display: grid; grid-template-columns: 1fr 320px; gap: var(--space-5); align-items: start; }
+  @media (max-width: 1080px) { .wiz { grid-template-columns: 1fr; } }
+  .step-card { min-height: 420px; }
+  .step-title { font-size: var(--fs-5); line-height: var(--lh-5); font-weight: var(--weight-bold); color: var(--fg-high); }
+  .step-intro { font-size: var(--fs-2); color: var(--fg-low); margin-top: var(--space-1); }
+  .step-body { margin-top: var(--space-5); }
+  .step-foot {
+    display: flex; align-items: center; gap: var(--space-3);
+    margin-top: var(--space-6); padding-top: var(--space-4);
+    border-top: var(--stroke-thin) solid var(--border-subtle);
+  }
+  .step-foot .grow { flex: 1; }
+  /* A reason you cannot continue reads louder than a suggestion you could */
+  .field-hint.is-block { color: var(--warning-text); font-weight: var(--weight-medium); }
+
+  /* --- Source picker -------------------------------------------------- */
+  .src-cards { display: grid; gap: var(--space-3); grid-template-columns: 1fr; }
+  .src-card { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-4); }
+  .src-ic {
+    width: 36px; height: 36px; border-radius: var(--radius-3); flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--accent-3); color: var(--accent-11);
+  }
+  .src-text { display: flex; flex-direction: column; min-width: 0; }
+  .src-badge { margin-left: var(--space-2); }
+
+  /* Contextual payload opens under the chosen card, not on a new screen */
+  .src-panel { margin-top: var(--space-4); }
+  .dropzone {
+    display: flex; flex-direction: column; align-items: center; gap: var(--space-2);
+    padding: var(--space-6); border-radius: var(--radius-4); text-align: center;
+    background: var(--color-panel-solid); box-shadow: inset 0 0 0 1px var(--border-ui);
+    cursor: pointer; transition: background-color .12s ease-out;
+  }
+  .dropzone:hover, .dropzone.is-over { background: var(--accent-2); box-shadow: inset 0 0 0 1px var(--accent-8); }
+  .dz-ic { width: 40px; height: 40px; border-radius: var(--radius-3); display: inline-flex; align-items: center; justify-content: center; background: var(--accent-3); color: var(--accent-11); }
+  .dz-hint { font-size: var(--fs-1); color: var(--fg-subtle); }
+  .file-chip { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); border-radius: var(--radius-3); background: var(--color-panel-solid); box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .file-meta { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+  .file-name { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+  .file-size { font-size: var(--fs-1); color: var(--fg-low); }
+
+  /* --- Build progress: show the work, do not spin --------------------- */
+  .build-list { display: flex; flex-direction: column; gap: var(--space-3); }
+  .build-row { display: flex; align-items: center; gap: var(--space-3); font-size: var(--fs-2); color: var(--fg-subtle); }
+  .build-row.is-doing { color: var(--fg-high); }
+  .build-row.is-done { color: var(--fg-low); }
+  .build-mark { width: 20px; height: 20px; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; }
+  .build-row.is-done .build-mark { color: var(--success-solid); }
+  .build-dot { width: 8px; height: 8px; border-radius: var(--radius-full); background: var(--gray-6); }
+  .build-row.is-doing .build-dot { background: var(--accent-9); animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+
+  /* --- Module list: one column, everything happens in place, one step at a
+     time. The Udemy interaction: expand a row, add one thing, collapse. ----- */
+  /* --- Empty-state illustration (client artwork) ----------------------
+     Shipped as Building Light.svg and Building Dark.svg. Same 35 paths, same
+     geometry; 16 fills differ by theme. Per rules.md §14 the two files are
+     merged into ONE inline SVG: the differing paths carry a class and flip
+     under :root[data-theme="dark"], so there is a single source of truth and
+     the theme toggle drives it. The 16 identical paths (skin, hair, clothes,
+     the cream notes) keep their literal fills, because they are artwork. */
+  .empty-art-svg { width: 100%; max-width: 380px; height: auto; display: block; }
+  .il-blob   { fill: #FFF7EA; }
+  .il-screen { fill: #FFFFFF; }
+  .il-frame  { fill: #E6E6E6; }
+  .il-stand  { fill: #F2F2F2; }
+  .il-base   { fill: #E6E6E6; }
+  .il-ground { fill: #CACACA; }
+  .il-chrome { fill: #3F3D56; }
+  /* The client used the brand amber exactly, so this one binds to the token
+     and will follow the brand rather than drift from it. */
+  .il-brand  { fill: var(--accent-9); }
+
+  :root[data-theme="dark"] .il-blob   { fill: #362C1A; }
+  :root[data-theme="dark"] .il-screen { fill: #272727; }
+  :root[data-theme="dark"] .il-frame  { fill: #404040; }
+  :root[data-theme="dark"] .il-stand  { fill: #404040; }
+  :root[data-theme="dark"] .il-base   { fill: #272727; }
+  :root[data-theme="dark"] .il-ground { fill: #272727; }
+  :root[data-theme="dark"] .il-chrome { fill: #C7C7C7; }
+
+  /* The art is its own frame, so the tinted tile the DS empty-state draws
+     would box it. Cancel the tile only in this variant. */
+  .empty-state .empty-art.is-ill { width: auto; height: auto; background: transparent; padding: 0; border-radius: 0; }
+
+  .mods { display: flex; flex-direction: column; gap: var(--space-4); }
+  .sec-card { border-radius: var(--radius-4); background: var(--color-panel-solid);
+    box-shadow: inset 0 0 0 1px var(--border-subtle);
+    padding: var(--space-3) var(--space-4) var(--space-4);
+    display: flex; flex-direction: column; gap: var(--space-3); }
+  .sec-head { display: flex; align-items: center; gap: var(--space-3); }
+  .sec-label { flex: 0 0 auto; font-size: var(--fs-1); font-weight: var(--weight-medium);
+    text-transform: uppercase; letter-spacing: .04em; color: var(--fg-subtle); }
+  /* The name is always editable and reads as a heading until touched */
+  .sec-name { flex: 1; max-width: 420px; font-weight: var(--weight-medium);
+    background: transparent; box-shadow: none; }
+  .sec-name:hover { background: var(--color-surface); box-shadow: inset 0 0 0 1px var(--border-ui); }
+  .sec-name:focus { background: var(--color-surface); box-shadow: inset 0 0 0 1px var(--accent-8); }
+  /* The name input is capped at 420px, so without this the count would sit
+     right after it rather than at the edge of the section box. */
+  .sec-meta { flex: 0 0 auto; margin-left: auto; font-size: var(--fs-1); color: var(--fg-low); font-variant-numeric: tabular-nums; }
+  .sec-addmod { align-self: flex-start; }
+  /* The section box is --gray-2, so tinting the card grey on hover made it
+     vanish into its own container. Hover is a brand ring instead: the card
+     stays white and separates harder, not softer. */
+  .mod-card { border-radius: var(--radius-4); background: var(--color-panel-solid);
+    box-shadow: inset 0 0 0 1px var(--border-subtle); transition: box-shadow .12s ease-out; }
+  .mod-card:not(.is-open):hover,
+  .mod-card:focus-within { box-shadow: inset 0 0 0 1px var(--accent-8); }
+  .mod-card.is-open { box-shadow: inset 0 0 0 var(--stroke-thick) var(--accent-9); }
+  .mod-head { display: flex; align-items: center; gap: var(--space-3); width: 100%;
+    padding: var(--space-3) var(--space-4); cursor: pointer; border-radius: var(--radius-4);
+    transition: background-color .12s ease-out; }
+  .mod-head:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
+  .mod-card.is-over { box-shadow: inset 0 2px 0 0 var(--accent-9), inset 0 0 0 1px var(--border-subtle); }
+  .mh-grip { color: var(--gray-7); cursor: grab; display: inline-flex; flex: 0 0 auto; }
+  .mh-num { width: 16px; flex: 0 0 auto; font-size: var(--fs-1); color: var(--fg-subtle); font-variant-numeric: tabular-nums; }
+  .mh-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .mh-name { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mh-name.is-untitled { color: var(--fg-subtle); font-weight: var(--weight-regular); font-style: italic; }
+  .mh-meta { font-size: var(--fs-1); color: var(--fg-low); margin-top: 1px; }
+  .mod-card.is-hidden .mh-name, .mod-card.is-hidden .mh-meta { opacity: .5; }
+  .mh-eye { flex: 0 0 auto; display: inline-flex; color: var(--fg-subtle); padding: 2px; border-radius: var(--radius-2); }
+  .mh-eye:hover { background: var(--gray-4); color: var(--fg-high); }
+  /* Row actions, revealed on hover like Udemy. Three deliberate additions:
+     they also appear on keyboard focus, they are always on where there is no
+     hover (touch), and they are hidden once the card is open because the body
+     already carries the same actions. Hover is a shortcut here, never the only
+     way to reach something. */
+  .mh-actions { display: flex; align-items: center; gap: var(--space-1); flex: 0 0 auto;
+    opacity: 0; pointer-events: none; transition: opacity .12s ease-out; }
+  .mod-head:hover .mh-actions,
+  .mod-head:focus-within .mh-actions { opacity: 1; pointer-events: auto; }
+  .mod-card.is-open .mh-actions { display: none; }
+  @media (hover: none) { .mh-actions { opacity: 1; pointer-events: auto; } }
+  .mh-act { display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: var(--radius-2); color: var(--fg-subtle); }
+  .mh-act:hover { background: var(--gray-4); color: var(--fg-high); }
+  .mh-act.is-danger:hover { background: var(--danger-bg); color: var(--danger-text); }
+  .mh-add { height: 28px; padding: 0 var(--space-2); }
+  .mh-rename { flex: 1; min-width: 0; height: 30px; }
+
+  .mh-chev { flex: 0 0 auto; display: inline-flex; color: var(--fg-subtle); transition: transform .12s; }
+  .mod-card.is-open .mh-chev { transform: rotate(180deg); }
+
+  .mod-body { padding: var(--space-4) var(--space-5) var(--space-5); border-top: var(--stroke-thin) solid var(--border-subtle); }
+  .mod-tools { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-4); }
+  .mod-tools .grow { flex: 1; }
+  .ed-top { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-2); }
+  .ed-name { flex: 1; font-size: var(--fs-3); font-weight: var(--weight-medium); height: 38px; }
+  .ed-body { min-height: 180px; font-size: var(--fs-2); line-height: var(--lh-3); }
+  .saved { font-size: var(--fs-1); color: var(--fg-subtle); flex: 0 0 auto; }
+  .saved.is-on { color: var(--success-text); }
+
+  /* The one-at-a-time reveals: an empty part is a single quiet button, and the
+     editor for it appears in place only when asked for. */
+  .part-adds { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); margin-top: var(--space-4); }
+  .ed-part { margin-top: var(--space-5); }
+  .ed-part:first-of-type { margin-top: var(--space-4); }
+  .ed-h { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-3); }
+  .ed-h-t { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+  .ed-h-n { font-size: var(--fs-1); color: var(--fg-low); }
+  .ed-tools { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-3); }
+  .ed-tools .grow { flex: 1; }
+
+  /* Inline "add a module": name first, right in the list, like Udemy */
+  .mod-new { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-4); box-shadow: inset 0 0 0 1px var(--accent-8); background: var(--accent-2); }
+  .mod-new .input { flex: 1; }
+
+  /* Question editor. These seven rules were dropped in the accordion rewrite,
+     which left the markup with no layout at all: every field stacked full
+     width and the answers read as loose boxes. Restored. */
+  .q-card { padding: var(--space-4); border-radius: var(--radius-4); box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .q-card + .q-card { margin-top: var(--space-3); }
+  .q-top { display: flex; align-items: center; gap: var(--space-3); }
+  .q-badge { width: 24px; height: 24px; flex: 0 0 auto; border-radius: var(--radius-full);
+    background: var(--gray-3); color: var(--fg-low); font-size: var(--fs-1);
+    display: inline-flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums; }
+  .q-opts { margin-top: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2);
+    padding-left: calc(24px + var(--space-3)); }
+  .q-opt { display: flex; align-items: center; gap: var(--space-2); }
+  .q-mark { display: inline-flex; align-items: center; gap: var(--space-1); flex: 0 0 auto;
+    height: 30px; padding: 0 var(--space-2); border-radius: var(--radius-2); cursor: pointer;
+    font-size: var(--fs-1); white-space: nowrap;
+    background: var(--color-surface); color: var(--fg-subtle); box-shadow: inset 0 0 0 1px var(--border-ui); }
+  .q-mark:hover { color: var(--fg-low); }
+  .q-mark.is-ok { background: var(--success-bg); color: var(--success-text); box-shadow: inset 0 0 0 1px var(--success-border); }
+  .q-mark svg { flex: 0 0 auto; }
+  .q-add { padding-left: calc(24px + var(--space-3)); margin-top: var(--space-2); }
+
+  .file-grid { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+  .file-card { display: flex; align-items: center; gap: var(--space-3); flex: 1 1 240px; min-width: 240px;
+    padding: var(--space-3); border-radius: var(--radius-3); background: var(--color-panel-solid);
+    box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .file-kind { width: 36px; height: 36px; border-radius: var(--radius-3); flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--accent-3); color: var(--accent-11); }
+
+  /* --- Compliance table ------------------------------------------------ */
+  .req-covered { color: var(--success-text); }
+  .gap-actions { display: flex; gap: var(--space-2); }
+
+  /* --- Summary rail ---------------------------------------------------- */
+  .rail { position: sticky; top: var(--space-5); }
+  .rail-title { font-size: var(--fs-4); font-weight: var(--weight-bold); color: var(--fg-high); }
+  .rail-title.is-empty { color: var(--fg-subtle); font-weight: var(--weight-regular); font-style: italic; }
+  .rail-stat { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); font-size: var(--fs-2); }
+  .rail-stat + .rail-stat { margin-top: var(--space-2); }
+  .rail-stat dt { color: var(--fg-low); }
+  .rail-stat dd { color: var(--fg-high); font-weight: var(--weight-medium); font-variant-numeric: tabular-nums; }
+
+  /* --- Lifecycle status ------------------------------------------------ */
+  .life { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; font-size: var(--fs-1); }
+  .life-step { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--fg-subtle); }
+  .life-step.is-now { color: var(--fg-high); font-weight: var(--weight-medium); }
+  .life-step.is-past { color: var(--fg-low); }
+  .life-dot { width: 8px; height: 8px; border-radius: var(--radius-full); background: var(--gray-6); }
+  .life-step.is-past .life-dot { background: var(--success-solid); }
+  .life-step.is-now .life-dot { background: var(--accent-9); }
+  .life-step.is-back .life-dot { background: var(--warning-solid); }
+  .life-sep { color: var(--gray-7); }
+
+  .review-bar { margin-bottom: var(--space-5); }
+  .review-bar .rb-actions { display: flex; gap: var(--space-2); margin-top: var(--space-3); }
+
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+  @media (max-width: 700px) { .field-row { grid-template-columns: 1fr; } }
+  .stack-4 { display: flex; flex-direction: column; gap: var(--space-4); }
+  /* An inset box-shadow paints on the element's OWN background layer, which is
+     BENEATH its children. The grey USD chip and the white input are both
+     opaque, so a ring on the container was erased across the whole field and
+     only survived in the gaps. The ring is drawn as an overlay instead, above
+     the children, and focus moves it without any layout shift. */
+  .money { position: relative; display: flex; align-items: stretch; border-radius: var(--radius-2); background: var(--color-surface); }
+  .money::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    box-shadow: inset 0 0 0 1px var(--border-ui); }
+  .money:focus-within::after { box-shadow: inset 0 0 0 1px var(--accent-8); }
+  .money .cur { display: inline-flex; align-items: center; padding: 0 var(--space-3); background: var(--gray-3); color: var(--fg-low); font-size: var(--fs-2); border-radius: var(--radius-2) 0 0 var(--radius-2); }
+  /* The DS gives .input width:100%. As a flex item beside the USD prefix that
+     resolves to 100% of the whole field, so the input overflowed the box and
+     covered its right-hand ring. Let it flex instead of claiming full width. */
+  .money .input { box-shadow: none; flex: 1; width: auto; min-width: 0; }
+
+  /* --- promoted from inline, so the page has one place to change --- */
+  .life-card { padding: var(--space-3) var(--space-4); }
+  .ph-as { font-size: var(--fs-1); color: var(--fg-subtle); }
+  .segmented-start { align-self: flex-start; }
+  .dropdown.is-block { width: 100%; }
+  .dd-val { flex: 1; }
+  .step-alert { margin-bottom: var(--space-4); }
+  .mod-add { margin-top: var(--space-4); }
+  .radio-row { display: flex; gap: var(--space-4); margin-top: var(--space-1); }
+  .radio-cards.is-single { grid-template-columns: 1fr; }
+  .rail-badge { margin-top: var(--space-2); }
+  .rail-note { font-size: var(--fs-1); }
+  .rail-built { margin-top: var(--space-3); font-size: var(--fs-1); color: var(--fg-subtle); }
+  .foot-note { font-size: var(--fs-2); color: var(--fg-low); }
+  .rb-text { flex: 1; }
+  .dz-title { font-weight: var(--weight-medium); }
+
+  /* --- Published: a moment, not a toast. Client artwork, merged from
+     Complete Light.svg and Complete Dark.svg the same way as the empty state:
+     one SVG, the 20 differing fills classed and flipped by theme. --- */
+  .done-wrap { position: fixed; inset: 0; z-index: 1500; display: flex;
+    align-items: center; justify-content: center; padding: var(--space-5);
+    background: var(--color-overlay); animation: fade .2s ease-out; }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  .done-card { width: min(680px, 100%); max-height: 92vh; overflow: auto;
+    background: var(--color-panel-solid); border-radius: var(--radius-5);
+    box-shadow: var(--shadow-5); padding: var(--space-6);
+    text-align: center; animation: rise .24s ease-out; }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .done-art { width: 100%; max-width: 380px; height: auto; display: block; margin: 0 auto; }
+  .done-h { font-size: var(--fs-6); line-height: var(--lh-6); font-weight: var(--weight-bold);
+    color: var(--fg-high); margin-top: var(--space-4); }
+  .done-p { font-size: var(--fs-3); color: var(--fg-low); margin-top: var(--space-2); }
+  .done-facts { display: flex; justify-content: center; gap: var(--space-6); flex-wrap: wrap;
+    margin-top: var(--space-5); padding-top: var(--space-5);
+    border-top: var(--stroke-thin) solid var(--border-subtle); }
+  .df { display: flex; flex-direction: column; gap: 2px; }
+  .df-v { font-size: var(--fs-5); font-weight: var(--weight-bold); color: var(--fg-high); font-variant-numeric: tabular-nums; }
+  .df-l { font-size: var(--fs-1); color: var(--fg-low); }
+  .done-acts { display: flex; gap: var(--space-3); justify-content: center; flex-wrap: wrap; margin-top: var(--space-5); }
+  .done-note { margin-top: var(--space-4); text-align: left; }
+
+  .il-blob   { fill: #FFF7EA; }  .il-screen { fill: #FFFFFF; }
+  .il-frame  { fill: #E6E6E6; }  .il-stand  { fill: #F2F2F2; }
+  .il-base   { fill: #E6E6E6; }  .il-ground { fill: #CACACA; }
+  .il-chrome { fill: #3F3D56; }  .il-brand  { fill: var(--accent-9); }
+  .il-outline { stroke: #F2F2F2; }
+  :root[data-theme="dark"] .il-blob   { fill: #362C1A; }
+  :root[data-theme="dark"] .il-screen { fill: #272727; }
+  :root[data-theme="dark"] .il-frame  { fill: #404040; }
+  :root[data-theme="dark"] .il-stand  { fill: #404040; }
+  :root[data-theme="dark"] .il-base   { fill: #272727; }
+  :root[data-theme="dark"] .il-ground { fill: #272727; }
+  :root[data-theme="dark"] .il-chrome { fill: #C7C7C7; }
+  :root[data-theme="dark"] .il-outline { stroke: #404040; }
+
+  .toast-stack { position: fixed; left: 50%; bottom: var(--space-6); transform: translateX(-50%); display: flex; flex-direction: column; gap: var(--space-2); z-index: 1400; }
+  .toast-stack .toast { animation: t-in .2s ease-out; }
+  @keyframes t-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+  <header class="app-header is-dark">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect width="24" height="24" rx="6" fill="var(--accent-9)"/><text x="12" y="16.5" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-contrast)">S</text></svg>
+      <span>skyLearn</span>
+    </div>
+    <div class="search hdr-search">
+      <span class="search-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+      <label class="sr-only" for="q">Search</label>
+      <input class="input" id="q" type="search" placeholder="Search courses and learners" autocomplete="off" />
+    </div>
+    <div class="header-right">
+      <span class="presence"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg><span><strong class="pt-num">4</strong> points</span></span>
+      <button class="icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="ic-badge">3</span></button>
+      <button class="icon-btn" id="themeBtn" aria-label="Switch to dark theme"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+      <span class="divider-v"></span>
+      <span class="header-wrap">
+        <button class="header-user" id="viewAsBtn" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar c6">SA</span>
+          <span class="hu-id"><span class="hu-name">Sumit Awinash</span><span class="hu-role" id="hdrRole">Administrator</span></span>
+        </button>
+        <div class="view-as" id="viewAs" role="menu" hidden>
+          <div class="view-as-t">View as</div>
+          <a href="index.html" role="menuitem" aria-current="true"><span class="vr"></span>
+            <span class="vw">Administrator<span>Everything, across all six communities</span></span></a>
+          <a href="teach.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Instructor<span>Your courses, learners and sessions</span></span></a>
+          <a href="learn.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Learner<span>What you have to do, and by when</span></span></a>
+          <div class="vs">
+            <a href="signin.html" role="menuitem">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
+              Sign out</a>
+          </div>
+        </div>
+      </span>
+    </div>
+  </header>
+
+  <nav class="app-sidebar" aria-label="Primary">
+    <button class="sidebar-toggle" id="railBtn" aria-label="Collapse navigation"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>
+    <a class="nav-item" href="index.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg><span class="nav-label">Dashboard</span></a>
+    <a class="nav-item is-active" href="courses.html" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg><span class="nav-label">Courses</span></a>
+    <a class="nav-item" href="learners.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg><span class="nav-label">Learners</span></a>
+    <a class="nav-item" href="certificate.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg><span class="nav-label">Certifications</span></a>
+    <a class="nav-item" href="sessions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg><span class="nav-label">Sessions</span></a>
+    <a class="nav-item" href="groups.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg><span class="nav-label">Groups</span></a>
+    <a class="nav-item" href="recognition.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0z"/></svg><span class="nav-label">Recognition</span></a>
+    <a class="nav-item" href="discussions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6V2H8"/><path d="m8 18-4 4V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2Z"/><path d="M2 12h2"/><path d="M9 11v2"/><path d="M15 11v2"/><path d="M20 12h2"/></svg><span class="nav-label">Discussions</span></a>
+    <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span class="nav-label">Reports</span></a>
+    <a class="nav-item" href="automations.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/><path d="m2 2 20 20"/></svg><span class="nav-label">Automations</span></a>
+    <a class="nav-item" href="surveys.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/><rect x="3" y="4" width="18" height="16" rx="2"/></svg><span class="nav-label">Surveys</span></a>
+    <a class="nav-item" href="grading.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="m9 11-1.5 1.5L9 14"/><path d="M16 16h-4"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg><span class="nav-label">Grading Hub</span></a>
+    <a class="nav-item" href="files.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span class="nav-label">Reference library</span></a>
+    <a class="nav-item nav-tail" href="#"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="nav-label">Help and support</span></a>
+  </nav>
+
+  <main class="app-content">
+    <div class="breadcrumbs">
+      <a href="index.html">Home</a>
+      <span class="sep"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+      <a href="courses.html">Courses</a>
+      <span class="sep"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+      <span class="current">New course</span>
+    </div>
+
+    <div class="content-body">
+      <header class="page-header ph-row">
+        <div class="ph-text">
+          <h1>Create a course</h1>
+          <p id="pageSub">Start from a document and skyLearn drafts the modules and questions for you.</p>
+        </div>
+      </header>
+
+      <div class="stack-5">
+
+        <!-- Lifecycle. Separate from the stepper because it can move backwards. -->
+        <section class="card life-card" aria-label="Course status">
+          <div class="life" id="lifeBar"></div>
+        </section>
+
+        <nav class="stepper" id="stepper" aria-label="Course setup steps"></nav>
+
+        <div class="wiz">
+          <section class="card step-card">
+            <div class="callout is-warning review-bar" id="changeNote" hidden></div>
+            <div class="callout is-info review-bar" id="adminBar" hidden></div>
+            <div id="stepHead"></div>
+            <div class="step-body" id="stepBody"></div>
+            <div class="step-foot" id="stepFoot"></div>
+          </section>
+
+          <aside class="card rail" aria-label="Course summary">
+            <div class="rail-title is-empty" id="railTitle">Untitled course</div>
+            <div class="rail-badge" id="railStatus"></div>
+            <hr class="divider" />
+            <dl id="railStats"></dl>
+            <div id="railCompliance"></div>
+          </aside>
+        </div>
+
+      </div>
+    </div>
+
+    <footer class="app-footer">
+      skyLearn, a Skypoint product. Drafts are never visible to learners. A course goes live only after it is approved.
+    </footer>
+  </main>
+</div>
+
+<div class="done-wrap" id="doneWrap" role="dialog" aria-modal="true" aria-labelledby="doneH" hidden></div>
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+
+<script>
+/* ==============================================================
+   Sample content. One document, one generated course, and the
+   Ohio requirement set it is checked against.
+   ============================================================== */
+const DOC = { name: 'Fall Prevention Policy 2026.pdf', size: '1.4 MB' };
+
+/* `covers` ties a module to the state requirement it satisfies, so hiding a
+   module really does re-open a compliance gap. `hidden` maps to the product's
+   old "Active" toggle, renamed to say what it does. */
+/* A module has three parts, always in this order: what learners read, any
+   pictures/video/files, and the questions that check it. No block types, no
+   ordering to manage. The authors here are nurses and training directors, not
+   instructional designers, so every module looks the same. */
+/* Sections group modules, exactly as Udemy groups lectures. A module's `sec`
+   is an index into SECS, and modules of one section stay contiguous in the
+   flat list, so every total and the compliance check stay order-based. */
+const SECS = ['Understanding the risk', 'Preventing falls on your shift', 'When a fall happens'];
+
+const MODULES = [
+  { n: 'Why residents fall', sec: 0, m: 4, covers: null, hidden: false, comp: null, files: [],
+    body: 'One in three residents over 65 falls each year, and about half of those who fall will fall again within twelve months. Most falls are predictable. The three causes we see most often are a change in medication, an unfamiliar walking route, and footwear that has stopped fitting.',
+    qs: [
+      { q: 'Roughly how many residents over 65 fall each year?', opts: [
+        { t: 'About one in three', ok: true }, { t: 'About one in ten', ok: false }, { t: 'About one in fifty', ok: false } ] },
+      { q: 'After a first fall, how likely is another within a year?', opts: [
+        { t: 'About half will fall again', ok: true }, { t: 'Almost none will', ok: false }, { t: 'Everyone will', ok: false } ] }
+    ] },
+
+  { n: 'Spotting risk on your shift', sec: 0, m: 5, covers: 'Risk factors and assessment', hidden: false, comp: null, files: [],
+    body: 'Risk is not a number on a chart, it is something you notice. Watch for a resident holding furniture on a route they used to walk freely, new bruising they cannot explain, or a change in how long they take to stand.',
+    qs: [
+      { q: 'A resident starts holding furniture on a route they used to walk freely. What is that?', opts: [
+        { t: 'A new fall risk, report it', ok: true }, { t: 'Normal ageing, no action needed', ok: false }, { t: 'A sign they are tired today', ok: false } ] },
+      { q: 'When should you report a change you have noticed?', opts: [
+        { t: 'The same shift', ok: true }, { t: 'At the next handover', ok: false }, { t: 'Within a week', ok: false } ] },
+      { q: 'Which of these raise fall risk?', opts: [
+        { t: 'A new medication', ok: true }, { t: 'Shoes that no longer fit', ok: true }, { t: 'A change of bedding', ok: false } ] }
+    ] },
+
+  { n: 'Environment and equipment checks', sec: 1, m: 4, covers: 'Environmental hazards', hidden: false, comp: null, files: [],
+    body: 'Four checks, every shift: the floor is dry and clear, the lighting between bed and bathroom works, the bed is at the right height with brakes on, and the call bell is within reach. Repeat them after any room change.',
+    qs: [
+      { q: 'Which four checks do you make every shift?', opts: [
+        { t: 'Floor, lighting, bed height and brakes, call bell', ok: true }, { t: 'Curtains, TV, water jug, chair', ok: false }, { t: 'Door, window, wardrobe, clock', ok: false } ] },
+      { q: 'Where must the call bell be?', opts: [
+        { t: 'Within the resident\'s reach', ok: true }, { t: 'On the wall by the door', ok: false }, { t: 'At the nurses\' station', ok: false } ] },
+      { q: 'When should the bed brakes be on?', opts: [
+        { t: 'Whenever the bed is not being moved', ok: true }, { t: 'Only at night', ok: false }, { t: 'Only during a transfer', ok: false } ] }
+    ] },
+
+  { n: 'Safe transfers and gait belts', sec: 1, m: 6, covers: 'Safe transfer technique', hidden: false, comp: null,
+    files: [{ name: 'Transfer protocol, Cedar Ridge.pdf', kind: 'doc', size: '240 KB' }],
+    body: 'Never lift under the arms. Position the belt at the waist over clothing, snug enough to fit a flat hand underneath. Brace, count aloud so the resident moves with you, and stop if they say stop.',
+    qs: [
+      { q: 'Where should a gait belt sit?', opts: [
+        { t: 'At the waist, over clothing', ok: true }, { t: 'Under the arms', ok: false }, { t: 'Across the chest', ok: false } ] },
+      { q: 'How tight should the belt be?', opts: [
+        { t: 'Snug enough to fit a flat hand underneath', ok: true }, { t: 'As tight as it will go', ok: false }, { t: 'Loose enough to slide', ok: false } ] },
+      { q: 'A transfer needs two people and you are alone. What do you do?', opts: [
+        { t: 'Wait for the second person', ok: true }, { t: 'Do it carefully on your own', ok: false }, { t: 'Ask the resident to pull themselves up', ok: false } ] }
+    ] },
+
+  { n: 'What to do when a resident falls', sec: 2, m: 3, covers: 'Response to a fall', hidden: false, comp: null, files: [],
+    body: 'Do not move them. Stay, call for help, and check responsiveness, breathing and obvious injury while you wait. Note the time and what you saw before memory blurs it.',
+    qs: [
+      { q: 'A resident is on the floor and says they are fine. What do you do first?', opts: [
+        { t: 'Stay with them and call for help', ok: true }, { t: 'Help them up', ok: false }, { t: 'Fetch a wheelchair', ok: false } ] },
+      { q: 'Why do you not move them?', opts: [
+        { t: 'Moving can make a hip fracture worse', ok: true }, { t: 'It is against policy', ok: false }, { t: 'It takes too long', ok: false } ] },
+      { q: 'What do you record?', opts: [
+        { t: 'The time, what you saw, and what you did', ok: true }, { t: 'Only the time', ok: false }, { t: 'Nothing until the nurse arrives', ok: false } ] }
+    ] },
+
+  { n: 'Knowledge check', sec: 2, m: 3, covers: null, hidden: false, comp: null, files: [], body: '',
+    qs: [
+      { q: 'Where is the safest place for a gait belt?', opts: [
+        { t: 'The waist', ok: true }, { t: 'Under the arms', ok: false }, { t: 'The chest', ok: false } ] },
+      { q: 'How soon do you report a new fall risk?', opts: [
+        { t: 'The same shift', ok: true }, { t: 'Next week', ok: false }, { t: 'At the next care review', ok: false } ] },
+      { q: 'What must you never do to a resident who has fallen?', opts: [
+        { t: 'Move them before checking', ok: true }, { t: 'Talk to them', ok: false }, { t: 'Call for help', ok: false } ] },
+      { q: 'Which check helps most with night-time falls?', opts: [
+        { t: 'Lighting between bed and bathroom', ok: true }, { t: 'The colour of the curtains', ok: false }, { t: 'The television volume', ok: false } ] }
+    ] }
+];
+
+const LIBRARY = [
+  { n: 'Fall Prevention in Assisted Living', m: 22, s: 'Accredited, 38 states' },
+  { n: 'Dementia Care, Level 2',             m: 45, s: 'Accredited, 41 states' },
+  { n: 'Infection Control Essentials',       m: 30, s: 'Accredited, 50 states' },
+  { n: 'Resident Rights and Abuse Prevention', m: 25, s: 'Accredited, 50 states' }
+];
+
+/* Ohio's required topics for fall-prevention training, and whether the
+   uploaded document covers each one. The two gaps are the whole point. */
+const REQS = [
+  { topic: 'Risk factors and assessment',   covered: 'Spotting risk on your shift' },
+  { topic: 'Environmental hazards',         covered: 'Environment and equipment checks' },
+  { topic: 'Safe transfer technique',       covered: 'Safe transfers and gait belts' },
+  { topic: 'Response to a fall',            covered: 'What to do when a resident falls' },
+  { topic: 'Post-fall assessment',          covered: null },
+  { topic: 'Documentation and reporting',   covered: null }
+];
+
+const STEPS = [
+  { id: 1, label: 'Start',      sub: 'Title and source' },
+  { id: 2, label: 'Content',    sub: 'Modules and questions' },
+  { id: 3, label: 'Settings',   sub: 'Certificate, price, level' },
+  { id: 4, label: 'Compliance', sub: 'State requirements' }
+];
+
+const LIFE = [
+  { id: 'draft',    label: 'Draft' },
+  { id: 'review',   label: 'In review' },
+  { id: 'approved', label: 'Approved' },
+  { id: 'live',     label: 'Live' }
+];
+
+const IC = {
+  check:  '<path d="M20 6 9 17l-5-5"/>',
+  sparkles: '<path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/>',
+  library:'<path d="M12 5v16"/><path d="M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/>',
+  blank:  '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/>',
+  upload: '<path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>',
+  file:   '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/>',
+  alert:  '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  info:   '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  x:      '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  grip:   '<circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/>',
+  eye:    '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
+  eyeoff: '<path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.8 10.8 0 0 1-1.549 2.673"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/>',
+  plus:   '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  circle: '<circle cx="12" cy="12" r="9"/>',
+  image:  '<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+  play:   '<path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/>',
+  chevd:  '<path d="m6 9 6 6 6-6"/>',
+  pencil: '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
+  copy:   '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+  trash:  '<path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  box:    '<path d="M11 21.73a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73V7.27a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4a2 2 0 0 0-1 1.73v8.73a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><path d="m3.3 7 8.7 5 8.7-5"/>'
+};
+/* What a file is called on screen. The author never types or picks a format;
+   they drop a file and we say what we found in ordinary words. */
+const FILE_IC   = { doc: 'file', video: 'play', image: 'image', package: 'box' };
+const FILE_WORD = { doc: 'Document', video: 'Video', image: 'Picture', package: 'Training package' };
+const DROPPED   = [
+  { name: 'Gait belt demonstration.mp4', kind: 'video',   size: '18 MB' },
+  { name: 'Bed brake diagram.png',       kind: 'image',   size: '420 KB' },
+  { name: 'Fall reporting form.pdf',     kind: 'doc',     size: '96 KB' }
+];
+
+const DONE_ART = "<svg viewBox=\"0 0 904 535\" fill=\"none\" role=\"img\" aria-label=\"A finished course on screen, marked complete\" class=\"done-art\"><path d=\"M413.218 74.356C328.818 102.756 305.101 95 263.218 55.356C198.155 -6.23009 78.7535 7.00002 34.6006 74.356C-49.3995 202.5 42.6009 304.833 69.1009 334C-1.89912 418 65.5114 512.333 109.601 522C304.934 536.833 554.101 539.5 753.601 522C825.45 515.698 903.718 344.356 903.718 215.356C903.718 112.156 835.385 53.0226 801.218 36.356L800.993 36.2354C791.036 30.9119 757.425 12.9414 697.718 9.856C623.101 6.00002 518.718 38.856 413.218 74.356Z\" class=\"il-blob\"/><path d=\"M399.03 356.575V511.864H507.82V356.575C507.824 354.282 506.332 352.255 504.141 351.578C503.638 351.412 503.111 351.33 502.581 351.336H404.284C401.388 351.331 399.036 353.674 399.03 356.57V356.575ZM441.486 409.933C441.545 403.519 446.793 398.367 453.207 398.426C459.537 398.485 464.655 403.602 464.713 409.933V427.951C464.683 434.365 459.459 439.54 453.045 439.51C446.674 439.479 441.517 434.322 441.486 427.951V409.933Z\" class=\"il-stand\"/><path d=\"M398.697 506.898V521.872C398.702 523.487 400.005 524.796 401.619 524.81H505.231C506.848 524.802 508.154 523.489 508.154 521.872V506.898H398.697Z\" class=\"il-base\"/><path d=\"M227.888 122.612V406.148C227.894 413.671 233.992 419.769 241.515 419.775H661.686C669.209 419.769 675.307 413.671 675.313 406.148V122.612C675.295 115.096 669.202 109.01 661.686 109H241.515C233.999 109.01 227.906 115.096 227.888 122.612Z\" fill=\"#FFE5B2\"/><path d=\"M658.181 118.842H245.021C240.996 118.851 237.738 122.115 237.738 126.14V402.65C237.745 406.669 241.001 409.926 245.021 409.933H658.181C662.2 409.926 665.457 406.669 665.464 402.65V126.14C665.463 122.115 662.205 118.851 658.181 118.842ZM553.96 315.29C552.725 317.73 550.22 319.265 547.486 319.259L547.442 319.255C543.482 318.704 539.506 318.34 535.516 318.164C536.136 318.608 536.681 319.147 537.131 319.761C538.289 321.42 538.645 323.51 538.101 325.459C537.199 328.972 537.242 332.764 538.233 337.053C538.593 338.554 538.413 340.133 537.725 341.515C536.49 343.955 533.986 345.49 531.251 345.483L531.208 345.48C521.749 344.163 512.173 343.908 502.657 344.72C502.619 344.96 502.572 345.2 502.511 345.44C501.608 348.952 501.651 352.745 502.642 357.034C503.002 358.535 502.822 360.114 502.134 361.496C500.899 363.935 498.395 365.471 495.66 365.464L495.617 365.461C485.903 364.109 476.065 363.877 466.298 364.771C466.224 367.21 466.477 369.648 467.051 372.02C467.411 373.521 467.231 375.1 466.543 376.481C465.309 378.921 462.804 380.456 460.069 380.45L460.026 380.447C448.302 378.813 436.408 378.813 424.684 380.447H424.665C423.491 380.451 422.334 380.172 421.291 379.633C418.316 378.017 416.97 374.469 418.124 371.286C418.478 370.284 418.742 369.252 418.911 368.203C408.166 366.964 397.308 367.092 386.596 368.583H386.577C385.403 368.588 384.245 368.309 383.203 367.769C380.228 366.153 378.881 362.605 380.036 359.422C381.302 356.148 381.354 352.529 380.182 349.22C379.63 347.668 379.63 345.974 380.182 344.422C372.106 344.01 364.009 344.365 356 345.48H355.981C354.807 345.485 353.65 345.206 352.607 344.666C349.632 343.051 348.286 339.502 349.44 336.319C350.707 333.045 350.759 329.426 349.586 326.117C348.837 324.015 349.112 321.683 350.33 319.813C351.463 318.046 353.366 316.921 355.46 316.778C355.624 316.767 355.79 316.761 355.957 316.761C360.06 317.478 364.203 317.946 368.363 318.162C365.709 316.418 364.598 313.082 365.674 310.094C366.941 306.82 366.993 303.201 365.821 299.892C365.072 297.79 365.347 295.458 366.564 293.588C366.617 293.507 366.678 293.436 366.734 293.358C363.773 293.562 360.82 293.869 357.873 294.279H357.854C356.68 294.284 355.523 294.005 354.48 293.465C351.505 291.85 350.159 288.301 351.313 285.118C352.58 281.844 352.632 278.225 351.46 274.916C350.711 272.814 350.986 270.482 352.203 268.612C353.336 266.846 355.239 265.72 357.333 265.577C357.497 265.566 357.663 265.56 357.83 265.56C362.764 266.424 367.754 266.926 372.762 267.063C371.484 265.222 371.17 262.879 371.918 260.767C373.185 257.493 373.237 253.873 372.065 250.564C371.316 248.462 371.591 246.131 372.808 244.26C373.942 242.494 375.844 241.368 377.938 241.225C378.103 241.214 378.268 241.208 378.435 241.208C382.611 241.939 386.827 242.411 391.06 242.622C390.151 240.9 390.002 238.876 390.651 237.039C391.917 233.765 391.969 230.146 390.797 226.837C390.048 224.735 390.323 222.403 391.54 220.533C392.674 218.767 394.576 217.641 396.67 217.498C396.835 217.487 397 217.481 397.167 217.481C402.08 218.341 407.049 218.843 412.035 218.982C411.356 217.378 411.301 215.579 411.88 213.937C413.147 210.663 413.199 207.043 412.027 203.734C411.278 201.632 411.553 199.301 412.77 197.43C413.903 195.664 415.806 194.538 417.9 194.395C418.064 194.384 418.23 194.378 418.397 194.378C430.098 196.438 442.07 196.439 453.772 194.383H453.786C454.69 194.569 455.621 194.569 456.524 194.383H456.539C468.241 196.439 480.212 196.438 491.914 194.378C492.081 194.378 492.246 194.384 492.411 194.395C494.505 194.538 496.408 195.664 497.541 197.43C498.758 199.301 499.033 201.632 498.284 203.734C497.112 207.043 497.164 210.663 498.431 213.937C499.01 215.579 498.954 217.378 498.276 218.982C503.261 218.843 508.231 218.341 513.144 217.481C513.311 217.481 513.476 217.487 513.641 217.498C515.735 217.641 517.637 218.767 518.771 220.533C519.988 222.403 520.263 224.735 519.514 226.837C518.342 230.146 518.394 233.765 519.66 237.039C520.308 238.876 520.16 240.9 519.25 242.622C523.484 242.411 527.7 241.939 531.876 241.208C532.043 241.208 532.208 241.214 532.373 241.225C534.467 241.368 536.369 242.494 537.503 244.26C538.72 246.131 538.995 248.462 538.246 250.564C537.074 253.873 537.126 257.493 538.392 260.767C539.143 262.884 538.825 265.234 537.54 267.077C538.098 267.497 538.591 267.997 539.005 268.56C540.163 270.22 540.518 272.309 539.975 274.258C539.072 277.771 539.115 281.563 540.106 285.852C540.466 287.353 540.286 288.932 539.598 290.314C539.347 290.806 539.04 291.267 538.685 291.69C541.608 291.433 544.524 291.05 547.432 290.541H547.447C549.786 290.532 551.987 291.647 553.366 293.536C554.524 295.196 554.88 297.286 554.336 299.234C553.433 302.747 553.476 306.539 554.468 310.829C554.827 312.329 554.647 313.908 553.96 315.29Z\" class=\"il-screen\"/><path d=\"M644.78 156.932H258.187C257.338 156.914 256.665 156.21 256.684 155.361C256.702 154.538 257.365 153.876 258.187 153.858H644.78C645.629 153.876 646.302 154.58 646.283 155.429C646.265 156.252 645.602 156.914 644.78 156.932Z\" class=\"il-frame\"/><path d=\"M456.154 373.085L456.111 373.081C444.387 371.448 432.493 371.448 420.769 373.081H420.75C419.576 373.086 418.419 372.807 417.376 372.267C414.401 370.652 413.055 367.103 414.209 363.92C415.476 360.646 415.528 357.027 414.355 353.718C413.606 351.616 413.881 349.284 415.099 347.414C416.232 345.648 418.135 344.522 420.229 344.379C420.393 344.368 420.558 344.362 420.726 344.362C432.427 346.422 444.398 346.423 456.101 344.367H456.115C458.454 344.358 460.656 345.473 462.034 347.362C463.192 349.022 463.548 351.111 463.004 353.06C462.102 356.573 462.145 360.365 463.136 364.655C463.496 366.155 463.316 367.734 462.628 369.116C461.393 371.556 458.889 373.091 456.154 373.085Z\" fill=\"#FFE5B2\"/><path d=\"M463.022 261.316L462.979 261.313C451.255 259.68 439.361 259.68 427.637 261.313H427.618C426.444 261.318 425.287 261.039 424.244 260.499C421.269 258.884 419.923 255.335 421.077 252.152C422.344 248.878 422.396 245.259 421.223 241.95C420.475 239.848 420.75 237.516 421.967 235.646C423.1 233.879 425.003 232.754 427.097 232.611C427.261 232.6 427.427 232.594 427.594 232.594C439.295 234.654 451.267 234.655 462.969 232.599H462.983C465.323 232.59 467.524 233.704 468.902 235.594C470.06 237.254 470.416 239.343 469.873 241.292C468.97 244.805 469.013 248.597 470.004 252.886C470.364 254.387 470.184 255.966 469.496 257.348C468.262 259.788 465.757 261.323 463.022 261.316Z\" fill=\"#FFE5B2\"/><path d=\"M391.356 293.722L391.313 293.719C379.589 292.086 367.695 292.086 355.971 293.719H355.952C354.778 293.724 353.621 293.445 352.578 292.905C349.603 291.29 348.257 287.741 349.411 284.558C350.678 281.284 350.73 277.665 349.557 274.356C348.809 272.254 349.083 269.922 350.301 268.052C351.434 266.285 353.337 265.16 355.431 265.017C355.595 265.006 355.761 265 355.928 265C367.629 267.06 379.601 267.061 391.303 265.005H391.317C393.657 264.996 395.858 266.11 397.236 268C398.394 269.66 398.75 271.749 398.207 273.698C397.304 277.211 397.347 281.003 398.338 285.292C398.698 286.793 398.518 288.372 397.83 289.754C396.595 292.194 394.091 293.729 391.356 293.722Z\" fill=\"#FFE5B2\"/><path d=\"M391.356 345.722L391.313 345.719C379.589 344.086 367.695 344.086 355.971 345.719H355.952C354.778 345.724 353.621 345.445 352.578 344.905C349.603 343.29 348.257 339.741 349.411 336.558C350.678 333.284 350.73 329.665 349.557 326.356C348.809 324.254 349.083 321.922 350.301 320.052C351.434 318.285 353.337 317.16 355.431 317.017C355.595 317.006 355.761 317 355.928 317C367.629 319.06 379.601 319.061 391.303 317.005H391.317C393.657 316.996 395.858 318.11 397.236 320C398.394 321.66 398.75 323.749 398.207 325.698C397.304 329.211 397.347 333.003 398.338 337.292C398.698 338.793 398.518 340.372 397.83 341.754C396.595 344.194 394.091 345.729 391.356 345.722Z\" fill=\"#FFE5B2\"/><path d=\"M685.361 525.653L217.84 525.845C217.43 525.843 217.098 525.508 217.101 525.098C217.103 524.69 217.433 524.36 217.84 524.358L685.361 524.166C685.772 524.169 686.103 524.503 686.101 524.914C686.098 525.321 685.769 525.651 685.361 525.653Z\" class=\"il-ground\"/><path d=\"M317.162 142.66C320.078 142.66 322.442 140.244 322.442 137.262C322.442 134.281 320.078 131.864 317.162 131.864C314.246 131.864 311.882 134.281 311.882 137.262C311.882 140.244 314.246 142.66 317.162 142.66Z\" class=\"il-chrome\"/><path d=\"M335.403 142.66C338.32 142.66 340.684 140.244 340.684 137.262C340.684 134.281 338.32 131.864 335.403 131.864C332.487 131.864 330.123 134.281 330.123 137.262C330.123 140.244 332.487 142.66 335.403 142.66Z\" class=\"il-chrome\"/><path d=\"M353.645 142.66C356.561 142.66 358.925 140.244 358.925 137.262C358.925 134.281 356.561 131.864 353.645 131.864C350.728 131.864 348.364 134.281 348.364 137.262C348.364 140.244 350.728 142.66 353.645 142.66Z\" class=\"il-chrome\"/><path d=\"M374.444 141.529C374.282 141.529 374.12 141.466 373.998 141.341L370.435 137.699C370.197 137.456 370.197 137.068 370.435 136.826L373.998 133.184C374.24 132.937 374.635 132.934 374.881 133.174C375.127 133.415 375.132 133.811 374.891 134.057L371.755 137.262L374.891 140.468C375.132 140.714 375.127 141.11 374.881 141.351C374.759 141.47 374.602 141.529 374.444 141.529Z\" class=\"il-chrome\"/><path d=\"M380.431 141.529C380.273 141.529 380.116 141.47 379.994 141.351C379.748 141.11 379.744 140.714 379.985 140.468L383.12 137.262L379.985 134.057C379.744 133.811 379.748 133.415 379.994 133.174C380.241 132.933 380.636 132.937 380.877 133.184L384.44 136.826C384.678 137.068 384.678 137.456 384.44 137.699L380.877 141.341C380.755 141.466 380.593 141.529 380.431 141.529Z\" class=\"il-chrome\"/><path d=\"M566.821 132.489H560.196C559.441 132.489 558.829 133.101 558.829 133.857V140.488C558.829 141.244 559.441 141.855 560.196 141.855H566.821C567.576 141.855 568.195 141.244 568.195 140.488V133.857C568.195 133.101 567.576 132.489 566.821 132.489Z\" class=\"il-chrome\"/><path d=\"M550.587 132.489H543.962C543.206 132.489 542.594 133.101 542.594 133.857V140.488C542.594 141.244 543.206 141.855 543.962 141.855H550.587C551.342 141.855 551.96 141.244 551.96 140.488V133.857C551.96 133.101 551.342 132.489 550.587 132.489Z\" class=\"il-chrome\"/><path d=\"M582.119 132.802H575.494C574.738 132.802 574.126 133.413 574.126 134.169V140.8C574.126 141.556 574.738 142.168 575.494 142.168H582.119C582.874 142.168 583.492 141.556 583.492 140.8V134.169C583.492 133.413 582.874 132.802 582.119 132.802Z\" class=\"il-chrome\"/><path d=\"M482.263 135.324H429.308C428.384 135.324 427.641 136.073 427.641 136.991C427.641 137.909 428.384 138.658 429.308 138.658H482.263C483.181 138.658 483.93 137.909 483.93 136.991C483.93 136.073 483.181 135.324 482.263 135.324Z\" class=\"il-chrome\"/><rect x=\"234\" y=\"115\" width=\"435\" height=\"299\" rx=\"7\" stroke-width=\"12\" class=\"il-outline\"/><path d=\"M605.605 289.903C605.605 289.903 620.769 280.325 635.136 291.499L644.713 391.266C644.713 391.266 608.797 419.201 600.018 392.862L605.605 289.903Z\" fill=\"#E6E6E6\"/><path d=\"M601.902 516.665L592.723 516.664L589.666 481.387L601.904 481.258L601.902 516.665Z\" fill=\"#FFB8B8\"/><path d=\"M586.166 514.041H603.869V525.188H575.02C575.02 523.724 575.308 522.274 575.868 520.922C576.429 519.57 577.25 518.341 578.285 517.306C579.32 516.271 580.549 515.45 581.901 514.89C583.253 514.33 584.703 514.041 586.166 514.041Z\" fill=\"#090814\"/><path d=\"M635.082 516.665L644.261 516.664L648.628 481.258L635.08 481.258L635.082 516.665Z\" fill=\"#FFB8B8\"/><path d=\"M661.964 525.187L633.114 525.188L633.114 514.042L650.817 514.041C653.773 514.041 656.608 515.215 658.699 517.305C660.789 519.396 661.964 522.231 661.964 525.187Z\" fill=\"#090814\"/><path d=\"M582.06 391.665L590.041 510.588L602.412 510.189L618.774 414.811L633.939 508.991L648.305 509.79L652.296 386.876C652.296 386.876 591.637 373.308 582.06 391.665Z\" fill=\"#090814\"/><path d=\"M619.721 279.807C629.878 279.807 638.111 271.574 638.111 261.417C638.111 251.261 629.878 243.028 619.721 243.028C609.565 243.028 601.332 251.261 601.332 261.417C601.332 271.574 609.565 279.807 619.721 279.807Z\" fill=\"#FFB8B8\"/><path d=\"M608.398 286.311L603.609 289.503C603.609 289.503 583.656 289.503 582.059 301.476C580.463 313.448 576.073 395.257 580.862 395.257C585.651 395.257 586.449 388.872 586.449 388.872C586.449 388.872 589.642 389.67 596.027 396.055C602.412 402.44 606.403 402.44 608.797 392.862C611.191 383.285 627.154 309.856 611.99 296.288L608.398 286.311Z\" class=\"il-brand\"/><path d=\"M631.544 286.311L636.333 289.503C636.333 289.503 656.286 289.503 657.883 301.476C659.479 313.448 663.869 395.257 659.08 395.257C654.291 395.257 653.493 388.872 653.493 388.872C653.493 388.872 650.3 389.67 643.915 396.055C637.53 402.44 633.539 402.44 631.145 392.862C628.751 383.285 612.788 309.856 627.952 296.288L631.544 286.311Z\" class=\"il-brand\"/><path d=\"M604.8 272.63C603.433 271.19 602.526 269.375 602.193 267.417C601.861 265.459 602.118 263.447 602.932 261.636C603.747 259.824 605.081 258.296 606.767 257.246C608.452 256.195 610.412 255.67 612.396 255.736C614.939 255.821 617.335 256.862 619.762 257.625C623.44 258.876 627.364 259.23 631.207 258.656C635.072 258.056 638.56 255.996 640.953 252.901C643.228 249.774 643.937 245.437 642.33 241.919C640.474 237.859 636.14 235.621 632.062 233.803C630.418 232.98 628.661 232.403 626.849 232.09C625.941 231.94 625.012 231.978 624.12 232.203C623.227 232.428 622.391 232.835 621.663 233.398C620.517 234.383 619.846 235.865 618.599 236.719C617.195 237.68 615.372 237.655 613.679 237.824C609.866 238.206 606.259 239.74 603.339 242.221C600.418 244.703 598.323 248.014 597.331 251.716C596.338 255.417 596.497 259.333 597.784 262.943C599.072 266.552 601.428 269.684 604.539 271.922\" fill=\"#2F2E41\"/><path d=\"M667.441 403.991C668.301 403.189 668.975 402.208 669.415 401.118C669.855 400.027 670.051 398.854 669.988 397.679C669.926 396.505 669.607 395.359 669.053 394.321C668.5 393.284 667.725 392.38 666.785 391.674L666.569 370.57L655.524 372.665L655.114 393.694C654.033 395.353 653.597 397.35 653.89 399.308C654.184 401.266 655.185 403.049 656.704 404.318C658.224 405.587 660.156 406.255 662.135 406.194C664.114 406.134 666.002 405.35 667.441 403.991Z\" fill=\"#FFB8B8\"/><path d=\"M590.321 400.247C591.181 399.445 591.855 398.464 592.295 397.374C592.736 396.283 592.931 395.11 592.869 393.936C592.806 392.761 592.487 391.615 591.933 390.578C591.38 389.54 590.606 388.636 589.665 387.931L589.449 366.826L578.405 368.921L577.994 389.951C576.913 391.609 576.478 393.607 576.771 395.565C577.064 397.522 578.065 399.305 579.585 400.574C581.104 401.843 583.036 402.511 585.015 402.451C586.994 402.39 588.882 401.606 590.321 400.247Z\" fill=\"#FFB8B8\"/><path d=\"M655.089 300.278L657.961 302.098C657.961 302.098 669.781 347.363 669.855 378.097C669.855 378.097 654.291 385.679 651.897 380.092C649.502 374.505 655.089 300.278 655.089 300.278Z\" class=\"il-brand\"/><path d=\"M584.853 300.278L581.981 302.098C581.981 302.098 571.696 347.363 574.477 377.698C574.477 377.698 590.839 385.28 593.233 379.693C595.628 374.106 584.853 300.278 584.853 300.278Z\" class=\"il-brand\"/><path d=\"M664.867 157.448C683.018 157.448 697.733 142.733 697.733 124.581C697.733 106.429 683.018 91.7146 664.867 91.7146C646.715 91.7146 632 106.429 632 124.581C632 142.733 646.715 157.448 664.867 157.448Z\" fill=\"#0ECF82\" fill-opacity=\"0.3\"/><path d=\"M665.003 134.476L648.556 118.028C648.023 117.492 647.724 116.766 647.726 116.009C647.727 115.253 648.028 114.528 648.563 113.993C649.098 113.458 649.823 113.157 650.579 113.156C651.335 113.155 652.061 113.453 652.598 113.986L664.73 126.118L703.444 81.971C703.944 81.4022 704.649 81.0551 705.405 81.006C706.161 80.9569 706.905 81.2098 707.475 81.7091C708.044 82.2085 708.392 82.9135 708.442 83.6692C708.492 84.4249 708.24 85.1695 707.741 85.7396L665.003 134.476Z\" fill=\"#0ECF82\"/></svg>";
+const EMPTY_ART = "<svg viewBox=\"0 0 904 535\" fill=\"none\" role=\"img\" aria-label=\"A person arranging blocks of content on a screen\" class=\"empty-art-svg\"><path d=\"M413.218 74.356C328.818 102.756 305.101 95 263.218 55.356C198.155 -6.2301 78.7535 7 34.6006 74.356C-49.3995 202.5 42.6009 304.833 69.1009 334C-1.89912 418 65.5114 512.333 109.601 522C304.934 536.833 554.101 539.5 753.601 522C825.45 515.697 903.718 344.356 903.718 215.356C903.718 112.156 835.385 53.0226 801.218 36.356L800.993 36.2353C791.036 30.9119 757.425 12.9414 697.718 9.85598C623.101 6 518.718 38.856 413.218 74.356Z\" class=\"il-blob\"/><path d=\"M514.684 519.018L514.679 518.975C514.146 507.149 511.976 495.455 508.231 484.226L508.228 484.207C508.009 483.054 508.073 481.865 508.413 480.741C509.459 477.521 512.702 475.55 516.042 476.105C519.492 476.753 523.06 476.144 526.1 474.387C528.03 473.268 530.373 473.113 532.434 473.968C534.377 474.76 535.831 476.426 536.354 478.458C536.395 478.618 536.43 478.78 536.461 478.944C536.571 490.825 538.753 502.596 542.91 513.726L542.912 513.741C543.347 516.039 542.653 518.407 541.047 520.107C539.627 521.548 537.637 522.279 535.621 522.1C532.003 521.854 528.282 522.587 524.246 524.345C522.836 524.972 521.25 525.083 519.767 524.659C517.143 523.89 515.176 521.708 514.684 519.018Z\" fill=\"#FFE5B2\"/><path d=\"M399.03 356.575V511.864H507.82V356.575C507.824 354.282 506.332 352.255 504.141 351.578C503.638 351.412 503.111 351.33 502.581 351.336H404.284C401.388 351.331 399.036 353.674 399.03 356.57V356.575ZM441.486 409.933C441.545 403.519 446.793 398.367 453.207 398.426C459.537 398.485 464.655 403.602 464.713 409.933V427.951C464.683 434.365 459.459 439.54 453.045 439.51C446.674 439.479 441.517 434.322 441.486 427.951V409.933Z\" class=\"il-stand\"/><path d=\"M398.697 506.898V521.872C398.702 523.487 400.005 524.796 401.619 524.81H505.231C506.847 524.802 508.153 523.489 508.153 521.872V506.898H398.697Z\" class=\"il-base\"/><path d=\"M227.888 122.612V406.148C227.894 413.671 233.992 419.769 241.515 419.775H661.686C669.209 419.769 675.307 413.671 675.313 406.148V122.612C675.295 115.096 669.202 109.01 661.686 109H241.515C233.999 109.01 227.906 115.096 227.888 122.612Z\" class=\"il-frame\"/><path d=\"M658.181 118.842H245.021C240.996 118.851 237.738 122.115 237.738 126.14V402.65C237.745 406.669 241.001 409.926 245.021 409.933H658.181C662.2 409.926 665.457 406.669 665.464 402.65V126.14C665.463 122.115 662.205 118.851 658.181 118.842ZM553.96 315.29C552.725 317.73 550.22 319.265 547.486 319.259L547.442 319.256C543.482 318.704 539.506 318.34 535.516 318.164C536.136 318.608 536.681 319.147 537.131 319.761C538.289 321.42 538.645 323.51 538.101 325.459C537.199 328.972 537.242 332.764 538.233 337.053C538.593 338.554 538.413 340.133 537.725 341.515C536.49 343.955 533.986 345.49 531.251 345.483L531.208 345.48C521.749 344.163 512.173 343.908 502.657 344.72C502.619 344.96 502.572 345.2 502.511 345.44C501.608 348.952 501.651 352.745 502.642 357.034C503.002 358.535 502.822 360.114 502.134 361.496C500.899 363.935 498.395 365.471 495.66 365.464L495.617 365.461C485.903 364.109 476.065 363.877 466.298 364.771C466.224 367.21 466.477 369.648 467.051 372.02C467.411 373.521 467.231 375.1 466.543 376.481C465.309 378.921 462.804 380.457 460.069 380.45L460.026 380.447C448.302 378.813 436.408 378.813 424.684 380.447H424.665C423.491 380.451 422.334 380.172 421.291 379.633C418.316 378.017 416.97 374.469 418.124 371.286C418.478 370.284 418.742 369.252 418.911 368.203C408.166 366.964 397.308 367.092 386.596 368.583H386.577C385.403 368.588 384.245 368.309 383.203 367.769C380.228 366.154 378.881 362.605 380.036 359.422C381.302 356.148 381.354 352.529 380.182 349.22C379.63 347.668 379.63 345.974 380.182 344.422C372.106 344.01 364.009 344.365 356 345.481H355.981C354.807 345.485 353.65 345.206 352.607 344.666C349.632 343.051 348.286 339.502 349.44 336.319C350.707 333.045 350.759 329.426 349.586 326.117C348.837 324.015 349.112 321.683 350.33 319.813C351.463 318.047 353.366 316.921 355.46 316.778C355.624 316.767 355.79 316.761 355.957 316.761C360.06 317.478 364.203 317.946 368.363 318.163C365.709 316.418 364.598 313.082 365.674 310.094C366.941 306.821 366.993 303.201 365.821 299.892C365.072 297.79 365.347 295.459 366.564 293.588C366.617 293.508 366.678 293.436 366.734 293.358C363.773 293.562 360.82 293.87 357.873 294.28H357.854C356.68 294.284 355.523 294.005 354.48 293.466C351.505 291.85 350.159 288.301 351.313 285.118C352.58 281.844 352.632 278.225 351.46 274.916C350.711 272.814 350.986 270.482 352.203 268.612C353.336 266.846 355.239 265.72 357.333 265.577C357.497 265.566 357.663 265.56 357.83 265.56C362.764 266.424 367.754 266.926 372.762 267.063C371.484 265.222 371.17 262.879 371.918 260.767C373.185 257.493 373.237 253.873 372.065 250.564C371.316 248.462 371.591 246.131 372.808 244.26C373.942 242.494 375.844 241.368 377.938 241.225C378.103 241.214 378.268 241.208 378.435 241.208C382.611 241.939 386.827 242.411 391.06 242.622C390.151 240.9 390.002 238.876 390.651 237.039C391.917 233.765 391.969 230.146 390.797 226.837C390.048 224.735 390.323 222.403 391.54 220.533C392.674 218.767 394.576 217.641 396.67 217.498C396.835 217.487 397 217.481 397.167 217.481C402.08 218.341 407.049 218.843 412.035 218.982C411.356 217.378 411.301 215.579 411.88 213.937C413.147 210.663 413.199 207.043 412.027 203.734C411.278 201.632 411.553 199.301 412.77 197.43C413.903 195.664 415.806 194.538 417.9 194.395C418.064 194.384 418.23 194.378 418.397 194.378C430.098 196.438 442.07 196.439 453.772 194.383H453.786C454.69 194.569 455.621 194.569 456.524 194.383H456.539C468.241 196.439 480.212 196.438 491.914 194.378C492.081 194.378 492.246 194.384 492.411 194.395C494.505 194.538 496.408 195.664 497.541 197.43C498.758 199.301 499.033 201.632 498.284 203.734C497.112 207.043 497.164 210.663 498.431 213.937C499.01 215.579 498.954 217.378 498.276 218.982C503.261 218.843 508.231 218.341 513.144 217.481C513.311 217.481 513.476 217.487 513.641 217.498C515.735 217.641 517.637 218.767 518.771 220.533C519.988 222.404 520.263 224.735 519.514 226.837C518.342 230.146 518.394 233.765 519.66 237.039C520.308 238.876 520.16 240.9 519.25 242.622C523.484 242.411 527.7 241.939 531.876 241.208C532.043 241.208 532.208 241.214 532.373 241.225C534.467 241.368 536.369 242.494 537.503 244.26C538.72 246.131 538.995 248.462 538.246 250.564C537.074 253.873 537.126 257.493 538.392 260.767C539.143 262.884 538.825 265.234 537.54 267.077C538.098 267.498 538.591 267.997 539.005 268.56C540.163 270.22 540.518 272.31 539.975 274.258C539.072 277.771 539.115 281.563 540.106 285.853C540.466 287.353 540.286 288.933 539.598 290.314C539.347 290.806 539.04 291.267 538.685 291.69C541.608 291.433 544.524 291.05 547.432 290.541H547.447C549.786 290.533 551.987 291.647 553.366 293.537C554.524 295.196 554.88 297.286 554.336 299.234C553.433 302.747 553.476 306.539 554.468 310.829C554.827 312.329 554.647 313.909 553.96 315.29Z\" class=\"il-screen\"/><path d=\"M644.78 156.932H258.187C257.338 156.914 256.665 156.21 256.684 155.361C256.702 154.538 257.365 153.876 258.187 153.858H644.78C645.629 153.876 646.302 154.58 646.283 155.429C646.265 156.252 645.602 156.914 644.78 156.932Z\" class=\"il-frame\"/><path d=\"M456.154 373.084L456.111 373.081C444.387 371.448 432.493 371.448 420.769 373.081H420.75C419.576 373.086 418.419 372.807 417.376 372.267C414.401 370.652 413.055 367.103 414.209 363.92C415.476 360.646 415.528 357.027 414.355 353.718C413.606 351.616 413.881 349.284 415.099 347.414C416.232 345.647 418.135 344.522 420.229 344.379C420.393 344.368 420.558 344.362 420.726 344.362C432.427 346.422 444.398 346.423 456.101 344.367H456.115C458.454 344.358 460.656 345.472 462.034 347.362C463.192 349.022 463.548 351.111 463.004 353.06C462.102 356.573 462.145 360.365 463.136 364.654C463.496 366.155 463.316 367.734 462.628 369.116C461.393 371.556 458.889 373.091 456.154 373.084Z\" fill=\"#FFE5B2\"/><path d=\"M492.209 311.864L482.777 304.059C475.704 307.766 464.942 322.567 464.942 322.567L440.113 340.424C437.131 340.566 434.829 343.098 434.971 346.08C435.113 349.062 437.645 351.364 440.627 351.222C442.562 351.13 444.3 350.009 445.182 348.284L478.917 330.458L492.209 311.864Z\" fill=\"#FFB8B8\"/><path d=\"M508.122 282.157C513.566 286.768 514.242 294.918 509.631 300.362C509.115 300.972 508.542 301.533 507.922 302.037L501.924 306.913C501.924 306.913 486.963 328.451 479.176 330.949L459.183 341.394L450.168 332.355L468.287 317.589C468.287 317.589 476.621 309.706 477.456 303.936C477.967 300.402 483.948 290.776 489.942 283.636C494.544 278.208 502.674 277.538 508.101 282.139L508.122 282.157Z\" class=\"il-brand\"/><path d=\"M488.738 515.905L480.217 515.905L476.164 483.036L488.74 483.037L488.738 515.905Z\" fill=\"#FFB6B6\"/><path d=\"M489.039 524.794L462.834 524.793V524.462C462.835 518.829 467.401 514.263 473.034 514.263L477.821 510.632L486.752 514.263L489.039 514.263L489.039 524.794Z\" fill=\"#090814\"/><path d=\"M553.666 471.054L549.631 478.559L518.762 466.566L524.718 455.489L553.666 471.054Z\" fill=\"#FFB6B6\"/><path d=\"M561.638 474.999L549.229 498.079L548.937 497.922C543.976 495.254 542.116 489.07 544.783 484.109L544.784 484.108L543.852 478.173L551.279 472.027L552.363 470.012L561.638 474.999Z\" fill=\"#090814\"/><path d=\"M472.628 365.386L465.107 425.553L468.867 445.725L536.555 475.379L540.316 463.157C523.014 452.57 504.518 436.547 492.864 435.369C492.864 435.369 491.898 424.692 500.247 418.102C501.931 416.773 501.563 414.974 502.244 413.344C502.712 412.223 504.576 411.055 505.053 409.905C505.672 408.414 504.906 406.933 505.528 405.418C505.878 404.566 507.203 404.513 507.551 403.661C508.143 402.207 507.755 399.955 508.333 398.519C509.567 395.449 510.754 392.448 511.837 389.634C515.21 380.875 517.583 373.935 517.283 372.437C516.343 367.736 472.628 365.386 472.628 365.386Z\" fill=\"#090814\"/><path d=\"M471.333 425.379L467.398 450.788L477.329 502.642H490.49C495.219 485.219 495.462 462.319 490.96 442.945L471.333 425.379Z\" fill=\"#090814\"/><path d=\"M479.788 291.874L485.855 281.301L492.37 276.075L504.591 274.195L507.987 276.806C520.206 295.482 524.763 318.147 520.711 340.094L519.757 345.261L519.151 348.54L519.414 352.46L517.374 358.166L517.655 362.345L517.805 364.577L517.955 366.816L518.165 369.943C518.541 371.727 516.648 371.492 516.916 373.065C517.386 375.827 519.494 379.92 516.292 379.933L483.198 373.065C474.791 373.099 466.964 363.074 475.081 354.957L479.788 291.874Z\" class=\"il-brand\"/><path d=\"M495.278 271.25C504.154 271.25 511.348 264.055 511.348 255.18C511.348 246.305 504.154 239.11 495.278 239.11C486.403 239.11 479.208 246.305 479.208 255.18C479.208 264.055 486.403 271.25 495.278 271.25Z\" fill=\"#FFB8B8\"/><path d=\"M495.551 270.793C497.902 270.83 500.252 270.666 502.576 270.302C504.879 269.834 510.031 266.059 511.467 263.787C512.534 262.099 513.216 259.463 513.601 257.549C514.648 252.427 513.475 247.102 510.372 242.894C509.782 242.024 508.969 241.329 508.016 240.884C507.932 240.851 507.845 240.822 507.758 240.797C506.37 240.432 505.124 239.66 504.178 238.582C503.995 238.363 503.796 238.159 503.583 237.969C502.514 237.067 501.247 236.431 499.885 236.112C497.687 235.524 494.505 236.108 490.429 237.85C488.381 238.725 486.142 238.408 484.419 238.034C484.222 237.996 484.02 238.066 483.888 238.216C483.155 238.904 482.189 239.29 481.184 239.294C480.568 239.321 479.922 240.174 479.141 241.286C478.964 241.538 478.757 241.833 478.608 242.012L478.588 241.668L478.239 242.052C476.447 244.027 476.596 247.081 478.571 248.873C479.102 249.355 479.733 249.712 480.42 249.919C481.039 250.084 481.674 250.185 482.314 250.221C482.701 250.256 483.102 250.292 483.487 250.359C485.995 250.873 488.05 252.667 488.897 255.083C489.252 256.073 490.342 256.588 491.332 256.233C491.487 256.177 491.635 256.102 491.771 256.008C492.583 255.375 493.654 255.18 494.637 255.486C495.056 255.719 495.382 256.088 495.56 256.533C495.777 257.028 496.137 257.448 496.593 257.738C498.154 258.542 498.261 262.107 497.701 265.078C497.16 267.942 496.092 270.014 495.104 270.117C494.342 270.196 494.255 270.25 494.2 270.384L494.151 270.505L494.236 270.618C494.657 270.77 495.105 270.83 495.551 270.793Z\" fill=\"#2F2E41\"/><path d=\"M463.022 261.317L462.979 261.313C451.255 259.68 439.361 259.68 427.637 261.313H427.618C426.444 261.318 425.287 261.039 424.244 260.499C421.269 258.884 419.923 255.335 421.077 252.152C422.344 248.878 422.396 245.259 421.223 241.95C420.475 239.848 420.75 237.516 421.967 235.646C423.1 233.88 425.003 232.754 427.097 232.611C427.261 232.6 427.427 232.594 427.594 232.594C439.295 234.654 451.267 234.655 462.969 232.599H462.983C465.323 232.59 467.524 233.705 468.902 235.594C470.06 237.254 470.416 239.343 469.873 241.292C468.97 244.805 469.013 248.597 470.004 252.887C470.364 254.387 470.184 255.966 469.496 257.348C468.262 259.788 465.757 261.323 463.022 261.317Z\" fill=\"#FFE5B2\"/><path d=\"M478.051 299.165L484.7 288.886C480.192 282.294 464.234 273.335 464.234 273.335L443.598 250.764C443.109 247.819 440.325 245.828 437.38 246.318C434.435 246.807 432.445 249.591 432.934 252.536C433.252 254.447 434.568 256.042 436.384 256.717L458.031 288.137L478.051 299.165Z\" fill=\"#FFB8B8\"/><path d=\"M509.413 311.498C505.47 317.443 497.454 319.066 491.509 315.124C490.843 314.682 490.219 314.179 489.646 313.622L484.102 308.235C484.102 308.235 460.865 296.102 457.474 288.66L442.248 267.064L452.457 257.854L470.201 273.985C470.201 273.985 478.371 283.432 484.2 283.586C487.769 283.681 498.028 288.496 505.819 293.615C511.748 297.551 513.363 305.547 509.428 311.475L509.413 311.498Z\" class=\"il-brand\"/><path d=\"M354.618 524.701L354.574 524.698C342.85 523.064 330.956 523.064 319.232 524.698H319.213C318.04 524.702 316.882 524.423 315.839 523.884C312.864 522.268 311.518 518.72 312.672 515.537C313.939 512.263 313.991 508.643 312.819 505.334C312.07 503.232 312.345 500.901 313.562 499.03C314.695 497.264 316.598 496.138 318.692 495.995C318.857 495.984 319.022 495.979 319.189 495.979C330.891 498.038 342.862 498.04 354.564 495.983H354.579C356.918 495.975 359.119 497.089 360.498 498.979C361.656 500.638 362.012 502.728 361.468 504.677C360.565 508.189 360.608 511.982 361.599 516.271C361.959 517.772 361.779 519.351 361.092 520.732C359.857 523.172 357.352 524.708 354.618 524.701Z\" fill=\"#FFE5B2\"/><path d=\"M364.608 498.476L364.565 498.473C352.841 496.84 340.947 496.84 329.223 498.473H329.204C328.03 498.478 326.873 498.198 325.83 497.659C322.855 496.043 321.509 492.495 322.663 489.312C323.93 486.038 323.982 482.419 322.809 479.11C322.061 477.007 322.335 474.676 323.553 472.806C324.686 471.039 326.589 469.913 328.683 469.77C328.847 469.759 329.013 469.754 329.18 469.754C340.881 471.813 352.853 471.815 364.555 469.758H364.569C366.909 469.75 369.11 470.864 370.488 472.754C371.646 474.413 372.002 476.503 371.458 478.452C370.556 481.964 370.599 485.757 371.59 490.046C371.95 491.547 371.77 493.126 371.082 494.507C369.847 496.947 367.343 498.483 364.608 498.476Z\" fill=\"#FFE5B2\"/><path d=\"M277.184 505.625L277.211 505.591C285.133 496.796 291.797 486.944 297.014 476.318L297.024 476.302C297.678 475.328 298.558 474.525 299.589 473.964C302.594 472.405 306.288 473.278 308.277 476.018C310.279 478.902 313.248 480.973 316.646 481.856C318.807 482.413 320.583 483.947 321.451 486.004C322.279 487.932 322.145 490.139 321.09 491.953C321.007 492.096 320.919 492.236 320.826 492.374C312.563 500.912 305.854 510.827 301 521.672L300.992 521.684C299.688 523.626 297.532 524.825 295.194 524.908C293.171 524.938 291.241 524.061 289.931 522.519C287.528 519.803 284.363 517.714 280.254 516.132C278.81 515.589 277.602 514.555 276.844 513.211C275.515 510.821 275.646 507.886 277.184 505.625Z\" fill=\"#FFE5B2\"/><path d=\"M685.361 525.653L217.84 525.845C217.43 525.843 217.098 525.508 217.101 525.098C217.103 524.69 217.433 524.36 217.84 524.358L685.361 524.166C685.772 524.169 686.103 524.503 686.101 524.914C686.098 525.321 685.769 525.651 685.361 525.653Z\" class=\"il-ground\"/><path d=\"M317.162 142.66C320.078 142.66 322.442 140.244 322.442 137.262C322.442 134.281 320.078 131.864 317.162 131.864C314.246 131.864 311.882 134.281 311.882 137.262C311.882 140.244 314.246 142.66 317.162 142.66Z\" class=\"il-chrome\"/><path d=\"M335.403 142.66C338.32 142.66 340.684 140.244 340.684 137.262C340.684 134.281 338.32 131.864 335.403 131.864C332.487 131.864 330.123 134.281 330.123 137.262C330.123 140.244 332.487 142.66 335.403 142.66Z\" class=\"il-chrome\"/><path d=\"M353.645 142.66C356.561 142.66 358.925 140.244 358.925 137.262C358.925 134.281 356.561 131.864 353.645 131.864C350.728 131.864 348.364 134.281 348.364 137.262C348.364 140.244 350.728 142.66 353.645 142.66Z\" class=\"il-chrome\"/><path d=\"M374.444 141.529C374.282 141.529 374.12 141.466 373.998 141.341L370.435 137.699C370.197 137.456 370.197 137.068 370.435 136.826L373.998 133.184C374.24 132.937 374.635 132.933 374.881 133.174C375.127 133.415 375.132 133.811 374.891 134.057L371.755 137.262L374.891 140.468C375.132 140.714 375.127 141.109 374.881 141.351C374.759 141.47 374.602 141.529 374.444 141.529Z\" class=\"il-chrome\"/><path d=\"M380.431 141.529C380.273 141.529 380.116 141.47 379.994 141.351C379.748 141.109 379.744 140.714 379.985 140.468L383.12 137.262L379.985 134.057C379.744 133.811 379.748 133.415 379.994 133.174C380.241 132.933 380.636 132.937 380.877 133.184L384.44 136.826C384.678 137.068 384.678 137.456 384.44 137.699L380.877 141.341C380.755 141.466 380.593 141.529 380.431 141.529Z\" class=\"il-chrome\"/><path d=\"M566.821 132.489H560.196C559.441 132.489 558.829 133.101 558.829 133.857V140.488C558.829 141.243 559.441 141.855 560.196 141.855H566.821C567.576 141.855 568.195 141.243 568.195 140.488V133.857C568.195 133.101 567.576 132.489 566.821 132.489Z\" class=\"il-chrome\"/><path d=\"M550.587 132.489H543.962C543.206 132.489 542.594 133.101 542.594 133.857V140.488C542.594 141.243 543.206 141.855 543.962 141.855H550.587C551.342 141.855 551.96 141.243 551.96 140.488V133.857C551.96 133.101 551.342 132.489 550.587 132.489Z\" class=\"il-chrome\"/><path d=\"M582.119 132.801H575.494C574.738 132.801 574.126 133.413 574.126 134.169V140.8C574.126 141.556 574.738 142.168 575.494 142.168H582.119C582.874 142.168 583.492 141.556 583.492 140.8V134.169C583.492 133.413 582.874 132.801 582.119 132.801Z\" class=\"il-chrome\"/><path d=\"M482.263 135.324H429.308C428.384 135.324 427.641 136.073 427.641 136.991C427.641 137.909 428.384 138.658 429.308 138.658H482.263C483.181 138.658 483.93 137.909 483.93 136.991C483.93 136.073 483.181 135.324 482.263 135.324Z\" class=\"il-chrome\"/></svg>";
+
+const ic = (n, s) => '<svg viewBox="0 0 24 24" width="' + s + '" height="' + s +
+  '" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[n] + '</svg>';
+</script>
+
+<script>
+/* ==============================================================
+   State
+   ============================================================== */
+const S = {
+  /* The app is the administrator's. An instructor reaches the same screen with
+     ?role=instructor, which is what a real session would decide for them. */
+  role: 'admin',
+  step: 1,
+  done: 0,                 // highest completed step
+  status: 'draft',
+  title: '',
+  delivery: 'self',
+  source: null,
+  file: null,
+  libPick: null,
+  built: false,
+  buildSecs: 0,
+  modules: [],
+  note: '',                // admin's change request
+  sel: -1,                 // which module is expanded; -1 is none
+  parts: {},               // which empty parts of the open module are revealed
+  sections: ['Section 1'], // section names; every module's sec indexes this
+  addingMod: -1,           // which section the inline add row is open in; -1 none
+  addingSec: false,        // the inline add row for a new section
+  renaming: -1,            // module whose name is being edited in the row
+  renameOrig: '',          // its name before editing, so Escape can restore
+  settings: { category: 'Safety and clinical', code: '', price: '0.00', level: 'No level required',
+              certificate: 'Skypoint standard', certDur: 'forever', reassign: true, hidden: false,
+              completion: 'A question' },
+  added: []                // gap modules the user accepted
+};
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const mins = () => S.modules.reduce((t, m) => t + m.m, 0);
+const questions = () => S.modules.reduce((t, m) => t + (m.qs ? m.qs.length : 0), 0);
+const cur = () => S.modules[S.sel];
+const chip = (id, label) =>
+  '<button class="btn btn-surface is-sm" data-part="' + id + '">' + ic('plus', 14) + ' ' + label + '</button>';
+/* A requirement is covered by a module that is present AND visible. Hide the
+   post-fall module and Ohio goes back to incomplete, which is the point. */
+const coveredTopics = () => new Set(S.modules.filter(m => !m.hidden).map(m => m.covers).filter(Boolean));
+const gaps = () => REQS.filter(r => !coveredTopics().has(r.topic));
+const covered = () => REQS.length - gaps().length;
+const locked = () => S.status === 'review' || S.status === 'approved' || S.status === 'live';
+
+let undo = null;
+function toast(title, body, action) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = '<div style="flex:1;"><div class="toast-title">' + esc(title) + '</div>' +
+    (body ? '<div class="toast-body">' + esc(body) + '</div>' : '') + '</div>' +
+    (action ? '<button class="btn btn-surface is-sm" id="undoBtn">' + esc(action) + '</button>' : '');
+  $('toasts').appendChild(el);
+  setTimeout(() => { el.remove(); if (action) undo = null; }, 6000);
+}
+</script>
+
+<script>
+/* ==============================================================
+   Chrome: stepper, lifecycle, rail
+   ============================================================== */
+function renderStepper() {
+  $('stepper').innerHTML = STEPS.map(s => {
+    const done = s.id <= S.done && s.id !== S.step;
+    const now = s.id === S.step;
+    const nav = s.id <= S.done + 1 && !now;
+    return '<button type="button" class="step' + (done ? ' is-done' : '') + (now ? ' is-current' : '') +
+      (nav ? ' is-nav' : '') + '" data-step="' + s.id + '"' + (nav ? '' : ' disabled') +
+      (now ? ' aria-current="step"' : '') + '>' +
+      '<span class="step-dot">' + (done ? ic('check', 16) : s.id) + '</span>' +
+      '<span class="step-text"><span class="step-label">' + s.label + '</span>' +
+      '<span class="step-sub">' + s.sub + '</span></span></button>';
+  }).join('');
+}
+
+function renderLife() {
+  const order = ['draft', 'review', 'approved', 'live'];
+  const at = order.indexOf(S.status === 'changes' ? 'draft' : S.status);
+  $('lifeBar').innerHTML = LIFE.map((l, i) => {
+    const cls = i < at ? 'is-past' : i === at ? 'is-now' : '';
+    return '<span class="life-step ' + cls + '"><span class="life-dot"></span>' + l.label + '</span>';
+  }).join('<span class="life-sep">' + '&rsaquo;' + '</span>') +
+  (S.status === 'changes'
+    ? '<span class="life-sep">&nbsp;</span><span class="badge is-warning">Changes requested</span>'
+    : '');
+}
+
+const STATUS_BADGE = {
+  draft:    '<span class="badge is-neutral">Draft</span>',
+  changes:  '<span class="badge is-warning">Changes requested</span>',
+  review:   '<span class="badge is-info">In review</span>',
+  approved: '<span class="badge is-success">Approved</span>',
+  live:     '<span class="badge is-success">Live</span>'
+};
+
+function renderRail() {
+  const t = $('railTitle');
+  t.textContent = S.title || 'Untitled course';
+  t.classList.toggle('is-empty', !S.title);
+  $('railStatus').innerHTML = STATUS_BADGE[S.status];
+
+  const rows = [];
+  if (S.modules.length) {
+    rows.push(['Sections', S.sections.length]);
+    rows.push(['Modules', S.modules.length]);
+    rows.push(['Questions', questions()]);
+    rows.push(['Files', S.modules.reduce((t, m) => t + m.files.length, 0)]);
+    rows.push(['Length', mins() + ' min']);
+  }
+  rows.push(['Delivery', S.delivery === 'self' ? 'Self-paced' : 'Instructor-led']);
+  if (S.modules.length) rows.push(['Level', S.settings.level === 'No level required' ? 'Any' : S.settings.level]);
+  rows.push(['Assigned', 'Not yet']);
+  $('railStats').innerHTML = rows.map(r =>
+    '<div class="rail-stat"><dt>' + r[0] + '</dt><dd>' + r[1] + '</dd></div>').join('');
+
+  if (!S.modules.length) { $('railCompliance').innerHTML = ''; return; }
+  const g = gaps().length;
+  $('railCompliance').innerHTML = '<hr class="divider" />' +
+    '<div class="callout rail-note ' + (g ? 'is-warning' : 'is-success') + '">' +
+    '<span class="co-icon">' + ic(g ? 'alert' : 'info', 18) + '</span>' +
+    '<span>Covers <strong>' + covered() + ' of ' + REQS.length + '</strong> topics Ohio requires' +
+    (g ? '. Missing: ' + gaps().map(x => x.topic.toLowerCase()).join(', ') + '.' : '. Nothing missing.') +
+    '</span></div>' +
+    (S.buildSecs ? '<div class="rail-built">Drafted in ' + S.buildSecs + ' seconds from ' + esc(DOC.name) + '.</div>' : '');
+}
+</script>
+
+<script>
+/* ==============================================================
+   Steps
+   ============================================================== */
+function head(title, intro) {
+  $('stepHead').innerHTML = '<div class="step-title">' + title + '</div>' +
+    '<div class="step-intro">' + intro + '</div>';
+}
+
+const SOURCES = [
+  { id: 'ai',      ic: 'sparkles', t: 'Generate from a document', badge: 'Fastest',
+    d: 'Upload a policy, SOP or handbook. skyLearn writes the modules and the quiz, then checks it against your state rules.' },
+  { id: 'library', ic: 'library',  t: 'Start from the library',
+    d: 'Adapt one of 340 prebuilt healthcare courses to your own protocols.' },
+  { id: 'blank',   ic: 'blank',    t: 'Build from scratch',
+    d: 'An empty module list. You add every lesson and question yourself.' }
+];
+
+function stepStart() {
+  head('Start a course', 'Two things to decide. Everything else has a sensible default you can change later.');
+  $('stepBody').innerHTML =
+    '<div class="stack-4">' +
+      '<div class="field"><label class="field-label" for="title">Course title <span class="req">*</span></label>' +
+      '<input class="input" id="title" placeholder="Preventing Falls in Senior Living" value="' + esc(S.title) + '" maxlength="120" />' +
+      '<span class="field-hint">Learners see this name in their assignment list.</span></div>' +
+
+      '<div class="field"><span class="field-label">Delivery</span>' +
+      '<div class="segmented segmented-start" role="tablist" aria-label="Delivery" id="delivery">' +
+        '<button class="segmented-item' + (S.delivery === 'self' ? ' is-active' : '') + '" role="tab" data-d="self" aria-selected="' + (S.delivery === 'self') + '">Self-paced</button>' +
+        '<button class="segmented-item' + (S.delivery === 'ilt' ? ' is-active' : '') + '" role="tab" data-d="ilt" aria-selected="' + (S.delivery === 'ilt') + '">Instructor-led</button>' +
+      '</div></div>' +
+
+      '<div class="field"><span class="field-label" id="srcLbl">How do you want to build it?</span>' +
+      '<div class="src-cards" id="srcCards" role="radiogroup" aria-labelledby="srcLbl">' + SOURCES.map(s =>
+        '<button type="button" class="radio-card src-card' + (S.source === s.id ? ' is-selected' : '') +
+          '" data-src="' + s.id + '" role="radio" aria-checked="' + (S.source === s.id) + '">' +
+          '<span class="src-ic">' + ic(s.ic, 20) + '</span>' +
+          '<span class="src-text"><span class="rc-title">' + s.t +
+          (s.badge ? '<span class="badge src-badge">' + s.badge + '</span>' : '') + '</span>' +
+          '<span class="rc-sub">' + s.d + '</span></span></button>').join('') +
+      '</div></div>' +
+
+      '<div class="src-panel" id="srcPanel"></div>' +
+    '</div>';
+  renderSrcPanel();
+}
+
+function renderSrcPanel() {
+  const p = $('srcPanel');
+  if (!p) return;
+  if (S.source === 'ai') {
+    p.innerHTML = S.file
+      ? '<div class="file-chip"><span class="src-ic">' + ic('file', 18) + '</span>' +
+        '<span class="file-meta"><span class="file-name">' + esc(S.file.name) + '</span>' +
+        '<span class="file-size">' + S.file.size + '</span></span>' +
+        '<button class="btn btn-ghost is-sm" id="dropClear">Remove</button></div>'
+      : '<div class="dropzone" id="dropzone" role="button" tabindex="0">' +
+        '<span class="dz-ic">' + ic('upload', 20) + '</span>' +
+        '<span class="dz-title">Drop a document here, or click to choose one</span>' +
+        '<span class="dz-hint">PDF, Word or plain text. Up to 25 MB.</span></div>';
+  } else if (S.source === 'library') {
+    p.innerHTML = '<div class="radio-cards" role="radiogroup" aria-label="Library course" class="is-single">' +
+      LIBRARY.map((l, i) =>
+      '<button type="button" class="radio-card' + (S.libPick === i ? ' is-selected' : '') +
+      '" data-lib="' + i + '" role="radio" aria-checked="' + (S.libPick === i) + '">' +
+      '<span class="rc-title">' + l.n + '</span>' +
+      '<span class="rc-sub">' + l.m + ' minutes. ' + l.s + '.</span></button>').join('') + '</div>';
+  } else if (S.source === 'blank') {
+    p.innerHTML = '<div class="callout"><span class="co-icon">' + ic('info', 18) +
+      '</span><span>You will start with an empty module list. The compliance check still runs once you add content.</span></div>';
+  } else {
+    p.innerHTML = '';
+  }
+}
+
+function modBody(m) {
+  const lk = locked();
+  const showBody  = m.body.trim() || S.parts.body;
+  const showFiles = m.files.length || S.parts.files;
+  const showQs    = m.qs.length || S.parts.qs;
+  const adds = [];
+  if (!showBody && !lk)  adds.push(chip('body', 'What learners read'));
+  if (!showFiles && !lk) adds.push(chip('files', 'A picture, video or file'));
+  if (!showQs && !lk)    adds.push(chip('qs', 'Questions'));
+
+  return '<div class="mod-body">' +
+    '<div class="ed-top">' +
+      '<input class="input ed-name" id="modName" value="' + esc(m.n) + '" ' +
+        'aria-label="Module name" placeholder="Name this module"' + (lk ? ' disabled' : '') + ' />' +
+      '<span class="saved" id="saved">' + (lk ? 'Locked while in review' : 'Saved') + '</span>' +
+    '</div>' +
+    (lk ? '' :
+      '<div class="mod-tools">' +
+        '<button class="btn btn-ghost is-sm" id="moveUp"' + (S.sel === 0 && m.sec === 0 ? ' disabled' : '') + '>Move up</button>' +
+        '<button class="btn btn-ghost is-sm" id="moveDown"' + (S.sel === S.modules.length - 1 && m.sec === S.sections.length - 1 ? ' disabled' : '') + '>Move down</button>' +
+        '<span class="grow"></span>' +
+        '<button class="btn btn-ghost is-sm is-danger" id="delMod">Delete module</button>' +
+      '</div>') +
+
+    (showBody
+      ? '<div class="ed-part">' +
+        '<div class="ed-h"><span class="ed-h-t">What learners read</span>' +
+        '<span class="ed-h-n">About ' + m.m + ' minutes</span></div>' +
+        '<textarea class="textarea ed-body" id="modBody" ' +
+          'placeholder="Type what you want staff to know. Short sentences work best."' +
+          (lk ? ' disabled' : '') + '>' + esc(m.body || '') + '</textarea>' +
+        (lk ? '' :
+          '<div class="ed-tools">' +
+            '<button class="btn btn-surface is-sm" data-ai="shorter">Make it shorter</button>' +
+            '<button class="btn btn-surface is-sm" data-ai="simpler">Use simpler words</button>' +
+          '</div>') +
+        '</div>'
+      : '') +
+
+    (showFiles
+      ? '<div class="ed-part">' +
+        '<div class="ed-h"><span class="ed-h-t">Pictures, video and files</span>' +
+        '<span class="ed-h-n">' + (m.files.length ? m.files.length + ' added' : 'None yet') + '</span></div>' +
+        (m.files.length
+          ? '<div class="file-grid">' + m.files.map((f, i) =>
+              '<div class="file-card"><span class="file-kind">' + ic(FILE_IC[f.kind] || 'file', 18) + '</span>' +
+              '<span class="file-meta"><span class="file-name">' + esc(f.name) + '</span>' +
+              '<span class="file-size">' + FILE_WORD[f.kind] + ', ' + f.size + '</span></span>' +
+              (lk ? '' : '<button class="btn btn-ghost is-sm" data-fdel="' + i + '" aria-label="Remove ' + esc(f.name) + '">' + ic('x', 14) + '</button>') +
+              '</div>').join('') + '</div>'
+          : '') +
+        (lk ? '' :
+          '<div class="dropzone" id="fileDrop" role="button" tabindex="0" style="margin-top:' + (m.files.length ? 'var(--space-3)' : '0') + ';">' +
+            '<span class="dz-ic">' + ic('upload', 20) + '</span>' +
+            '<span class="dz-title">Drop a file here, or click to choose one</span>' +
+            '<span class="dz-hint">A picture, a video, a PDF, slides, or a training package. We work out which.</span>' +
+          '</div>') +
+        '</div>'
+      : '') +
+
+    (showQs
+      ? '<div class="ed-part">' +
+        '<div class="ed-h"><span class="ed-h-t">Questions</span>' +
+        '<span class="ed-h-n">' + (m.qs.length ? m.qs.length + ' added' : 'None yet') + '</span></div>' +
+        m.qs.map((q, qi) =>
+          '<div class="q-card">' +
+            '<div class="q-top"><span class="q-badge">' + (qi + 1) + '</span>' +
+            '<input class="input" data-q="' + qi + '" value="' + esc(q.q) + '" ' +
+              'aria-label="Question ' + (qi + 1) + '"' + (lk ? ' disabled' : '') + ' />' +
+            (lk ? '' : '<button class="btn btn-ghost is-sm" data-qdel="' + qi + '" aria-label="Remove question ' + (qi + 1) + '">' + ic('x', 14) + '</button>') +
+            '</div>' +
+            '<div class="q-opts">' + q.opts.map((o, oi) =>
+              '<div class="q-opt">' +
+                '<button type="button" class="q-mark' + (o.ok ? ' is-ok' : '') + '" ' +
+                  'data-ok="' + qi + '.' + oi + '" aria-pressed="' + o.ok + '"' + (lk ? ' disabled' : '') + '>' +
+                  ic(o.ok ? 'check' : 'circle', 14) + (o.ok ? 'Correct' : 'Mark correct') + '</button>' +
+                '<input class="input" data-opt="' + qi + '.' + oi + '" value="' + esc(o.t) + '" ' +
+                  'aria-label="Answer ' + (oi + 1) + '"' + (lk ? ' disabled' : '') + ' />' +
+                (lk || q.opts.length < 3 ? '' :
+                  '<button class="btn btn-ghost is-sm" data-odel="' + qi + '.' + oi + '" aria-label="Remove this answer">' + ic('x', 14) + '</button>') +
+              '</div>').join('') +
+            '</div>' +
+            (lk ? '' : '<div class="q-add"><button class="btn btn-ghost is-sm" data-oadd="' + qi + '">' + ic('plus', 14) + ' Add an answer</button></div>') +
+          '</div>').join('') +
+        (lk ? '' :
+          '<div class="ed-tools">' +
+            '<button class="btn btn-surface is-sm" id="addQ">' + ic('plus', 14) + ' Add a question</button>' +
+            '<button class="btn btn-soft is-sm" id="genQ">' + ic('sparkles', 14) + ' Write questions for me</button>' +
+          '</div>') +
+        '</div>'
+      : '') +
+
+    (adds.length ? '<div class="part-adds">' + adds.join('') + '</div>' : '') +
+
+    (m.covers
+      ? '<div class="ed-part"><div class="callout is-info rail-note"><span class="co-icon">' + ic('info', 18) + '</span>' +
+        '<span>This module is the one that covers <strong>' + m.covers.toLowerCase() + '</strong> for Ohio. ' +
+        'If you delete or hide it, that gap opens again.</span></div></div>'
+      : '') +
+  '</div>';
+}
+
+function modCard(x, i) {
+  const open = i === S.sel;
+  return '<div class="mod-card' + (open ? ' is-open' : '') + (x.hidden ? ' is-hidden' : '') + '">' +
+    '<div class="mod-head" data-mod="' + i + '" role="button" tabindex="0" ' +
+      'aria-expanded="' + open + '"' + (locked() ? '' : ' draggable="true"') + '>' +
+      (locked() ? '' : '<span class="mh-grip">' + ic('grip', 14) + '</span>') +
+      '<span class="mh-num">' + (i + 1) + '</span>' +
+      (S.renaming === i
+        ? '<input class="input mh-rename" id="renameBox" value="' + esc(x.n) + '" ' +
+          'aria-label="Rename module" maxlength="80" />'
+        : '<span class="mh-text"><span class="mh-name' + (x.n.trim() ? '' : ' is-untitled') + '">' +
+        (esc(x.n) || 'Untitled module') + '</span>' +
+      '<span class="mh-meta">' + x.m + ' min' +
+        (x.qs.length ? ', ' + x.qs.length + ' question' + (x.qs.length > 1 ? 's' : '') : '') +
+        (x.files.length ? ', ' + x.files.length + ' file' + (x.files.length > 1 ? 's' : '') : '') +
+        (x.hidden ? ', hidden' : '') + '</span></span>') +
+      (locked() || S.renaming === i ? '' :
+        '<span class="mh-actions">' +
+          (!x.body.trim()
+            ? '<button class="btn btn-surface is-sm mh-add" data-quickadd="' + i + '.body">' + ic('plus', 13) + ' Text</button>'
+            : !x.qs.length
+              ? '<button class="btn btn-surface is-sm mh-add" data-quickadd="' + i + '.qs">' + ic('plus', 13) + ' Questions</button>'
+              : '') +
+          '<button class="mh-act" data-rename="' + i + '" aria-label="Rename ' + esc(x.n || 'this module') + '">' + ic('pencil', 15) + '</button>' +
+          '<button class="mh-act" data-dupe="' + i + '" aria-label="Make a copy of ' + esc(x.n || 'this module') + '">' + ic('copy', 15) + '</button>' +
+          '<button class="mh-act is-danger" data-quickdel="' + i + '" aria-label="Delete ' + esc(x.n || 'this module') + '">' + ic('trash', 15) + '</button>' +
+        '</span>') +
+      (S.status === 'live'
+        ? '<span class="mh-eye" data-eye="' + i + '" role="button" tabindex="0" ' +
+          'aria-label="' + (x.hidden ? 'Show' : 'Hide') + ' this module to learners">' +
+          ic(x.hidden ? 'eyeoff' : 'eye', 15) + '</span>'
+        : '') +
+      '<span class="mh-chev">' + ic('chevd', 16) + '</span>' +
+    '</div>' +
+    (open ? modBody(x) : '') +
+  '</div>';
+}
+
+function stepContent() {
+  head('Build the course', S.built
+    ? 'Written from your document. Open a module to change it. One thing at a time, and it saves by itself.'
+    : 'Sections group your modules. Add a module, open it, and add what you need one piece at a time.');
+
+  if (!S.modules.length && S.addingMod < 0) {
+    $('stepBody').innerHTML =
+      '<div class="empty-state"><div class="empty-art is-ill">' + EMPTY_ART + '</div>' +
+      '<h2>No modules yet</h2><p>A module is one short chapter. Most courses have five or six, in two or three sections.</p>' +
+      '<button class="btn btn-solid" id="addModStart">' + ic('plus', 16) + ' Add the first module</button></div>';
+    return;
+  }
+  if (S.sel >= S.modules.length) S.sel = S.modules.length - 1;
+
+  const inlineAdd =
+    '<div class="mod-new">' +
+    '<input class="input" id="newModName" placeholder="Name the module, for example Hand hygiene" maxlength="80" />' +
+    '<button class="btn btn-solid is-sm" id="addModGo">Add</button>' +
+    '<button class="btn btn-ghost is-sm" id="addModCancel">Cancel</button></div>';
+
+  $('stepBody').innerHTML =
+    '<div class="mods">' +
+      S.sections.map((secName, si) => {
+        const mods = S.modules.map((x, i) => ({ x, i })).filter(p => p.x.sec === si);
+        return '<div class="sec-card">' +
+          '<div class="sec-head">' +
+            '<span class="sec-label">Section ' + (si + 1) + '</span>' +
+            (locked()
+              ? '<span class="sec-name" style="box-shadow:none;">' + esc(secName) + '</span>'
+              : '<input class="input sec-name" data-secname="' + si + '" value="' + esc(secName) + '" ' +
+                'aria-label="Section ' + (si + 1) + ' name" placeholder="Name this section" maxlength="80" />') +
+            '<span class="sec-meta">' + (mods.length ? mods.length + ' module' + (mods.length > 1 ? 's' : '') : 'Empty') + '</span>' +
+            (locked() || mods.length || S.sections.length < 2 ? '' :
+              '<button class="btn btn-ghost is-sm" data-delsec="' + si + '">Remove</button>') +
+          '</div>' +
+          mods.map(p => modCard(p.x, p.i)).join('') +
+          (locked() ? '' : S.addingMod === si ? inlineAdd :
+            '<button class="btn btn-ghost is-sm sec-addmod" data-addmod="' + si + '">' + ic('plus', 14) + ' Add a module</button>') +
+        '</div>';
+      }).join('') +
+      (locked() ? '' : S.addingSec
+        ? '<div class="mod-new">' +
+          '<input class="input" id="newSecName" placeholder="Name the section, for example Getting started" maxlength="80" />' +
+          '<button class="btn btn-solid is-sm" id="addSecGo">Add</button>' +
+          '<button class="btn btn-ghost is-sm" id="addSecCancel">Cancel</button></div>'
+        : '<div><button class="btn btn-surface" id="addSecStart">' + ic('plus', 16) + ' Add a section</button></div>') +
+    '</div>';
+  const nm = $('newModName') || $('newSecName');
+  if (nm) nm.focus();
+}
+
+function stepSettings() {
+  head('Settings', 'All of these have a default. Change what matters and move on.');
+  const s = S.settings;
+  const dd = (id, val) => '<button class="dropdown is-block" data-set="' + id + '" ' +
+    'aria-haspopup="listbox" aria-expanded="false">' +
+    '<span class="dd-val">' + esc(val) + '</span>' +
+    '<span class="dropdown-chevron">' + '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>' + '</span></button>';
+  $('stepBody').innerHTML =
+    '<div class="stack-4">' +
+      '<div class="field-row">' +
+        '<div class="field"><span class="field-label">Category</span>' + dd('category', s.category) + '</div>' +
+        '<div class="field"><label class="field-label" for="code">Course code</label>' +
+        '<input class="input" id="code" placeholder="Optional, for example FALL-101" value="' + esc(s.code) + '" /></div>' +
+      '</div>' +
+      '<div class="field-row">' +
+        '<div class="field"><label class="field-label" for="price">Price</label>' +
+        '<span class="money"><span class="cur">USD</span><input class="input" id="price" value="' + esc(s.price) + '" inputmode="decimal" /></span>' +
+        '<span class="field-hint">Leave at zero for internal training. Only external CE courses are ever charged.</span></div>' +
+        '<div class="field"><span class="field-label">Gamification level</span>' + dd('level', s.level) +
+        '<span class="field-hint">The level a learner must reach before this course unlocks.</span></div>' +
+      '</div>' +
+      '<hr class="divider" />' +
+      '<div class="field"><span class="field-label">How learners complete a module</span>' + dd('completion', s.completion) +
+      '<span class="field-hint">The default for every module. Override it on a single module in the builder. ' +
+      'A checkbox records that they clicked; a question records that they knew it; a timer records seat time, ' +
+      'which some states require in hours.</span></div>' +
+      (s.completion === 'A checkbox'
+        ? '<div class="callout is-warning"><span class="co-icon">' + ic('alert', 18) + '</span>' +
+          '<span>A checkbox is not defensible evidence for a state-required course. A surveyor can see that ' +
+          'someone clicked, not that they learned. Use a question unless this course is optional.</span></div>'
+        : '') +
+      '<hr class="divider" />' +
+      '<div class="field"><span class="field-label">Certificate</span>' + dd('certificate', s.certificate) +
+      '<span class="field-hint">Certificates are designed once for the whole organisation. ' +
+      '<a class="link" href="certificate.html">Manage certificates</a>.</span></div>' +
+      '<div class="field"><span class="field-label">Certificate valid for</span>' +
+        '<div class="radio-row">' +
+        '<label class="radio"><input type="radio" name="cd" value="forever"' + (s.certDur === 'forever' ? ' checked' : '') + ' /> Forever</label>' +
+        '<label class="radio"><input type="radio" name="cd" value="12"' + (s.certDur === '12' ? ' checked' : '') + ' /> 12 months</label>' +
+        '<label class="radio"><input type="radio" name="cd" value="24"' + (s.certDur === '24' ? ' checked' : '') + ' /> 24 months</label>' +
+        '</div></div>' +
+      '<label class="checkbox"><input type="checkbox" id="reassign"' + (s.reassign ? ' checked' : '') + ' /> Re-assign the course when the certificate expires</label>' +
+      '<label class="checkbox"><input type="checkbox" id="hidden"' + (s.hidden ? ' checked' : '') + ' /> Hide from the catalogue, assignment only</label>' +
+    '</div>';
+}
+
+function stepCompliance() {
+  const g = gaps();
+  head('Compliance', 'Checked against Ohio, Texas, Florida, Georgia, Washington and Arizona. Ohio is the strictest for this topic, so it is shown here.');
+  $('stepBody').innerHTML =
+    (g.length
+      ? '<div class="callout is-warning step-alert"><span class="co-icon">' + ic('alert', 18) + '</span>' +
+        '<span><strong>' + g.length + ' required ' + (g.length === 1 ? 'topic is' : 'topics are') + ' missing.</strong> ' +
+        'A survey would flag this course as incomplete. Add a module for each, or record why it does not apply.</span></div>'
+      : '<div class="callout is-success step-alert"><span class="co-icon">' + ic('info', 18) + '</span>' +
+        '<span>Every required topic is covered. This course is survey-ready for all six states.</span></div>') +
+    (S.settings.completion === 'A checkbox'
+      ? '<div class="callout is-warning step-alert"><span class="co-icon">' + ic('alert', 18) + '</span>' +
+        '<span><strong>Completion is set to a checkbox.</strong> Coverage below counts the topics, but a ' +
+        'checkbox does not prove the learner knew any of them. Change it in Settings.</span></div>'
+      : '') +
+    '<div class="table-wrap"><table class="table"><thead><tr>' +
+      '<th>Required topic</th><th>Covered by</th><th>Status</th></tr></thead><tbody>' +
+      REQS.map(r => {
+        const by = S.modules.find(m => m.covers === r.topic);
+        const ok = !!(by && !by.hidden);
+        return '<tr><td class="cell-strong">' + r.topic + '</td>' +
+          '<td>' + (by
+            ? (by.hidden
+                ? '<span class="cell-sub">' + esc(by.n) + ', hidden from learners</span>'
+                : '<span class="req-covered">' + esc(by.n) + '</span>')
+            : '<span class="cell-sub">Nothing in this course</span>') + '</td>' +
+          '<td>' + (ok ? '<span class="badge is-success">Covered</span>'
+            : '<span class="gap-actions"><span class="badge is-danger">Missing</span>' +
+              (locked() ? '' : '<button class="btn btn-soft is-sm" data-fix="' + esc(r.topic) + '">Add a module</button>') + '</span>') +
+          '</td></tr>';
+      }).join('') +
+    '</tbody></table></div>';
+}
+
+const STEP_FN = { 1: stepStart, 2: stepContent, 3: stepSettings, 4: stepCompliance };
+
+/* Options for the Settings dropdowns. A trigger that opens nothing is a dead
+   control, so every one of these is backed by a real list. */
+const SET_OPTS = {
+  category:    ['Safety and clinical', 'Compliance and regulatory', 'Onboarding', 'Resident experience', 'Leadership'],
+  level:       ['No level required', 'Level 2', 'Level 3', 'Level 5'],
+  certificate: ['Skypoint standard', 'State of Ohio format', 'Plain text', 'No certificate'],
+  completion:  ['A checkbox', 'A question', 'A timer']
+};
+
+const setMenu = document.createElement('div');
+setMenu.className = 'dropdown-menu';
+setMenu.setAttribute('role', 'listbox');
+setMenu.style.cssText = 'position:fixed;z-index:1200;';
+setMenu.hidden = true;
+document.body.appendChild(setMenu);
+let setKey = null;
+
+function openSet(btn) {
+  setKey = btn.dataset.set;
+  const cur = S.settings[setKey];
+  setMenu.innerHTML = SET_OPTS[setKey].map(o =>
+    '<div class="list-item' + (o === cur ? ' is-selected' : '') + '" role="option" data-opt="' + esc(o) +
+    '" aria-selected="' + (o === cur) + '">' +
+    '<span class="list-check" style="opacity:' + (o === cur ? 1 : 0) + ';">' + ic('check', 16) + '</span>' +
+    '<span>' + esc(o) + '</span></div>').join('');
+  setMenu.hidden = false;
+  const r = btn.getBoundingClientRect();
+  setMenu.style.width = r.width + 'px';
+  setMenu.style.top = (r.bottom + 6) + 'px';
+  setMenu.style.left = r.left + 'px';
+  btn.setAttribute('aria-expanded', 'true');
+}
+function closeSet() {
+  setMenu.hidden = true;
+  setKey = null;
+  document.querySelectorAll('[data-set]').forEach(b => b.setAttribute('aria-expanded', 'false'));
+}
+setMenu.addEventListener('click', e => {
+  const o = e.target.closest('[data-opt]');
+  if (!o || !setKey) return;
+  S.settings[setKey] = o.dataset.opt;
+  closeSet();
+  render();
+});
+</script>
+
+<script>
+/* ==============================================================
+   Footer actions. What the primary button says depends on who you
+   are and where the course is, which is the whole point of the role.
+   ============================================================== */
+function canAdvance() {
+  if (S.step === 1) {
+    if (!S.title.trim()) return 'Give the course a title to continue.';
+    if (!S.source) return 'Choose how you want to build it.';
+    if (S.source === 'ai' && !S.file) return 'Add a document to generate from.';
+    if (S.source === 'library' && S.libPick === null) return 'Pick a course to start from.';
+  }
+  if (S.step === 2 && !S.modules.length) return 'Add at least one module.';
+  if (S.step === 2 && S.modules.every(m => m.hidden)) return 'Every module is hidden, so learners would see nothing.';
+  if (S.step === 2 && S.modules.some(m => !m.n.trim())) return 'Every module needs a name.';
+  if (S.step === 2 && S.sections.some(s => !s.trim())) return 'Every section needs a name.';
+  return null;
+}
+
+/* Advice, not a gate. Things worth saying that must never trap someone: the
+   remedy for "no questions" lives in Settings, which is the next step, so
+   blocking here would make the fix unreachable. */
+function adviceAdvance() {
+  if (S.step === 2 && S.modules.length && !questions())
+    return 'No questions yet. You can add them now or set completion to a checkbox in Settings.';
+  if (S.step === 3 && S.settings.completion === 'A checkbox' && !questions())
+    return 'Checkbox completion with no questions is the weakest evidence a survey accepts.';
+  return null;
+}
+
+function renderFoot() {
+  const f = $('stepFoot');
+  if (locked()) {
+    f.innerHTML = '<span class="grow foot-note">' +
+      (S.status === 'review'
+        ? 'Submitted for review. An admin decides next. You cannot edit while it is being reviewed.'
+        : S.status === 'live' ? 'This course is live and assignable.' : 'Approved. Publish when you are ready.') +
+      '</span>' +
+      (S.role === 'instructor' && S.status === 'review'
+        ? '<button class="btn btn-surface" id="recall">Recall submission</button>' : '') +
+      (S.role === 'admin' && S.status === 'approved'
+        ? '<button class="btn btn-solid" id="publish">Publish</button>' : '');
+    return;
+  }
+  const last = S.step === STEPS.length;
+  const blocked = canAdvance();
+  const advice = blocked ? null : adviceAdvance();
+  const primary = last
+    ? (S.role === 'admin' ? 'Publish course' : 'Submit for review')
+    : 'Continue';
+  f.innerHTML =
+    (S.step > 1 ? '<button class="btn btn-surface" id="back">Back</button>' : '') +
+    '<span class="grow">' +
+      (blocked ? '<span class="field-hint is-block">' + blocked + '</span>'
+               : advice ? '<span class="field-hint">' + advice + '</span>' : '') +
+    '</span>' +
+    '<button class="btn btn-ghost" id="saveExit">Save and exit</button>' +
+    '<button class="btn btn-solid" id="next"' + (blocked ? ' disabled' : '') + '>' + primary + '</button>';
+}
+
+function renderBars() {
+  const cn = $('changeNote'), ab = $('adminBar');
+  cn.hidden = !(S.status === 'changes' && S.note);
+  if (!cn.hidden) {
+    cn.innerHTML = '<span class="co-icon">' + ic('alert', 18) + '</span>' +
+      '<span><strong>An admin asked for changes.</strong><br />' + esc(S.note) + '</span>';
+  }
+  ab.hidden = !(S.role === 'admin' && S.status === 'review');
+  if (!ab.hidden) {
+    ab.innerHTML = '<span class="co-icon">' + ic('info', 18) + '</span>' +
+      '<span class="rb-text"><strong>This course is waiting for your review.</strong><br />' +
+      'Submitted by Sumit Awinash. Read the content and compliance steps before deciding.' +
+      '<span class="rb-actions">' +
+        '<button class="btn btn-solid is-sm" id="approve">Approve</button>' +
+        '<button class="btn btn-surface is-sm" id="reqChanges">Request changes</button>' +
+      '</span></span>';
+  }
+}
+
+/* The published moment. Publishing is the end of the job, so it gets a screen
+   rather than a toast that slides away in three seconds. It reports what was
+   actually made, says plainly if the course went live with compliance gaps,
+   and offers the one thing that genuinely comes next: assigning it. */
+function showPublished() {
+  const g = gaps();
+  $('doneWrap').innerHTML =
+    '<div class="done-card">' + DONE_ART +
+      '<div class="done-h" id="doneH">' + esc(S.title) + ' is live</div>' +
+      '<div class="done-p">Learners can be assigned to it from now on. Nothing they have already ' +
+      'completed is affected.</div>' +
+      '<div class="done-facts">' +
+        '<span class="df"><span class="df-v">' + S.sections.length + '</span><span class="df-l">sections</span></span>' +
+        '<span class="df"><span class="df-v">' + S.modules.length + '</span><span class="df-l">modules</span></span>' +
+        '<span class="df"><span class="df-v">' + questions() + '</span><span class="df-l">questions</span></span>' +
+        '<span class="df"><span class="df-v">' + mins() + '</span><span class="df-l">minutes</span></span>' +
+        '<span class="df"><span class="df-v">' + covered() + '/' + REQS.length + '</span><span class="df-l">Ohio topics</span></span>' +
+      '</div>' +
+      (g.length
+        ? '<div class="callout is-warning done-note"><span class="co-icon">' + ic('alert', 18) + '</span>' +
+          '<span>It went live still missing <strong>' + g.map(x => x.topic.toLowerCase()).join(' and ') +
+          '</strong>. A surveyor counts topics, so add those modules before this course is relied on.</span></div>'
+        : '<div class="callout is-success done-note"><span class="co-icon">' + ic('info', 18) + '</span>' +
+          '<span>Every topic Ohio requires is covered. This course is survey-ready.</span></div>') +
+      '<div class="done-acts">' +
+        '<a class="btn btn-solid is-lg" href="assign.html">Assign it to learners</a>' +
+        '<button class="btn btn-surface is-lg" id="doneClose">Keep editing</button>' +
+        '<a class="btn btn-ghost is-lg" href="courses.html">Back to courses</a>' +
+      '</div>' +
+    '</div>';
+  $('doneWrap').hidden = false;
+  const b = $('doneClose'); if (b) b.focus();
+}
+
+function render() {
+  renderStepper(); renderLife(); renderRail(); renderBars();
+  STEP_FN[S.step]();
+  renderFoot();
+  $('hdrRole').textContent = S.role === 'admin' ? 'Administrator' : 'Instructor';
+  $('pageSub').textContent = S.role === 'admin'
+    ? 'You can publish directly. Courses from instructors come to you for review first.'
+    : 'Start from a document and skyLearn drafts the modules and questions for you.';
+}
+</script>
+
+<script>
+/* ==============================================================
+   Generation. The delight is watching real work happen, so the
+   steps name what is actually being done and tick off in order.
+   ============================================================== */
+const BUILD = [
+  'Reading ' + DOC.name,
+  'Finding the topics it covers',
+  'Writing modules',
+  'Writing quiz questions',
+  'Checking against Ohio requirements'
+];
+
+function generate(done) {
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  head('Building your course', 'This takes a few seconds. You can watch, or step away.');
+  $('stepBody').innerHTML = '<div class="build-list">' + BUILD.map((b, i) =>
+    '<div class="build-row" id="b' + i + '"><span class="build-mark"><span class="build-dot"></span></span>' +
+    '<span>' + esc(b) + '</span></div>').join('') + '</div>';
+  $('stepFoot').innerHTML = '';
+
+  const tick = reduce ? 60 : 900;
+  BUILD.forEach((_, i) => {
+    setTimeout(() => {
+      const row = $('b' + i);
+      if (!row) return;
+      row.className = 'build-row is-doing';
+      if (i > 0) {
+        const prev = $('b' + (i - 1));
+        prev.className = 'build-row is-done';
+        prev.querySelector('.build-mark').innerHTML = ic('check', 16);
+      }
+    }, i * tick);
+  });
+  setTimeout(() => {
+    const lastRow = $('b' + (BUILD.length - 1));
+    if (lastRow) {
+      lastRow.className = 'build-row is-done';
+      lastRow.querySelector('.build-mark').innerHTML = ic('check', 16);
+    }
+    S.buildSecs = Math.round(BUILD.length * tick / 1000) || 1;
+    setTimeout(done, reduce ? 60 : 500);
+  }, BUILD.length * tick);
+}
+</script>
+
+<script>
+/* ==============================================================
+   Behaviour
+   ============================================================== */
+function go(step) { S.step = step; S.done = Math.max(S.done, step - 1); render(); }
+
+let saveT;
+function flagSaved() {
+  const el = $('saved');
+  if (!el) return;
+  el.textContent = 'Saving';
+  el.classList.remove('is-on');
+  clearTimeout(saveT);
+  saveT = setTimeout(() => { el.textContent = 'Saved'; el.classList.add('is-on'); }, 400);
+}
+
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.id === 'title') { S.title = t.value; renderRail(); renderFoot(); }
+  if (t.id === 'code')  S.settings.code = t.value;
+  if (t.id === 'price') S.settings.price = t.value;
+
+  /* Editing writes straight to the model. Re-rendering on every keystroke would
+     steal the caret, so only the outline label and the rail are refreshed. */
+  if (t.id === 'renameBox') {
+    S.modules[S.renaming].n = t.value;
+    flagSaved();
+  }
+  if (t.id === 'modName') {
+    cur().n = t.value;
+    const label = document.querySelector('[data-mod="' + S.sel + '"] .mh-name');
+    if (label) {
+      label.textContent = t.value.trim() || 'Untitled module';
+      label.classList.toggle('is-untitled', !t.value.trim());
+    }
+    flagSaved();
+  }
+  if (t.id === 'modBody') { cur().body = t.value; flagSaved(); }
+  if (t.dataset && t.dataset.secname !== undefined) { S.sections[+t.dataset.secname] = t.value; flagSaved(); }
+  if (t.dataset && t.dataset.q !== undefined) { cur().qs[+t.dataset.q].q = t.value; flagSaved(); }
+  if (t.dataset && t.dataset.opt !== undefined) {
+    const [qi, oi] = t.dataset.opt.split('.').map(Number);
+    cur().qs[qi].opts[oi].t = t.value;
+    flagSaved();
+  }
+});
+
+document.addEventListener('change', e => {
+  if (e.target.name === 'cd')       S.settings.certDur = e.target.value;
+  if (e.target.id === 'reassign')   S.settings.reassign = e.target.checked;
+  if (e.target.id === 'hidden')     S.settings.hidden = e.target.checked;
+});
+
+document.addEventListener('click', e => {
+  const t = e.target;
+
+  /* Clicking anywhere else commits an in-row rename rather than losing it */
+  if (S.renaming >= 0 && !t.closest('#renameBox')) { S.renaming = -1; render(); }
+
+  const setBtn = t.closest('[data-set]');
+  if (setBtn) {
+    e.stopPropagation();
+    const wasOpen = !setMenu.hidden && setKey === setBtn.dataset.set;
+    closeSet();
+    if (!wasOpen) openSet(setBtn);
+    return;
+  }
+  if (!setMenu.hidden && !t.closest('.dropdown-menu')) closeSet();
+
+  const stepBtn = t.closest('.step[data-step]');
+  if (stepBtn && !stepBtn.disabled) return go(+stepBtn.dataset.step);
+
+
+  const dBtn = t.closest('[data-d]');
+  if (dBtn) { S.delivery = dBtn.dataset.d; return render(); }
+
+  const src = t.closest('[data-src]');
+  if (src) { S.source = src.dataset.src; S.file = null; S.libPick = null; return render(); }
+
+  if (t.closest('#dropzone')) {
+    S.file = DOC;
+    toast('Document added.', DOC.name + ' is ready to build from.');
+    return render();
+  }
+  if (t.closest('#dropClear')) { S.file = null; return render(); }
+
+  const lib = t.closest('[data-lib]');
+  if (lib) { S.libPick = +lib.dataset.lib; return render(); }
+
+  /* Visibility toggle sits before the row handler so it does not also select */
+  const eye = t.closest('[data-eye]');
+  if (eye) {
+    e.stopPropagation();
+    const i = +eye.dataset.eye, m = S.modules[i];
+    m.hidden = !m.hidden;
+    if (m.covers) {
+      toast(m.hidden ? 'Hidden, and Ohio is short again.' : 'Visible again, Ohio is covered.',
+        m.covers + ' is ' + (m.hidden ? 'no longer' : 'once more') + ' covered by this course.');
+    }
+    return render();
+  }
+
+  /* --- row actions. Each returns, so the accordion never also toggles. --- */
+  const rn = t.closest('[data-rename]');
+  if (rn) {
+    e.stopPropagation();
+    S.renaming = +rn.dataset.rename;
+    S.renameOrig = S.modules[S.renaming].n;
+    render();
+    const box = $('renameBox');
+    if (box) { box.focus(); box.select(); }
+    return;
+  }
+
+  const dup = t.closest('[data-dupe]');
+  if (dup) {
+    e.stopPropagation();
+    const at = +dup.dataset.dupe;
+    /* Deep copy, so editing the copy cannot reach back into the original. */
+    const copy = JSON.parse(JSON.stringify(S.modules[at]));
+    copy.n = (copy.n || 'Untitled module') + ' (copy)';
+    /* One module covers a requirement. The copy does not inherit the claim,
+       or two modules would both say they satisfy the same state rule. */
+    copy.covers = null;
+    S.modules.splice(at + 1, 0, copy);
+    if (S.sel > at) S.sel++;
+    toast('Copied.', 'Everything in it came too: text, files and questions.');
+    return render();
+  }
+
+  const qd = t.closest('[data-quickdel]');
+  if (qd) {
+    e.stopPropagation();
+    const at = +qd.dataset.quickdel, m = S.modules[at];
+    S.modules.splice(at, 1);
+    if (S.sel === at) S.sel = -1; else if (S.sel > at) S.sel--;
+    undo = () => { S.modules.splice(at, 0, m); S.sel = -1; undo = null; render(); };
+    toast('Module deleted.', 'Press Undo below if that was a mistake.', 'Undo');
+    return render();
+  }
+
+  const qa = t.closest('[data-quickadd]');
+  if (qa) {
+    e.stopPropagation();
+    const [at, part] = qa.dataset.quickadd.split('.');
+    S.sel = +at;                 /* open it and reveal just that part */
+    S.parts = {};
+    S.parts[part] = true;
+    if (part === 'qs' && !S.modules[+at].qs.length) {
+      S.modules[+at].qs.push({ q: '', opts: [{ t: '', ok: true }, { t: '', ok: false }, { t: '', ok: false }] });
+    }
+    render();
+    const focusOn = part === 'body' ? $('modBody') : document.querySelector('[data-q="0"]');
+    if (focusOn) focusOn.focus();
+    return;
+  }
+
+  const row = t.closest('[data-mod]');
+  if (row) {
+    if (S.renaming >= 0) return;   /* the row is an input right now */
+    const i = +row.dataset.mod;
+    S.sel = S.sel === i ? -1 : i;   /* second click collapses, like Udemy */
+    S.parts = {};
+    return render();
+  }
+
+  /* Reveal one empty part in place */
+  const part = t.closest('[data-part]');
+  if (part) {
+    S.parts[part.dataset.part] = true;
+    render();
+    if (part.dataset.part === 'body') { const b = $('modBody'); if (b) b.focus(); }
+    return;
+  }
+
+  /* Inline add: name first, inside the section it will live in */
+  const am = t.closest('[data-addmod]');
+  if (am) { S.addingMod = +am.dataset.addmod; S.addingSec = false; return render(); }
+  if (t.closest('#addModStart')) {
+    if (!S.sections.length) S.sections = ['Section 1'];
+    S.addingMod = 0;
+    return render();
+  }
+  if (t.closest('#addModCancel')) { S.addingMod = -1; return render(); }
+  if (t.closest('#addModGo')) {
+    const name = ($('newModName') ? $('newModName').value : '').trim();
+    if (!name) { $('newModName').focus(); return; }
+    const si = S.addingMod;
+    /* Append at the end of this section, keeping sections contiguous */
+    let at = S.modules.length;
+    for (let i = S.modules.length - 1; i >= 0; i--) {
+      if (S.modules[i].sec === si) { at = i + 1; break; }
+      if (S.modules[i].sec < si) { at = i + 1; break; }
+      at = i;
+    }
+    S.modules.splice(at, 0, { n: name, sec: si, m: 5, covers: null, hidden: false, comp: null, body: '', files: [], qs: [] });
+    S.addingMod = -1;
+    S.sel = at;                     /* open it, ready for its first part */
+    S.parts = { body: true };
+    return render();
+  }
+
+  if (t.closest('#addSecStart')) { S.addingSec = true; S.addingMod = -1; return render(); }
+  if (t.closest('#addSecCancel')) { S.addingSec = false; return render(); }
+  if (t.closest('#addSecGo')) {
+    const name = ($('newSecName') ? $('newSecName').value : '').trim();
+    if (!name) { $('newSecName').focus(); return; }
+    S.sections.push(name);
+    S.addingSec = false;
+    S.addingMod = S.sections.length - 1;   /* straight into naming its first module */
+    return render();
+  }
+  const dsec = t.closest('[data-delsec]');
+  if (dsec) {
+    const si = +dsec.dataset.delsec;
+    S.sections.splice(si, 1);
+    S.modules.forEach(m => { if (m.sec > si) m.sec--; });
+    return render();
+  }
+
+  const cp = t.closest('[data-comp]');
+  if (cp) { cur().comp = cp.dataset.comp || null; return render(); }
+
+  const qdel = t.closest('[data-qdel]');
+  if (qdel) { cur().qs.splice(+qdel.dataset.qdel, 1); return render(); }
+
+  /* Marking the correct answer. Several can be correct, so this toggles. */
+  const okBtn = t.closest('[data-ok]');
+  if (okBtn) {
+    const [qi, oi] = okBtn.dataset.ok.split('.').map(Number);
+    const o = cur().qs[qi].opts[oi];
+    o.ok = !o.ok;
+    return render();
+  }
+  const oadd = t.closest('[data-oadd]');
+  if (oadd) { cur().qs[+oadd.dataset.oadd].opts.push({ t: '', ok: false }); return render(); }
+  const odel = t.closest('[data-odel]');
+  if (odel) {
+    const [qi, oi] = odel.dataset.odel.split('.').map(Number);
+    cur().qs[qi].opts.splice(oi, 1);
+    return render();
+  }
+
+  if (t.closest('#addQ')) {
+    cur().qs.push({ q: '', opts: [{ t: '', ok: true }, { t: '', ok: false }, { t: '', ok: false }] });
+    return render();
+  }
+
+  /* AI where the work is, phrased as the job rather than the technology */
+  if (t.closest('#genQ')) {
+    const m = cur();
+    if (!m.body.trim()) return toast('Write something first.', 'Questions are written from what is in this module.');
+    m.qs.push({ q: 'From this module: ' + m.body.split('.')[0].trim().toLowerCase() + '?',
+      opts: [{ t: 'Yes', ok: true }, { t: 'No', ok: false }, { t: 'Only sometimes', ok: false }] });
+    toast('One question written.', 'Check the wording and the correct answer before you submit.');
+    return render();
+  }
+  const ai = t.closest('[data-ai]');
+  if (ai) {
+    const m = cur();
+    if (!m.body.trim()) return toast('Nothing to change yet.');
+    if (ai.dataset.ai === 'shorter') {
+      m.body = m.body.split('. ').slice(0, 2).join('. ').replace(/\.?$/, '.');
+      toast('Shortened.', 'The original is one undo away.');
+    } else {
+      m.body = m.body.replace(/approximately/gi, 'about').replace(/utilise/gi, 'use')
+                     .replace(/commence/gi, 'start').replace(/prior to/gi, 'before');
+      toast('Simpler words used where we found them.');
+    }
+    return render();
+  }
+
+  /* One drop target for every kind of file */
+  if (t.closest('#fileDrop')) {
+    const m = cur();
+    m.files.push(DROPPED[m.files.length % DROPPED.length]);
+    const f = m.files[m.files.length - 1];
+    toast(FILE_WORD[f.kind] + ' added.', esc(f.name) + ' is now part of this module.');
+    return render();
+  }
+  const fdel = t.closest('[data-fdel]');
+  if (fdel) { cur().files.splice(+fdel.dataset.fdel, 1); return render(); }
+
+  /* Move buttons, because drag is not reliable for everyone. At a section
+     boundary the module steps into the neighbouring section rather than
+     stopping, so the buttons alone can reach any position in the course. */
+  if (t.closest('#moveUp') || t.closest('#moveDown')) {
+    const up = !!t.closest('#moveUp');
+    const i = S.sel, m = S.modules[i];
+    const nb = S.modules[i + (up ? -1 : 1)];
+    if (nb && nb.sec === m.sec) {
+      const to = i + (up ? -1 : 1);
+      const [x] = S.modules.splice(i, 1);
+      S.modules.splice(to, 0, x);
+      S.sel = to;
+    } else if (up && m.sec > 0) {
+      m.sec--;
+    } else if (!up && m.sec < S.sections.length - 1) {
+      m.sec++;
+    } else {
+      return;
+    }
+    return render();
+  }
+
+  /* Undo, not a confirm dialog. A dialog stops someone who was right; undo
+     rescues someone who was wrong, and costs the first person nothing. */
+  if (t.closest('#delMod')) {
+    const m = cur(), at = S.sel;
+    S.modules.splice(at, 1);
+    S.sel = -1;
+    undo = () => { S.modules.splice(at, 0, m); S.sel = at; undo = null; render(); };
+    toast('Module deleted.', 'Press Undo below if that was a mistake.', 'Undo');
+    return render();
+  }
+
+  if (t.closest('#undoBtn') && undo) return undo();
+
+
+
+  const fix = t.closest('[data-fix]');
+  if (fix) {
+    const topic = fix.dataset.fix;
+    /* Slot it before the final knowledge check, which belongs last */
+    const at = S.modules.findIndex(m => !m.body.trim() && m.qs.length);
+    const tsec = at >= 0 ? S.modules[at].sec : Math.max(0, S.sections.length - 1);
+    const mod = { n: topic, sec: tsec, m: 4, covers: topic, hidden: false, comp: null, files: [],
+                  body: 'Written from your document. Read this through before you submit the course.',
+                  qs: [{ q: 'Why does ' + topic.toLowerCase() + ' matter?',
+                         opts: [{ t: 'It is required and it protects the resident', ok: true },
+                                { t: 'It is optional guidance', ok: false },
+                                { t: 'It applies only to nurses', ok: false }] }] };
+    S.modules.splice(at < 0 ? S.modules.length : at, 0, mod);
+    S.sel = S.modules.indexOf(mod);
+    S.parts = {};
+    toast('Module added for ' + topic.toLowerCase() + '.', 'Open the Build step to write it.');
+    return render();
+  }
+
+  if (t.closest('#back'))     return go(S.step - 1);
+  if (t.closest('#saveExit')) { toast('Draft saved.', 'Find it under Courses, Drafts.'); return; }
+
+  if (t.closest('#next')) {
+    if (canAdvance()) return;
+    /* Leaving step 1 with a document is the one place we do real work */
+    if (S.step === 1 && !S.built) {
+      S.done = 1;
+      if (S.source === 'ai') {
+        renderStepper(); renderLife(); renderRail();
+        return generate(() => {
+          S.modules = MODULES.map(m => ({ ...m }));
+          S.sections = SECS.slice();
+          S.built = true;
+          S.sel = -1;             /* collapsed list first: read the shape, then open one */
+          go(2);
+          toast('Course drafted.', S.modules.length + ' modules, ' + questions() + ' questions, about ' + mins() + ' minutes.');
+        });
+      }
+      if (S.source === 'library') {
+        S.modules = MODULES.map(m => ({ ...m }));
+        S.sections = SECS.slice();
+        S.built = true;
+        toast('Copied from the library.', 'Edit anything you like. The original is untouched.');
+      }
+      return go(2);
+    }
+    if (S.step < STEPS.length) return go(S.step + 1);
+
+    /* Last step: submit or publish, depending on who you are */
+    S.done = STEPS.length;
+    if (S.role === 'admin') {
+      S.status = 'live';
+      render();
+      return showPublished();
+    } else {
+      S.status = 'review';
+      toast('Sent for review.', 'An admin will approve it or ask for changes.');
+    }
+    return render();
+  }
+
+  if (t.closest('#approve')) {
+    S.status = 'approved';
+    toast('Approved.', 'Publish it to make it assignable.');
+    return render();
+  }
+  if (t.closest('#publish')) {
+    S.status = 'live';
+    render();
+    return showPublished();
+  }
+  if (t.closest('#reqChanges')) {
+    const g = gaps();
+    S.note = g.length
+      ? 'Ohio also requires ' + g.map(x => x.topic.toLowerCase()).join(' and ') +
+        '. Add a module for each before resubmitting.'
+      : 'Please shorten module 4. It runs longer than a single shift break allows.';
+    S.status = 'changes';
+    toast('Changes requested.', 'The instructor can see your note and edit again.');
+    return render();
+  }
+  if (t.closest('#doneClose')) { $('doneWrap').hidden = true; return; }
+
+  if (t.closest('#recall')) {
+    S.status = 'draft';
+    toast('Submission recalled.', 'The course is a draft again and you can edit it.');
+    return render();
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !$('doneWrap').hidden) { $('doneWrap').hidden = true; return; }
+  if (e.target.id === 'renameBox') {
+    if (e.key === 'Enter') { e.preventDefault(); S.renaming = -1; return render(); }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      S.modules[S.renaming].n = S.renameOrig;
+      S.renaming = -1;
+      return render();
+    }
+    return;
+  }
+  if (e.key === 'Enter' && e.target.id === 'newModName') { e.preventDefault(); const b = $('addModGo'); if (b) b.click(); return; }
+  if (e.key === 'Enter' && e.target.id === 'newSecName') { e.preventDefault(); const b = $('addSecGo'); if (b) b.click(); return; }
+  if (e.key === 'Escape' && S.addingMod >= 0) { S.addingMod = -1; return render(); }
+  if (e.key === 'Escape' && S.addingSec) { S.addingSec = false; return render(); }
+  if (e.key === 'Escape' && !setMenu.hidden) return closeSet();
+  /* Outline rows are divs with role=button, so Enter and Space must work */
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.closest && e.target.closest('[data-mod],[data-eye]')) {
+    e.preventDefault();
+    e.target.click();
+  }
+});
+
+/* ---- Drag to reorder. Delegated, because the list re-renders. ---- */
+let dragFrom = null;
+document.addEventListener('dragstart', e => {
+  const r = e.target.closest && e.target.closest('[data-mod]');
+  if (!r) return;
+  dragFrom = +r.dataset.mod;
+  e.dataTransfer.effectAllowed = 'move';
+});
+document.addEventListener('dragover', e => {
+  const r = e.target.closest && e.target.closest('[data-mod]');
+  if (!r || dragFrom === null) return;
+  e.preventDefault();
+  document.querySelectorAll('.mod-card.is-over').forEach(x => x.classList.remove('is-over'));
+  r.closest('.mod-card').classList.add('is-over');
+});
+document.addEventListener('drop', e => {
+  const r = e.target.closest && e.target.closest('[data-mod]');
+  if (!r || dragFrom === null) return;
+  e.preventDefault();
+  const to = +r.dataset.mod;
+  if (to !== dragFrom) {
+    const tsec = S.modules[to].sec;    /* land in the section you dropped on */
+    const [m] = S.modules.splice(dragFrom, 1);
+    m.sec = tsec;
+    S.modules.splice(to, 0, m);
+    S.sel = to;
+  }
+  dragFrom = null;
+  render();
+});
+document.addEventListener('dragend', () => {
+  dragFrom = null;
+  document.querySelectorAll('.mod-card.is-over').forEach(x => x.classList.remove('is-over'));
+});
+
+$('themeBtn').addEventListener('click', () => {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+  $('themeBtn').setAttribute('aria-label', dark ? 'Switch to dark theme' : 'Switch to light theme');
+});
+
+/* ==============================================================
+   Entry points.
+     (no params)          a blank course, the admin builds it
+     ?course=falls        one complete course, every step filled in
+     ?status=review       the same course, submitted and awaiting approval
+     ?role=instructor     the other half of the approval loop
+   ============================================================== */
+
+/* One finished course. Everything a real one carries: three sections, six
+   written modules, a file, eighteen answered questions, settings chosen, and
+   two Ohio topics still missing so the compliance step has something to say. */
+function loadSample(status) {
+  S.title    = 'Preventing Falls in Senior Living';
+  S.delivery = 'self';
+  S.source   = 'ai';
+  S.file     = DOC;
+  S.sections = SECS.slice();
+  S.modules  = JSON.parse(JSON.stringify(MODULES));
+  S.built    = true;
+  S.buildSecs = 5;
+  S.settings = {
+    category: 'Safety and clinical',
+    code: 'FALL-101',
+    price: '0.00',
+    level: 'No level required',
+    certificate: 'State of Ohio format',
+    certDur: '12',
+    reassign: true,
+    hidden: false,
+    completion: 'A question'
+  };
+  S.status = status || 'draft';
+  S.done   = STEPS.length;      /* every step already reachable */
+  S.sel    = -1;                /* the module list starts collapsed, as a review view */
+  S.parts  = {};
+}
+
+const qs = new URLSearchParams(location.search);
+if (['ai', 'library', 'blank'].includes(qs.get('source'))) S.source = qs.get('source');
+if (qs.get('role') === 'instructor') S.role = 'instructor';
+
+if (qs.get('course')) {
+  loadSample('draft');
+  S.step = 1;                   /* start at the top so all four steps can be walked */
+}
+if (qs.get('status') === 'review') {
+  S.role = 'admin';
+  loadSample('review');
+  S.step = 4;                   /* an admin reviewing lands on compliance */
+}
+
+render();
+
+const viewAsBtn = document.getElementById('viewAsBtn');
+if (viewAsBtn) {
+  const menu = document.getElementById('viewAs');
+  viewAsBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = !menu.hidden;
+    menu.hidden = open;
+    viewAsBtn.setAttribute('aria-expanded', String(!open));
+  });
+  document.addEventListener('click', () => {
+    if (!menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+}
+
+/* Collapsing the rail is shell behaviour, so every page does it. It was
+   markup on twenty pages and wired on one, and standardising the nav dropped
+   the id the one handler depended on. */
+const railBtn = document.getElementById('railBtn');
+if (railBtn) {
+  railBtn.addEventListener('click', () => {
+    const shell = document.querySelector('.app-shell');
+    const side  = document.querySelector('.app-sidebar');
+    const on = shell.style.gridTemplateColumns === '0px 1fr';
+    shell.style.gridTemplateColumns = on ? '256px 1fr' : '0px 1fr';
+    if (side) side.style.visibility = on ? 'visible' : 'hidden';
+    railBtn.setAttribute('aria-label', on ? 'Collapse navigation' : 'Expand navigation');
+  });
+}
+</script>
+</body>
+</html>

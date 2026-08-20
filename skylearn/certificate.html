@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<!--
+  skyLearn - Certifications > Certificates, Radix flavour.
+  Two views in one file: the list of certificate templates the organisation
+  owns, and the builder that edits one with a live preview.
+
+  Certificates are ORG-LEVEL assets. A course's Settings step picks one from
+  this list; it does not design its own. See CERTIFICATE-IA.md.
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>skyLearn &middot; Certificates</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Source+Serif+4:wght@400;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../tokens.css?v=102" />
+<link rel="stylesheet" href="../dashboard.css?v=102" />
+<style>
+  .kpi-row, .split-2, .split-even { gap: var(--space-5); }
+  .split-2, .split-even { align-items: stretch; }
+  /* Shell bits shared with the other skyLearn screens */
+  .ph-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-5); flex-wrap: wrap; }
+  .ph-text { min-width: 0; }
+  .ph-cta { flex: 0 0 auto; margin-left: auto; }
+
+  /* --- List --------------------------------------------------------- */
+  .cert-thumb { width: 96px; height: 62px; border-radius: var(--radius-2); flex: 0 0 auto;
+    box-shadow: inset 0 0 0 1px var(--border-subtle); overflow: hidden; background: var(--color-surface); }
+  .cert-thumb .cp { transform: scale(.148); transform-origin: 0 0; pointer-events: none; }
+  .cell-cert { display: flex; align-items: center; gap: var(--space-4); }
+  .cell-name { display: flex; flex-direction: column; }   /* §14 stacked label */
+  .cell-name .cn-role { font-size: var(--fs-1); color: var(--fg-low); }
+
+  /* --- Builder: fields left, live preview right --------------------- */
+  .builder { display: grid; grid-template-columns: 380px 1fr; gap: var(--space-5); align-items: start; }
+  @media (max-width: 1080px) { .builder { grid-template-columns: 1fr; } }
+  .panel { position: sticky; top: var(--space-5); }
+  .fields { display: flex; flex-direction: column; gap: var(--space-4); margin-top: var(--space-4); }
+  .switch-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+  .switch-row + .switch-row { margin-top: var(--space-3); padding-top: var(--space-3);
+    border-top: var(--stroke-thin) solid var(--border-subtle); }
+  .sr-text { display: flex; flex-direction: column; min-width: 0; }
+  .sr-name { font-size: var(--fs-2); color: var(--fg-high); }
+  .sr-why { font-size: var(--fs-1); color: var(--fg-low); margin-top: 1px; }
+  .drop-sm { display: flex; align-items: center; justify-content: center; gap: var(--space-2);
+    padding: var(--space-4); border-radius: var(--radius-3); background: var(--color-panel-solid);
+    box-shadow: inset 0 0 0 1px var(--border-ui); cursor: pointer; font-size: var(--fs-2); color: var(--fg-low); }
+  .drop-sm:hover { background: var(--accent-2); box-shadow: inset 0 0 0 1px var(--accent-8); }
+
+  /* Curated swatches instead of a colour wheel: the authors are not designers,
+     and an arbitrary hex produces off-brand, low-contrast certificates. */
+  .swatches { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-2); }
+  .swatch { width: 30px; height: 30px; border-radius: var(--radius-2); cursor: pointer;
+    box-shadow: inset 0 0 0 1px var(--border-ui); }
+  .swatch[aria-pressed="true"] { box-shadow: inset 0 0 0 var(--stroke-thick) var(--fg-high), 0 0 0 2px var(--color-panel-solid); }
+
+  /* --- The certificate itself --------------------------------------- */
+  .stage { display: flex; align-items: center; justify-content: center; padding: var(--space-6);
+    background: var(--gray-3); border-radius: var(--radius-4); min-height: 460px; }
+  .cp { width: 640px; height: 420px; flex: 0 0 auto; background: #FFFFFF; color: #1A1A1A;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 34px 48px; text-align: center; position: relative; }
+  .cp.b-line   { box-shadow: inset 0 0 0 2px var(--cp-accent); }
+  .cp.b-double { box-shadow: inset 0 0 0 2px var(--cp-accent), inset 0 0 0 8px #FFFFFF, inset 0 0 0 10px var(--cp-accent); }
+  .cp.f-serif  { font-family: "Source Serif 4", Georgia, serif; }
+  .cp.f-sans   { font-family: var(--font-base); }
+  .cp-serial { position: absolute; top: 18px; right: 22px; font-size: 9px; letter-spacing: .06em;
+    text-transform: uppercase; color: #8A8A8A; }
+  .cp-logo { width: 54px; height: 54px; border-radius: 6px; background: var(--cp-accent); color: #fff;
+    display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px; margin-bottom: 12px; }
+  .cp-org { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: #6E6E6E; }
+  .cp-title { color: var(--cp-accent); font-weight: 700; line-height: 1.15; margin-top: 10px; }
+  .cp-title.s-sm { font-size: 22px; } .cp-title.s-md { font-size: 28px; } .cp-title.s-lg { font-size: 34px; }
+  .cp-sub { font-size: 12px; color: #6E6E6E; margin-top: 12px; }
+  .cp-name { font-size: 26px; font-weight: 700; margin-top: 4px; }
+  .cp-rule { width: 220px; height: 1px; background: #DCDCDC; margin: 12px 0; }
+  .cp-course { font-size: 13px; color: #3A3A3A; max-width: 460px; }
+  .cp-facts { display: flex; gap: 22px; flex-wrap: wrap; justify-content: center; margin-top: 14px; }
+  .cp-fact { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #8A8A8A; }
+  .cp-fact b { display: block; font-size: 12px; letter-spacing: 0; text-transform: none; color: #1A1A1A; margin-top: 2px; }
+  .cp-sign { margin-top: auto; padding-top: 16px; }
+  .cp-sigline { width: 170px; height: 1px; background: #1A1A1A; margin: 0 auto 4px; }
+  .cp-signer { font-size: 11px; color: #1A1A1A; } .cp-role { font-size: 10px; color: #8A8A8A; }
+
+  .tpl-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); }
+  .tpl { padding: var(--space-2); display: flex; flex-direction: column; gap: var(--space-2); align-items: stretch; }
+  .tpl-shot { height: 96px; border-radius: var(--radius-2); overflow: hidden; box-shadow: inset 0 0 0 1px var(--border-subtle); background: #fff; }
+  .tpl-shot .cp { transform: scale(.225); transform-origin: 0 0; }
+  .tpl-name { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); text-align: center; }
+
+  .toast-stack { position: fixed; left: 50%; bottom: var(--space-6); transform: translateX(-50%);
+    display: flex; flex-direction: column; gap: var(--space-2); z-index: 1400; }
+  .toast-stack .toast { animation: t-in .2s ease-out; }
+  @keyframes t-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header is-dark">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect width="24" height="24" rx="6" fill="var(--accent-9)"/><text x="12" y="16.5" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-contrast)">S</text></svg>
+      <span>skyLearn</span>
+    </div>
+    <div class="search hdr-search">
+      <span class="search-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+      <label class="sr-only" for="q">Search</label>
+      <input class="input" id="q" type="search" placeholder="Search certificates" autocomplete="off" />
+    </div>
+    <div class="header-right">
+      <span class="presence"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg><span><strong class="pt-num">4</strong> points</span></span>
+      <button class="icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="ic-badge">3</span></button>
+      <button class="icon-btn" id="themeBtn" aria-label="Switch to dark theme"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+      <span class="divider-v"></span>
+      <span class="header-wrap">
+        <button class="header-user" id="viewAsBtn" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar c6">SA</span>
+          <span class="hu-id"><span class="hu-name">Sumit Awinash</span><span class="hu-role">Administrator</span></span>
+        </button>
+        <div class="view-as" id="viewAs" role="menu" hidden>
+          <div class="view-as-t">View as</div>
+          <a href="index.html" role="menuitem" aria-current="true"><span class="vr"></span>
+            <span class="vw">Administrator<span>Everything, across all six communities</span></span></a>
+          <a href="teach.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Instructor<span>Your courses, learners and sessions</span></span></a>
+          <a href="learn.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Learner<span>What you have to do, and by when</span></span></a>
+          <div class="vs">
+            <a href="signin.html" role="menuitem">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
+              Sign out</a>
+          </div>
+        </div>
+      </span>
+    </div>
+  </header>
+
+  <nav class="app-sidebar" aria-label="Primary">
+    <button class="sidebar-toggle" id="railBtn" aria-label="Collapse navigation"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>
+    <a class="nav-item" href="index.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg><span class="nav-label">Dashboard</span></a>
+    <a class="nav-item" href="courses.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg><span class="nav-label">Courses</span></a>
+    <a class="nav-item" href="learners.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg><span class="nav-label">Learners</span></a>
+    <a class="nav-item is-active" href="certificate.html" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg><span class="nav-label">Certifications</span></a>
+    <a class="nav-item" href="sessions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg><span class="nav-label">Sessions</span></a>
+    <a class="nav-item" href="groups.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg><span class="nav-label">Groups</span></a>
+    <a class="nav-item" href="recognition.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0z"/></svg><span class="nav-label">Recognition</span></a>
+    <a class="nav-item" href="discussions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6V2H8"/><path d="m8 18-4 4V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2Z"/><path d="M2 12h2"/><path d="M9 11v2"/><path d="M15 11v2"/><path d="M20 12h2"/></svg><span class="nav-label">Discussions</span></a>
+    <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span class="nav-label">Reports</span></a>
+    <a class="nav-item" href="automations.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/><path d="m2 2 20 20"/></svg><span class="nav-label">Automations</span></a>
+    <a class="nav-item" href="surveys.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/><rect x="3" y="4" width="18" height="16" rx="2"/></svg><span class="nav-label">Surveys</span></a>
+    <a class="nav-item" href="grading.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="m9 11-1.5 1.5L9 14"/><path d="M16 16h-4"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg><span class="nav-label">Grading Hub</span></a>
+    <a class="nav-item" href="files.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span class="nav-label">Reference library</span></a>
+    <a class="nav-item nav-tail" href="#"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="nav-label">Help and support</span></a>
+  </nav>
+
+  <main class="app-content">
+    <div class="breadcrumbs" id="crumbs"></div>
+    <div class="content-body"><div id="view"></div></div>
+    <footer class="app-footer">
+      skyLearn, a Skypoint product. A certificate is the proof a surveyor asks for, so it records hours and dates, not just a name.
+    </footer>
+  </main>
+</div>
+
+<div class="overlay" id="overlay" hidden></div>
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+
+<script>
+/* ==============================================================
+   Data
+   ============================================================== */
+const PALETTE = [
+  { n: 'Skypoint amber', v: '#A05A00' },
+  { n: 'Ink',            v: '#1A1A1A' },
+  { n: 'Slate',          v: '#3E4C59' },
+  { n: 'Forest',         v: '#1F6F4A' },
+  { n: 'Burgundy',       v: '#7B2233' },
+  { n: 'Navy',           v: '#1E3A5F' }
+];
+
+/* What a surveyor expects to see on proof of completion. `req` marks the
+   fields a state inspection actually asks for. */
+const FACTS = [
+  { k: 'date',    label: 'Completion date', why: 'Every state asks when the training happened.',            req: true },
+  { k: 'hours',   label: 'Training hours',  why: 'Ohio, Texas and Florida count hours, not courses.',       req: true },
+  { k: 'expiry',  label: 'Valid until',     why: 'Shows the renewal deadline without a separate lookup.',   req: false },
+  { k: 'ce',      label: 'CE credits',      why: 'Only for accredited continuing education.',               req: false },
+  { k: 'licence', label: 'Licence number',  why: "The learner's state registry or licence number.",         req: false },
+  { k: 'serial',  label: 'Serial number',   why: 'Lets an inspector verify the record is genuine.',         req: false }
+];
+
+const base = (over) => Object.assign({
+  name: 'Untitled certificate',
+  title: 'Certificate of Completion',
+  sub: 'This certifies that',
+  org: 'Skypoint Senior Living',
+  signer: 'Dana Whitfield',
+  role: 'Director of Training',
+  logo: 'S',
+  show: { date: true, hours: true, expiry: true, ce: false, licence: false, serial: true },
+  design: { font: 'f-sans', size: 's-md', accent: '#A05A00', border: 'b-line' },
+  status: 'draft',
+  courses: 0
+}, over || {});
+
+const TEMPLATES = [
+  { id: 'plain',   name: 'Plain',    cert: base({ design: { font: 'f-sans',  size: 's-md', accent: '#1A1A1A', border: 'b-none' } }) },
+  { id: 'classic', name: 'Classic',  cert: base({ design: { font: 'f-serif', size: 's-lg', accent: '#7B2233', border: 'b-double' } }) },
+  { id: 'branded', name: 'Branded',  cert: base({ design: { font: 'f-sans',  size: 's-md', accent: '#A05A00', border: 'b-line' } }) }
+];
+
+let CERTS = [
+  base({ name: 'Skypoint standard', status: 'active', courses: 34,
+         design: { font: 'f-sans', size: 's-md', accent: '#A05A00', border: 'b-line' } }),
+  base({ name: 'State of Ohio format', status: 'active', courses: 9, show: { date: true, hours: true, expiry: true, ce: false, licence: true, serial: true },
+         design: { font: 'f-serif', size: 's-md', accent: '#1E3A5F', border: 'b-double' } }),
+  base({ name: 'Continuing education', status: 'draft', courses: 0, show: { date: true, hours: true, expiry: true, ce: true, licence: true, serial: true },
+         design: { font: 'f-serif', size: 's-lg', accent: '#1F6F4A', border: 'b-double' } })
+];
+
+const IC = {
+  plus:  '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  chev:  '<path d="m9 18 6-6-6-6"/>',
+  back:  '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+  x:     '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  alert: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  info:  '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  up:    '<path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>',
+  copy:  '<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+  trash: '<path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'
+};
+const ic = (n, s) => '<svg viewBox="0 0 24 24" width="' + s + '" height="' + s +
+  '" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[n] + '</svg>';
+</script>
+
+<script>
+/* ==============================================================
+   State + helpers
+   ============================================================== */
+const S = { view: 'list', at: -1, tab: 'content', draft: null };
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const C = () => S.draft;
+const missingReq = c => FACTS.filter(f => f.req && !c.show[f.k]);
+
+function toast(title, body) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = '<div><div class="toast-title">' + esc(title) + '</div>' +
+    (body ? '<div class="toast-body">' + esc(body) + '</div>' : '') + '</div>';
+  $('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 3600);
+}
+
+/* The certificate itself. One function draws the preview, the list thumbnails
+   and the template picker, so what you choose is what you get. */
+function paper(c) {
+  const d = c.design;
+  const facts = FACTS.filter(f => c.show[f.k]).map(f => {
+    const v = { date: '12 August 2026', hours: '2.5 hours', expiry: '12 August 2027',
+                ce: '2.5 CE', licence: 'OH-CNA-448126', serial: 'SL-8841-002' }[f.k];
+    return '<span class="cp-fact">' + f.label + '<b>' + v + '</b></span>';
+  }).join('');
+  return '<div class="cp ' + d.font + ' ' + d.border + '" style="--cp-accent:' + d.accent + '">' +
+    (c.show.serial ? '<span class="cp-serial">No. SL-8841-002</span>' : '') +
+    '<span class="cp-logo">' + esc(c.logo || 'S') + '</span>' +
+    '<span class="cp-org">' + esc(c.org) + '</span>' +
+    '<span class="cp-title ' + d.size + '">' + esc(c.title) + '</span>' +
+    '<span class="cp-sub">' + esc(c.sub) + '</span>' +
+    '<span class="cp-name">Rosalind Vega</span>' +
+    '<span class="cp-rule"></span>' +
+    '<span class="cp-course">Preventing Falls in Senior Living</span>' +
+    (facts ? '<span class="cp-facts">' + facts + '</span>' : '') +
+    '<span class="cp-sign"><span class="cp-sigline"></span>' +
+    '<span class="cp-signer">' + esc(c.signer) + '</span><br/>' +
+    '<span class="cp-role">' + esc(c.role) + '</span></span>' +
+  '</div>';
+}
+</script>
+
+<script>
+/* ==============================================================
+   List view
+   ============================================================== */
+const BADGE = { active: '<span class="badge is-success">Active</span>',
+                draft:  '<span class="badge is-neutral">Draft</span>' };
+
+function listView() {
+  $('crumbs').innerHTML = '<a href="index.html">Home</a>' +
+    '<span class="sep">' + ic('chev', 14) + '</span><span class="current">Certificates</span>';
+
+  $('view').innerHTML =
+    '<header class="page-header ph-row"><div class="ph-text">' +
+      '<h1>Certificates</h1>' +
+      '<p>The proof a learner takes away, and the proof a surveyor asks for. Courses pick one of these in their settings.</p>' +
+    '</div>' +
+    '<button class="btn btn-solid ph-cta" id="newCert">' + ic('plus', 16) + ' New certificate</button></header>' +
+
+    '<div class="table-wrap"><table class="table"><thead><tr>' +
+      '<th>Certificate</th><th>Status</th><th class="is-numeric">Used by</th><th>Shows</th><th></th>' +
+    '</tr></thead><tbody>' +
+    CERTS.map((c, i) => {
+      const gaps = missingReq(c);
+      return '<tr>' +
+        '<td><span class="cell-cert"><span class="cert-thumb">' + paper(c) + '</span>' +
+        '<span class="cell-name"><span>' + esc(c.name) + '</span>' +
+        (gaps.length ? '<span class="cn-role" style="color:var(--warning-text);">Missing ' + gaps.map(g => g.label.toLowerCase()).join(' and ') + '</span>' : '') +
+        '</span></span></td>' +
+        '<td>' + BADGE[c.status] + '</td>' +
+        '<td class="is-numeric">' + (c.courses || '0') + '</td>' +
+        '<td class="cell-sub">' + FACTS.filter(f => c.show[f.k]).map(f => f.label.toLowerCase()).join(', ') + '</td>' +
+        '<td><span style="display:flex;gap:var(--space-2);justify-content:flex-end;">' +
+          '<button class="btn btn-surface is-sm" data-edit="' + i + '">Edit</button>' +
+          '<button class="btn btn-ghost is-sm" data-dupe="' + i + '" aria-label="Duplicate ' + esc(c.name) + '">' + ic('copy', 14) + '</button>' +
+        '</span></td></tr>';
+    }).join('') +
+    '</tbody></table></div>' +
+    '<div class="pagination"><span class="page-info">' + CERTS.length + ' certificates. ' +
+      CERTS.filter(c => c.status === 'active').length + ' active.</span></div>';
+}
+</script>
+
+<script>
+/* ==============================================================
+   Builder view
+   ============================================================== */
+function field(id, label, val, hint) {
+  return '<div class="field"><label class="field-label" for="' + id + '">' + label + '</label>' +
+    '<input class="input" id="' + id + '" value="' + esc(val) + '" />' +
+    (hint ? '<span class="field-hint">' + hint + '</span>' : '') + '</div>';
+}
+
+function contentTab(c) {
+  return '<div class="fields">' +
+    field('fName', 'Certificate name', c.name, 'Internal only. Learners never see this.') +
+    '<div class="field"><span class="field-label">Logo</span>' +
+      '<div class="drop-sm" id="logoDrop">' + ic('up', 16) + ' Replace the logo</div>' +
+      '<span class="field-hint">PNG or SVG, at least 200px square.</span></div>' +
+    field('fOrg', 'Organisation', c.org) +
+    field('fTitle', 'Title', c.title) +
+    field('fSub', 'Line above the name', c.sub) +
+    '<hr class="divider" />' +
+    '<div><div class="field-label" style="margin-bottom:var(--space-2);">What the certificate shows</div>' +
+    FACTS.map(f =>
+      '<div class="switch-row"><span class="sr-text"><span class="sr-name">' + f.label +
+        (f.req ? ' <span class="badge is-warning">Needed for surveys</span>' : '') + '</span>' +
+        '<span class="sr-why">' + f.why + '</span></span>' +
+        '<label class="switch"><input type="checkbox" data-show="' + f.k + '"' + (c.show[f.k] ? ' checked' : '') + ' />' +
+        '<span class="sr-only">Show ' + f.label + '</span></label></div>').join('') +
+    '</div>' +
+    '<hr class="divider" />' +
+    field('fSigner', 'Signed by', c.signer) +
+    field('fRole', 'Their job title', c.role) +
+  '</div>';
+}
+
+function designTab(c) {
+  const d = c.design;
+  const seg = (name, opts, cur) => '<div class="segmented" role="tablist" aria-label="' + name + '">' +
+    opts.map(o => '<button class="segmented-item' + (cur === o.v ? ' is-active' : '') + '" role="tab" ' +
+      'data-d="' + o.k + '.' + o.v + '" aria-selected="' + (cur === o.v) + '">' + o.l + '</button>').join('') + '</div>';
+  return '<div class="fields">' +
+    '<div class="field"><span class="field-label">Typeface</span>' +
+      seg('Typeface', [{k:'font',v:'f-sans',l:'Sans'},{k:'font',v:'f-serif',l:'Serif'}], d.font) +
+      '<span class="field-hint">Serif reads as more formal. Both print cleanly.</span></div>' +
+    '<div class="field"><span class="field-label">Title size</span>' +
+      seg('Title size', [{k:'size',v:'s-sm',l:'Small'},{k:'size',v:'s-md',l:'Medium'},{k:'size',v:'s-lg',l:'Large'}], d.size) + '</div>' +
+    '<div class="field"><span class="field-label">Border</span>' +
+      seg('Border', [{k:'border',v:'b-none',l:'None'},{k:'border',v:'b-line',l:'Line'},{k:'border',v:'b-double',l:'Double'}], d.border) + '</div>' +
+    '<div class="field"><span class="field-label">Colour</span>' +
+      '<div class="swatches">' + PALETTE.map(p =>
+        '<button class="swatch" data-accent="' + p.v + '" title="' + p.n + '" aria-label="' + p.n + '" ' +
+        'aria-pressed="' + (d.accent === p.v ? 'true' : 'false') + '" style="background:' + p.v + '"></button>').join('') + '</div>' +
+      '<span class="field-hint">Six colours, all dark enough to photocopy and to read on screen. ' +
+      'A certificate that a surveyor cannot read is not proof of anything.</span></div>' +
+  '</div>';
+}
+
+function buildView() {
+  const c = C(), gaps = missingReq(c);
+  $('crumbs').innerHTML = '<a href="index.html">Home</a>' +
+    '<span class="sep">' + ic('chev', 14) + '</span><a href="#" id="toList">Certificates</a>' +
+    '<span class="sep">' + ic('chev', 14) + '</span><span class="current">' + esc(c.name) + '</span>';
+
+  $('view').innerHTML =
+    '<header class="page-header ph-row"><div class="ph-text">' +
+      '<h1>' + esc(c.name) + '</h1>' +
+      '<p>Everything you change appears on the right straight away. It saves as you go.</p>' +
+    '</div>' +
+    '<span class="ph-cta" style="display:flex;gap:var(--space-2);align-items:center;">' +
+      '<span class="field-hint" id="saved">Saved</span>' +
+      '<button class="btn btn-surface" id="backBtn">' + ic('back', 16) + ' Certificates</button>' +
+      (c.status === 'active'
+        ? '<span class="badge is-success">Active</span>'
+        : '<button class="btn btn-solid" id="activate">Activate</button>') +
+    '</span></header>' +
+
+    (gaps.length
+      ? '<div class="callout is-warning" style="margin-bottom:var(--space-5);"><span class="co-icon">' + ic('alert', 18) + '</span>' +
+        '<span><strong>This certificate is missing ' + gaps.map(g => g.label.toLowerCase()).join(' and ') + '.</strong> ' +
+        'A surveyor counts hours, not courses. Without them this is a nice document rather than proof.</span></div>'
+      : '') +
+
+    '<div class="builder">' +
+      '<section class="card panel">' +
+        '<div class="tabs" role="tablist" aria-label="Certificate settings">' +
+          '<button class="tab' + (S.tab === 'content' ? ' is-active' : '') + '" role="tab" data-tab="content" aria-selected="' + (S.tab === 'content') + '">Content</button>' +
+          '<button class="tab' + (S.tab === 'design' ? ' is-active' : '') + '" role="tab" data-tab="design" aria-selected="' + (S.tab === 'design') + '">Design</button>' +
+        '</div>' +
+        (S.tab === 'content' ? contentTab(c) : designTab(c)) +
+      '</section>' +
+      '<section class="card">' +
+        '<div class="panel-head"><div><div class="panel-title">Preview</div>' +
+        '<div class="panel-sub">Real sample data, so you can see how a long name or a licence number actually sits.</div></div></div>' +
+        '<div class="stage">' + paper(c) + '</div>' +
+      '</section>' +
+    '</div>';
+}
+
+function render() {
+  if (S.view === 'list') listView(); else buildView();
+}
+</script>
+
+<script>
+/* ==============================================================
+   Behaviour
+   ============================================================== */
+function openOverlay(html) { $('overlay').innerHTML = html; $('overlay').hidden = false; }
+function closeOverlay() { $('overlay').hidden = true; $('overlay').innerHTML = ''; }
+
+let pick = null;
+function pickerDialog() {
+  openOverlay('<div class="dialog" role="dialog" aria-modal="true" aria-labelledby="pkTitle" style="width:min(760px,94vw);">' +
+    '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-3);">' +
+      '<div><div class="dialog-title" id="pkTitle">Start a certificate</div>' +
+      '<div class="dialog-body" style="margin-top:var(--space-1);">Pick a starting point. Everything on it can be changed afterwards.</div></div>' +
+      '<button class="icon-btn" id="pkClose" aria-label="Close">' + ic('x', 18) + '</button></div>' +
+    '<div class="tpl-grid" style="margin-top:var(--space-4);">' +
+      TEMPLATES.map(t => '<label class="radio-card tpl' + (pick === t.id ? ' is-selected' : '') + '" data-tpl="' + t.id + '" role="radio" aria-checked="' + (pick === t.id) + '">' +
+        '<span class="tpl-shot">' + paper(t.cert) + '</span>' +
+        '<span class="tpl-name">' + t.name + '</span></label>').join('') +
+    '</div>' +
+    '<div class="dialog-footer"><button class="btn btn-surface" id="pkCancel">Cancel</button>' +
+    '<button class="btn btn-solid" id="pkGo"' + (pick ? '' : ' disabled') + '>Start editing</button></div></div>');
+}
+
+let saveT;
+function flagSaved() {
+  const el = $('saved'); if (!el) return;
+  el.textContent = 'Saving';
+  clearTimeout(saveT);
+  saveT = setTimeout(() => { el.textContent = 'Saved'; }, 400);
+}
+
+document.addEventListener('input', e => {
+  const t = e.target, c = C();
+  if (!c) return;
+  const map = { fName: 'name', fOrg: 'org', fTitle: 'title', fSub: 'sub', fSigner: 'signer', fRole: 'role' };
+  if (map[t.id]) {
+    c[map[t.id]] = t.value;
+    /* Repaint only the preview, or the caret would jump on every keystroke */
+    const stage = document.querySelector('.stage');
+    if (stage) stage.innerHTML = paper(c);
+    if (t.id === 'fName') {
+      const h1 = document.querySelector('.ph-text h1');
+      if (h1) h1.textContent = t.value || 'Untitled certificate';
+    }
+    flagSaved();
+  }
+});
+
+document.addEventListener('change', e => {
+  const t = e.target, c = C();
+  if (c && t.dataset && t.dataset.show !== undefined) {
+    c.show[t.dataset.show] = t.checked;
+    flagSaved();
+    render();
+  }
+});
+
+document.addEventListener('click', e => {
+  const t = e.target;
+
+  if (t.closest('#newCert')) { pick = null; return pickerDialog(); }
+  const tpl = t.closest('[data-tpl]');
+  if (tpl) { pick = tpl.dataset.tpl; return pickerDialog(); }
+  if (t.closest('#pkCancel') || t.closest('#pkClose') || t === $('overlay')) return closeOverlay();
+  if (t.closest('#pkGo') && pick) {
+    const src = TEMPLATES.find(x => x.id === pick).cert;
+    S.draft = JSON.parse(JSON.stringify(src));
+    S.draft.name = 'New certificate';
+    CERTS.push(S.draft);
+    S.at = CERTS.length - 1;
+    S.view = 'build'; S.tab = 'content';
+    closeOverlay();
+    return render();
+  }
+
+  const ed = t.closest('[data-edit]');
+  if (ed) {
+    S.at = +ed.dataset.edit;
+    S.draft = CERTS[S.at];
+    S.view = 'build'; S.tab = 'content';
+    return render();
+  }
+  const dp = t.closest('[data-dupe]');
+  if (dp) {
+    const copy = JSON.parse(JSON.stringify(CERTS[+dp.dataset.dupe]));
+    copy.name += ' (copy)';
+    copy.status = 'draft';        /* a copy is never live until someone says so */
+    copy.courses = 0;             /* and it is used by nothing yet */
+    CERTS.splice(+dp.dataset.dupe + 1, 0, copy);
+    toast('Copied.', 'The copy starts as a draft and is not attached to any course.');
+    return render();
+  }
+
+  if (t.closest('#backBtn') || t.closest('#toList')) {
+    e.preventDefault();
+    S.view = 'list'; S.draft = null;
+    return render();
+  }
+
+  const tab = t.closest('[data-tab]');
+  if (tab) { S.tab = tab.dataset.tab; return render(); }
+
+  const d = t.closest('[data-d]');
+  if (d) {
+    const [k, v] = d.dataset.d.split('.');
+    C().design[k] = v;
+    flagSaved();
+    return render();
+  }
+  const sw = t.closest('[data-accent]');
+  if (sw) { C().design.accent = sw.dataset.accent; flagSaved(); return render(); }
+
+  if (t.closest('#logoDrop')) { toast('Logo replaced.', 'Cedar Ridge crest, 512 by 512.'); return; }
+
+  if (t.closest('#activate')) {
+    const c = C(), gaps = missingReq(c);
+    return openOverlay('<div class="alert-dialog" role="dialog" aria-modal="true" aria-labelledby="acTitle">' +
+      '<div class="ad-title" id="acTitle">Activate this certificate?</div>' +
+      '<div class="ad-body">Once active it is issued automatically to every learner who completes a course using it. ' +
+      'Certificates already issued are never changed by later edits.' +
+      (gaps.length ? '<br /><br /><strong>It is still missing ' + gaps.map(g => g.label.toLowerCase()).join(' and ') +
+        '</strong>, which a state inspection asks for.' : '') + '</div>' +
+      '<div class="ad-footer"><button class="btn btn-surface" id="acCancel">Cancel</button>' +
+      '<button class="btn btn-solid' + (gaps.length ? ' is-danger' : '') + '" id="acGo">' +
+      (gaps.length ? 'Activate anyway' : 'Activate') + '</button></div></div>');
+  }
+  if (t.closest('#acCancel')) return closeOverlay();
+  if (t.closest('#acGo')) {
+    C().status = 'active';
+    closeOverlay();
+    toast('Certificate is active.', 'It will be issued on completion from now on.');
+    return render();
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !$('overlay').hidden) closeOverlay();
+});
+
+$('themeBtn').addEventListener('click', () => {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+  $('themeBtn').setAttribute('aria-label', dark ? 'Switch to dark theme' : 'Switch to light theme');
+});
+
+render();
+
+const viewAsBtn = document.getElementById('viewAsBtn');
+if (viewAsBtn) {
+  const menu = document.getElementById('viewAs');
+  viewAsBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = !menu.hidden;
+    menu.hidden = open;
+    viewAsBtn.setAttribute('aria-expanded', String(!open));
+  });
+  document.addEventListener('click', () => {
+    if (!menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+}
+
+/* Collapsing the rail is shell behaviour, so every page does it. It was
+   markup on twenty pages and wired on one, and standardising the nav dropped
+   the id the one handler depended on. */
+const railBtn = document.getElementById('railBtn');
+if (railBtn) {
+  railBtn.addEventListener('click', () => {
+    const shell = document.querySelector('.app-shell');
+    const side  = document.querySelector('.app-sidebar');
+    const on = shell.style.gridTemplateColumns === '0px 1fr';
+    shell.style.gridTemplateColumns = on ? '256px 1fr' : '0px 1fr';
+    if (side) side.style.visibility = on ? 'visible' : 'hidden';
+    railBtn.setAttribute('aria-label', on ? 'Collapse navigation' : 'Expand navigation');
+  });
+}
+</script>
+</body>
+</html>

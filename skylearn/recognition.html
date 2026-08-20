@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<!--
+  skyLearn - Recognition, Radix flavour.
+  The surface: what the points and badges produced. Every setting lives
+  on recognition-settings.html. See GAMIFICATION-IA.md.
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>skyLearn &middot; Recognition</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../tokens.css?v=102" />
+<link rel="stylesheet" href="../dashboard.css?v=102" />
+<style>
+  /* Shell bits shared with the other skyLearn screens */
+  .ph-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-5); flex-wrap: wrap; }
+  .ph-text { flex: 1; min-width: 0; }
+  .ph-acts { display: flex; gap: var(--space-3); flex: 0 0 auto; margin-left: auto; }
+  .num { font-variant-numeric: tabular-nums; }
+  .toast-stack { position: fixed; left: 50%; bottom: var(--space-6); transform: translateX(-50%);
+    display: flex; flex-direction: column; gap: var(--space-2); z-index: 1400; }
+  .toast-stack .toast { animation: t-in .2s ease-out; }
+  @keyframes t-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  .board-bar { display: flex; align-items: flex-end; gap: var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-4); }
+  .board-bar .field { margin: 0; }
+  .who { display: flex; flex-direction: column; }
+  .who-n { font-size: var(--fs-2); color: var(--fg-high); font-weight: var(--weight-medium); }
+  .who-s { font-size: var(--fs-1); color: var(--fg-low); margin-top: 2px; }
+  .state { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--fs-2); }
+  .state.is-ok { color: var(--success-text); }
+  .state.is-bad { color: var(--warning-text); }
+  .state svg { flex: 0 0 auto; }
+  .bhold { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) 0; }
+  .bhold + .bhold { border-top: var(--stroke-thin) solid var(--border-subtle); }
+  .bic { width: 34px; height: 34px; flex: 0 0 auto; border-radius: var(--radius-3); display: inline-flex;
+    align-items: center; justify-content: center; background: var(--accent-3); color: var(--accent-11); }
+  .bmeta { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .bn { font-size: var(--fs-2); color: var(--fg-high); }
+  .bw { font-size: var(--fs-1); color: var(--fg-low); margin-top: 2px; }
+  .bcount { flex: 0 0 auto; text-align: right; }
+  .bcount .n { font-size: var(--fs-4); font-weight: var(--weight-bold); color: var(--fg-high); font-variant-numeric: tabular-nums; }
+  .bcount .of { font-size: var(--fs-1); color: var(--fg-subtle); }
+  .log { display: flex; flex-direction: column; }
+  .log-row { display: flex; gap: var(--space-3); padding: var(--space-3) 0; }
+  .log-row + .log-row { border-top: var(--stroke-thin) solid var(--border-subtle); }
+  .log-pts { flex: 0 0 auto; min-width: 56px; font-variant-numeric: tabular-nums;
+    font-weight: var(--weight-semibold); color: var(--success-text); }
+  .log-pts.is-neg { color: var(--danger-text); }
+  .log-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .log-who { font-size: var(--fs-2); color: var(--fg-high); }
+  .log-why { font-size: var(--fs-1); color: var(--fg-low); margin-top: 2px; }
+  .log-when { flex: 0 0 auto; font-size: var(--fs-1); color: var(--fg-subtle); }
+
+  /* Medals: three finished glyphs, trophy shell plus a baked-in numeral,
+     each carrying its own colour (gold #FFAA04, silver #9E9E9E, bronze
+     #FF6E04) inside the SVG. Nothing tints them from CSS, so they are the
+     same in both themes, which is right for an object rather than chrome.
+
+     The tier word lives in the icon's accessible name, not on the page,
+     so the column reads as a column of medals rather than of labels. */
+  .medal { display: inline-flex; align-items: center; }
+  /* Below bronze the cell shows the score tier, not a medal, and it is
+     quiet on purpose: the point of the column is the three medals. */
+  .rank-n { color: var(--fg-subtle); font-variant-numeric: tabular-nums; }
+  .pagination .page-no { min-width: 30px; justify-content: center; }
+  .pagination .page-gap { color: var(--fg-subtle); padding: 0 var(--space-1); }
+
+  /* Course badges: the supplied PNG on a faint card, with the course name
+     on a white plate beneath it. The plate is real text rather than the
+     paths in the source file, so a long course name wraps instead of
+     overflowing and a screen reader can read it.
+
+     The card tint is the asset's own 5% black, and the plate stays white
+     in both themes, because the badge it sits under does too. */
+  .cb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(176px, 1fr)); gap: var(--space-4); }
+  .cb { display: flex; flex-direction: column; align-items: center; gap: var(--space-3);
+    padding: var(--space-4); border-radius: 12px; background: rgba(0,0,0,.05); }
+  :root[data-theme="dark"] .cb { background: rgba(255,255,255,.06); }
+  .cb-art { width: 100%; max-width: 140px; height: auto; display: block; }
+  .cb-plate { width: 100%; padding: var(--space-3) var(--space-2); border-radius: 8px;
+    background: #fff; color: #1A1A1A; font-size: var(--fs-2); font-weight: var(--weight-semibold);
+    line-height: 1.3; text-align: center; }
+  .cb-h { font-size: var(--fs-1); color: var(--fg-low); }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header is-dark">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect width="24" height="24" rx="6" fill="var(--accent-9)"/><text x="12" y="16.5" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-contrast)">S</text></svg>
+      <span>skyLearn</span>
+    </div>
+    <div class="search hdr-search">
+      <span class="search-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+      <label class="sr-only" for="q">Search</label>
+      <input class="input" id="q" type="search" placeholder="Search courses and learners" autocomplete="off" />
+    </div>
+    <div class="header-right">
+      <span class="presence"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg><span><strong class="pt-num">4</strong> points</span></span>
+      <button class="icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="ic-badge">3</span></button>
+      <button class="icon-btn" id="themeBtn" aria-label="Switch to dark theme"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+      <span class="divider-v"></span>
+      <span class="header-wrap">
+        <button class="header-user" id="viewAsBtn" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar c6">SA</span>
+          <span class="hu-id"><span class="hu-name">Sumit Awinash</span><span class="hu-role">Administrator</span></span>
+        </button>
+        <div class="view-as" id="viewAs" role="menu" hidden>
+          <div class="view-as-t">View as</div>
+          <a href="index.html" role="menuitem" aria-current="true"><span class="vr"></span>
+            <span class="vw">Administrator<span>Everything, across all six communities</span></span></a>
+          <a href="teach.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Instructor<span>Your courses, learners and sessions</span></span></a>
+          <a href="learn.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Learner<span>What you have to do, and by when</span></span></a>
+          <div class="vs">
+            <a href="signin.html" role="menuitem">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
+              Sign out</a>
+          </div>
+        </div>
+      </span>
+    </div>
+  </header>
+
+  <nav class="app-sidebar" aria-label="Primary">
+    <button class="sidebar-toggle" id="railBtn" aria-label="Collapse navigation"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>
+    <a class="nav-item" href="index.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg><span class="nav-label">Dashboard</span></a>
+    <a class="nav-item" href="courses.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg><span class="nav-label">Courses</span></a>
+    <a class="nav-item" href="learners.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg><span class="nav-label">Learners</span></a>
+    <a class="nav-item" href="certificate.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg><span class="nav-label">Certifications</span></a>
+    <a class="nav-item" href="sessions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg><span class="nav-label">Sessions</span></a>
+    <a class="nav-item" href="groups.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg><span class="nav-label">Groups</span></a>
+    <a class="nav-item is-active" href="recognition.html" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0z"/></svg><span class="nav-label">Recognition</span></a>
+    <a class="nav-item" href="discussions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6V2H8"/><path d="m8 18-4 4V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2Z"/><path d="M2 12h2"/><path d="M9 11v2"/><path d="M15 11v2"/><path d="M20 12h2"/></svg><span class="nav-label">Discussions</span></a>
+    <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span class="nav-label">Reports</span></a>
+    <a class="nav-item" href="automations.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/><path d="m2 2 20 20"/></svg><span class="nav-label">Automations</span></a>
+    <a class="nav-item" href="surveys.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/><rect x="3" y="4" width="18" height="16" rx="2"/></svg><span class="nav-label">Surveys</span></a>
+    <a class="nav-item" href="grading.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="m9 11-1.5 1.5L9 14"/><path d="M16 16h-4"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg><span class="nav-label">Grading Hub</span></a>
+    <a class="nav-item" href="files.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span class="nav-label">Reference library</span></a>
+    <a class="nav-item nav-tail" href="#"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="nav-label">Help and support</span></a>
+  </nav>
+
+  <main class="app-content">
+    <div class="breadcrumbs"><a href="index.html">Home</a><span class="sep"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span><span class="current">Recognition</span></div>
+    <div class="content-body"><div id="view"></div></div>
+  </main>
+</div>
+<div class="overlay" id="overlay" hidden></div>
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+
+<script>
+/* ==============================================================
+   The same 44 people as every other screen.
+   name | role | community | required | done | overdue | expired | competency
+   ============================================================== */
+const PEOPLE = `Dana Whitfield|CNA|Lakeside Manor|12|9|2|1|72/68/61
+Rosalind Vega|CNA|Lakeside Manor|12|11|0|1|81/77/70
+Marcus Ellery|Med Tech|Northgate|14|11|1|0|79/74/68
+Aurelie Bonnet|CNA|Northgate|12|10|0|1|76/71/64
+Piotr Zawadzki|Caregiver|Northgate|10|10|0|0|85/80/74
+Desmond Achebe|Caregiver|Lakeside Manor|10|8|1|0|74/70/63
+Imani Sowande|LPN|Willow Creek|15|15|0|0|90/86/79
+Yusuf Demirci|Caregiver|Willow Creek|10|9|1|0|77/73/66
+Theo Brannigan|Caregiver|Sunrise Terrace|10|4|1|0|-
+Fenella Wick|LPN|Sunrise Terrace|15|7|1|0|-
+Nadia Kerr|CNA|Harborview|12|6|0|0|-
+Oren Kaplan|Med Tech|Harborview|14|14|0|0|88/83/77
+Callum Reyes|Med Tech|Cedar Ridge|14|13|0|0|86/81/75
+Greta Lindqvist|CNA|Cedar Ridge|12|12|0|0|89/85/78
+Ines Halvorsen|CNA|Cedar Ridge|12|12|0|0|91/87/80
+Tomas Ruiz|Caregiver|Cedar Ridge|10|10|0|0|84/79/73
+Priya Raghavan|LPN|Cedar Ridge|15|13|0|0|87/82/76
+Bea Ferreira|CNA|Harborview|12|12|0|0|83/78/72
+Idris Mensah|Caregiver|Harborview|10|9|0|1|75/70/64
+Lena Vogt|CNA|Harborview|12|7|0|0|70/66/59
+Sofia Grandi|LPN|Willow Creek|15|14|0|0|88/84/77
+Hamid Nazari|Caregiver|Willow Creek|10|10|0|0|82/78/71
+Ruth Okonkwo|CNA|Willow Creek|12|12|0|0|90/86/80
+Malik Osei|Med Tech|Willow Creek|14|12|1|0|78/74/67
+Clara Bianchi|CNA|Sunrise Terrace|12|11|0|0|80/76/69
+Jonas Aalto|Caregiver|Sunrise Terrace|10|10|0|0|86/82/75
+Mira Solberg|LPN|Sunrise Terrace|15|12|0|0|84/80/73
+Ade Balogun|CNA|Northgate|12|10|1|0|76/72/65
+Freya Lindholm|Caregiver|Northgate|10|5|0|0|-
+Rafael Duarte|Med Tech|Northgate|14|13|0|0|85/81/74
+Zainab Farah|CNA|Lakeside Manor|12|6|0|0|-
+Otto Reinhardt|Caregiver|Lakeside Manor|10|9|1|0|73/69/62
+Silvia Marchetti|LPN|Lakeside Manor|15|12|1|0|81/77/70
+Kwame Boateng|CNA|Lakeside Manor|12|5|0|0|68/64/57
+Elena Petrova|CNA|Cedar Ridge|12|12|0|0|92/88/81
+Noor Haddad|Caregiver|Cedar Ridge|10|10|0|0|87/83/76
+Bram de Vries|Med Tech|Harborview|14|14|0|0|89/85/78
+Aiko Tanaka|CNA|Harborview|12|11|0|0|82/78/71
+Miguel Santos|Caregiver|Willow Creek|10|10|0|0|85/80/74
+Hana Novak|CNA|Sunrise Terrace|12|10|0|0|79/75/68
+Grace Mbeki|Housekeeping|Cedar Ridge|4|4|0|0|-
+Viktor Novikov|Housekeeping|Northgate|4|3|0|0|-
+Tara Sullivan|Administrator|Cedar Ridge|6|6|0|0|88/84/77
+Owen Fitzgerald|Administrator|Harborview|6|5|0|0|86/82/75`
+  .trim().split('\n').map(l => { const a = l.split('|');
+    const c = a[7] === '-' ? null : a[7].split('/').map(Number);
+    return { n:a[0], role:a[1], comm:a[2], req:+a[3], done:+a[4], overdue:+a[5], expired:+a[6], comp:c }; });
+
+const $   = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+/* Not every plural is +s. `person` was rendering as "13 persons" on five
+   screens; anything else irregular goes in the same map rather than being
+   worked around at the call site. */
+const IRREGULAR = { person:'people' };
+const plural = (n, w) => n + ' ' + (n === 1 ? w : (IRREGULAR[w] || w + 's'));
+const PASS = 75;
+
+/* One shared configuration. Two screens read it: this one sets it, the
+   other shows what it produced. */
+const CFG = {
+  on: true,
+  rules: [
+    { k:'ontime', n:'Finished a required course before it was due', p:10, on:true,
+      w:'The behaviour the whole product exists to produce.' },
+    { k:'late',   n:'Finished a required course after it was due',  p:2,  on:true,
+      w:'Still worth credit. Worth less than on time, or on time means nothing.' },
+    { k:'comp',   n:'Passed a competency check at ' + PASS + ' or above', p:15, on:true,
+      w:'Competency, not completion, is what this product sells.' },
+    { k:'ilt',    n:'Attended an instructor-led session', p:15, on:true,
+      w:'The hardest thing to get people to do, and the only proof for hands-on skills.' },
+    { k:'renew',  n:'Renewed a certification before it lapsed', p:20, on:true,
+      w:'A lapsed certificate stops somebody working unsupervised.' }
+  ],
+  /* Three badges, three different questions. The set before this had six,
+     and Sumit spotted the problem in it by eye:
+
+       "On time, every time" and "First year done" awarded to the same 16
+       people and always would. `overdue` counts what is currently late, so
+       anybody who finished their set has zero by definition. Two rules
+       that can never disagree are one badge written twice.
+
+       "Steady" was (nothing overdue) AND (nothing lapsed), and the second
+       half is exactly the "Current" badge. A compound of two others.
+
+       "Nearly there" went to 33 people, 17 of whom had not finished. It
+       was a badge for almost doing the thing.
+
+     What is left asks: did you finish what you must, are your credentials
+     in date, and can you actually do the job. Nothing here is another way
+     of counting courses, because the required set resets every year: a
+     ladder needs a number that keeps climbing, and this one does not. */
+  badges: [
+    { k:'complete',  n:'Set complete', w:'Finished every required course for the year.',
+      holds: p => p.done >= p.req },
+    { k:'current',   n:'All current', w:'No lapsed certification.',
+      holds: p => p.expired === 0 },
+    { k:'competent', n:'Competent', w:'All three competency domains at ' + PASS + ' or above.',
+      holds: p => !!p.comp && p.comp.every(v => v >= PASS) }
+  ],
+  /* One badge per course, given automatically to everyone who completes
+     it. Not configured here: it is not a rule anyone tunes, it is a
+     record of a fact. The two below use the same completion rosters as
+     the Learners and Assign screens (`ALREADY`, by roster index), so a
+     count here matches the count there rather than inventing a second
+     answer to "who finished this course". A real build reads this off
+     enrollment records; there are only two courses with that record in
+     this prototype, so there are only two course badges. */
+  courseBadges: [
+    { course:'Preventing Falls in Senior Living', cat:'Safety and health', tone:'blue',
+      ic:'shield', holders:[1,4,6,11,13,14,17,22,34,36] },
+    { course:'HIPAA Privacy and Security', cat:'Compliance', tone:'purple',
+      ic:'lock', holders:[0,2,3,5,7,12,15,20] }
+  ]
+};
+const rule = k => CFG.rules.find(r => r.k === k);
+const val  = k => { const r = rule(k); return r && r.on ? r.p : 0; };
+const holders = b => PEOPLE.filter(b.holds).length;
+
+/* Points earned in a rolling 90 days, derived from the roster so both
+   screens and every other module agree. */
+function periodPts(p) {
+  const courses = Math.round(p.done / 4);
+  const late = Math.min(p.overdue, courses);
+  return (courses - late) * val('ontime') + late * val('late') +
+         (p.comp && p.comp.every(v => v >= PASS) ? val('comp') : 0) +
+         (p.expired === 0 ? val('renew') : 0);
+}
+/* Whether the person the board is praising is actually up to date. */
+const upToDate = p => p.done >= p.req && p.overdue === 0 && p.expired === 0;
+function behind(p) {
+  return [p.done < p.req ? plural(p.req - p.done, 'course') + ' outstanding' : '',
+          p.overdue ? plural(p.overdue, 'course') + ' overdue' : '',
+          p.expired ? plural(p.expired, 'certificate') + ' lapsed' : ''].filter(Boolean).join(', ');
+}
+</script>
+
+<script>
+const IC = {
+  info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  alert:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>',
+  gift:'<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/>',
+  cog:'<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+  clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  award:'<path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/>',
+  star:'<path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>',
+  up:'<path d="M12 20V10"/><path d="m5 15 7-7 7 7"/>',
+  left:'<path d="m15 18-6-6 6-6"/>', right:'<path d="m9 18 6-6-6-6"/>',
+  back:'<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+  trophy:'<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0z"/>'
+,
+  shield:'<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
+  lock:'<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'
+};
+const ic = (n, s) => '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+IC[n]+'</svg>';
+/* The medal glyphs, supplied as three finished assets, one per rank:
+   the trophy shell is identical across all three, and the fill colour and
+   the baked-in numeral (1, 2, 3) are what change. Kept as full two-path
+   markup with the exact colours given, rather than driven through the
+   currentColor + tone-class pattern the rest of this file uses, because
+   these are not recolourable UI icons, they are three finished glyphs. */
+const MEDAL = {
+  1: { tone:'gold',   label:'Gold',   fill:'#FFAA04', num:'M13.272 5V11.2H14.462V12H10.942V11.2H12.372V6.15L11.032 7.16L10.542 6.49L12.612 5H13.272Z' },
+  2: { tone:'silver', label:'Silver', fill:'#9E9E9E', num:'M10.382 12C10.362 11.88 10.352 11.7567 10.352 11.63C10.352 11.2033 10.4286 10.8167 10.582 10.47C10.742 10.1233 10.9386 9.81 11.172 9.53C11.4053 9.24333 11.6553 8.98 11.922 8.74C12.1953 8.49333 12.4486 8.26 12.682 8.04C12.9153 7.81333 13.1086 7.59 13.262 7.37C13.422 7.14333 13.502 6.90333 13.502 6.65C13.502 6.37 13.3986 6.14 13.192 5.96C12.9853 5.77333 12.7186 5.68 12.392 5.68C12.112 5.68 11.8553 5.73667 11.622 5.85C11.3953 5.95667 11.182 6.10333 10.982 6.29L10.482 5.68C10.7486 5.44 11.042 5.24667 11.362 5.1C11.6886 4.95333 12.0653 4.88 12.492 4.88C12.7853 4.88 13.052 4.92333 13.292 5.01C13.5386 5.09667 13.7453 5.22 13.912 5.38C14.0853 5.53333 14.2186 5.71333 14.312 5.92C14.4053 6.12667 14.452 6.35 14.452 6.59C14.452 6.91 14.3786 7.20667 14.232 7.48C14.092 7.74667 13.912 8.00333 13.692 8.25C13.4786 8.49 13.242 8.72333 12.982 8.95C12.7286 9.17 12.4886 9.39667 12.262 9.63C12.0353 9.86333 11.8353 10.1067 11.662 10.36C11.4953 10.6133 11.3953 10.8867 11.362 11.18H14.442V12H10.382Z' },
+  3: { tone:'bronze', label:'Bronze', fill:'#FF6E04', num:'M12.092 12.12C11.652 12.12 11.272 12.0633 10.952 11.95C10.6386 11.83 10.3686 11.6867 10.142 11.52L10.552 10.77C10.7386 10.91 10.952 11.0333 11.192 11.14C11.4386 11.2467 11.742 11.3 12.102 11.3C12.542 11.3 12.8886 11.1867 13.142 10.96C13.402 10.7267 13.532 10.4333 13.532 10.08C13.532 9.9 13.4953 9.72667 13.422 9.56C13.3486 9.39333 13.232 9.25 13.072 9.13C12.9186 9.00333 12.722 8.90333 12.482 8.83C12.2486 8.75667 11.9686 8.72 11.642 8.72H11.082V7.99H11.602C11.8953 7.99 12.152 7.95667 12.372 7.89C12.592 7.81667 12.772 7.72 12.912 7.6C13.0586 7.48 13.1653 7.34667 13.232 7.2C13.3053 7.04667 13.342 6.89 13.342 6.73C13.342 6.41667 13.222 6.16333 12.982 5.97C12.7486 5.77667 12.4586 5.68 12.112 5.68C11.792 5.68 11.512 5.73333 11.272 5.84C11.032 5.94 10.8353 6.05333 10.682 6.18L10.312 5.47C10.512 5.33667 10.7686 5.20667 11.082 5.08C11.3953 4.94667 11.762 4.88 12.182 4.88C12.5086 4.88 12.7986 4.92667 13.052 5.02C13.312 5.11333 13.5286 5.24 13.702 5.4C13.882 5.56 14.0186 5.74667 14.112 5.96C14.2053 6.16667 14.252 6.38333 14.252 6.61C14.252 7.01 14.152 7.34333 13.952 7.61C13.7586 7.87 13.482 8.08667 13.122 8.26C13.542 8.42 13.8686 8.65333 14.102 8.96C14.342 9.26667 14.462 9.63 14.462 10.05C14.462 10.31 14.412 10.5667 14.312 10.82C14.2186 11.0667 14.0753 11.2867 13.882 11.48C13.6886 11.6733 13.442 11.83 13.142 11.95C12.842 12.0633 12.492 12.12 12.092 12.12Z' }
+};
+const TROPHY_SHELL = 'M3.90623 0.78125C3.90623 0.57405 3.98854 0.375336 4.13506 0.228823C4.28157 0.08231 4.48028 0 4.68748 0L20.3125 0C20.5197 0 20.7184 0.08231 20.8649 0.228823C21.0114 0.375336 21.0937 0.57405 21.0937 0.78125C21.0937 1.62187 21.075 2.42188 21.0406 3.18125C21.658 3.28349 22.2487 3.50831 22.7778 3.84247C23.3069 4.17663 23.7638 4.61335 24.1214 5.12689C24.4791 5.64042 24.7302 6.22038 24.8602 6.83254C24.9901 7.44471 24.9961 8.07669 24.8779 8.69123C24.7597 9.30577 24.5197 9.89041 24.1719 10.4107C23.8241 10.931 23.3757 11.3763 22.8531 11.7205C22.3304 12.0647 21.7441 12.3008 21.1288 12.4148C20.5135 12.5288 19.8816 12.5185 19.2703 12.3844C18.0359 15.2984 16.3359 16.7234 14.8437 17.0891V20.4844L17.0703 21.0406C17.3734 21.1156 17.6594 21.2516 17.9094 21.4391L20.7812 23.5938C20.9124 23.6921 21.0093 23.8293 21.0582 23.9858C21.1071 24.1423 21.1055 24.3102 21.0536 24.4658C21.0018 24.6214 20.9023 24.7567 20.7693 24.8525C20.6363 24.9484 20.4765 25 20.3125 25H4.68748C4.52351 25 4.3637 24.9484 4.23068 24.8525C4.09766 24.7567 3.99818 24.6214 3.94632 24.4658C3.89447 24.3102 3.89288 24.1423 3.94177 23.9858C3.99066 23.8293 4.08756 23.6921 4.21873 23.5938L7.09061 21.4391C7.34061 21.2516 7.62654 21.1156 7.92967 21.0406L10.1562 20.4844V17.0891C8.66405 16.7234 6.96405 15.2984 5.72967 12.3828C5.11809 12.5176 4.48568 12.5286 3.86981 12.4149C3.25394 12.3013 2.66709 12.0654 2.14391 11.7211C1.62073 11.3769 1.17184 10.9313 0.823742 10.4107C0.475646 9.89005 0.235403 9.30496 0.117203 8.68994C-0.000996385 8.07493 0.00524302 7.44246 0.135553 6.8299C0.265863 6.21734 0.517602 5.63709 0.875902 5.12345C1.2342 4.6098 1.6918 4.17315 2.22166 3.8393C2.75153 3.50545 3.34293 3.28117 3.96092 3.17969C3.92414 2.38074 3.9059 1.58104 3.90623 0.78125ZM4.06092 4.75C3.24559 4.89918 2.52291 5.36615 2.05187 6.04817C1.58083 6.73018 1.40002 7.57138 1.5492 8.38672C1.69839 9.20205 2.16535 9.92473 2.84737 10.3958C3.52938 10.8668 4.37059 11.0476 5.18592 10.8984C4.66561 9.25781 4.26717 7.23281 4.06092 4.75ZM19.8156 10.8984C20.6309 11.0476 21.4721 10.8668 22.1542 10.3958C22.8362 9.92473 23.3031 9.20205 23.4523 8.38672C23.6015 7.57138 23.4207 6.73018 22.9497 6.04817C22.4786 5.36615 21.7559 4.89918 20.9406 4.75C20.7328 7.23438 20.3344 9.25781 19.8156 10.8984Z';
+const medalIcon = tier => { const m = MEDAL[tier];
+  /* The word is gone from the page but not from the accessible name: a
+     numbered trophy is unreadable to a screen reader without it. */
+  return '<svg viewBox="0 0 25 25" width="26" height="26" role="img" aria-label="'+m.label+'">' +
+    '<path d="'+TROPHY_SHELL+'" fill="'+m.fill+'" fill-opacity="0.65"/>' +
+    '<path d="'+m.num+'" fill="black" fill-opacity="0.4"/></svg>'; };
+const BIC = { complete:'check', current:'clock', competent:'award' };
+const callout = (tone, text) => '<div class="callout is-'+tone+'"><span class="co-icon">' +
+  ic(tone === 'info' ? 'info' : tone === 'success' ? 'check' : 'alert', 18)+'</span><span>'+text+'</span></div>';
+function toast(title, body) {
+  const el = document.createElement('div'); el.className = 'toast';
+  el.innerHTML = '<div><div class="toast-title">'+esc(title)+'</div>'+(body ? '<div class="toast-body">'+esc(body)+'</div>' : '')+'</div>';
+  $('toasts').appendChild(el); setTimeout(() => el.remove(), 5000);
+}
+</script>
+<script>
+/* ==============================================================
+   Recognition, the surface.
+
+   Everything on this page is a reading. Nothing here is a setting: the
+   rules and the badges live behind the Settings button, are touched once
+   at setup, and would otherwise bury the only question this screen
+   exists to answer.
+
+   That question is not "who is winning". It is "is this working" — and
+   the way you find out is by checking whether the people the board
+   praises are the people who are actually up to date. Nothing in the six
+   screens this replaces could tell you that, because points and
+   compliance never appeared in the same table.
+   ============================================================== */
+const S = { scope:'person', page:1, per:10 };
+
+/* Points given by hand. An audit trail, because a manual award is the one
+   part of this system a person can abuse, and it was previously written
+   into a form with no record anywhere of what came out of it. */
+const AWARDS = [
+  { who:'Tomas Ruiz', pts:25, why:'Covered a shift so the whole Cedar Ridge floor could attend the lift training.', when:'2 days ago' },
+  { who:'Fenella Wick', pts:15, why:'Ran the fire drill briefing when the marshal was delayed.', when:'6 days ago' },
+  { who:'Lena Vogt', pts:-10, why:'Points awarded in error on 2 August, reversed.', when:'11 days ago' }
+];
+
+/* Medals go by distinct score, not by row position: everybody on the top
+   score takes gold, everybody on the next distinct score takes silver,
+   everybody on the third takes bronze, and nothing below that. So a tie
+   never has to be broken arbitrarily, and all three medals always get
+   awarded as long as three different scores exist.
+
+   The trade is that a wide tie widens a tier: on the current roster eight
+   people share the silver score, so thirteen people hold a medal rather
+   than three. The board says so rather than letting it look like a bug. */
+function withTier(rows) {
+  let tier = 0, prev = null;
+  return rows.map(r => { if (r.pts !== prev) { tier++; prev = r.pts; } return Object.assign({ tier:tier }, r); });
+}
+
+function ranked() {
+  if (S.scope === 'person')
+    return withTier(PEOPLE.map(p => ({ p:p, pts:periodPts(p) })).sort((a, b) => b.pts - a.pts));
+  const key = S.scope === 'role' ? 'role' : 'comm', g = {};
+  PEOPLE.forEach(p => { (g[p[key]] = g[p[key]] || []).push(p); });
+  return Object.keys(g).map(k => { const set = g[k], ok = set.filter(upToDate).length;
+    return { k:k, n:set.length, ok:ok, pct:Math.round(ok / set.length * 100) };
+  }).sort((a, b) => b.pct - a.pct);
+}
+
+function renderBoard() {
+  const all = ranked();
+  const person = S.scope === 'person';
+
+  /* Paging is a view of the board, not the board. Everything that judges
+     the board - the medal tiers, the compliance check - reads `all`, so
+     the answer does not change with the page you happen to be on. */
+  const pages = Math.max(1, Math.ceil(all.length / S.per));
+  if (S.page > pages) S.page = pages;
+  const from = (S.page - 1) * S.per;
+  const rows = person ? all.slice(from, from + S.per) : all;
+
+  const medalled = person ? all.filter(r => r.tier <= 3).length : 0;
+  const tierSize = n => all.filter(r => r.tier === n).length;
+  /* Judged across the whole board: "3 of the top 10" would silently mean
+     something different on page 2. */
+  const topTier = person ? all.filter(r => r.tier <= 3) : [];
+  const off = topTier.filter(r => !upToDate(r.p));
+
+  const head = person
+    ? '<th style="width:76px;">Rank</th><th>Learner</th><th class="is-numeric" style="width:130px;">Points, 90 days</th><th style="width:34%;">Required training</th>'
+    : '<th style="width:60px;">Rank</th><th>' + (S.scope === 'role' ? 'Role' : 'Community') + '</th>' +
+      '<th class="is-numeric" style="width:170px;">Fully up to date</th><th class="is-numeric" style="width:110px;">Rate</th>';
+
+  const rankCell = r => MEDAL[r.tier]
+    ? '<span class="medal">'+medalIcon(r.tier)+'</span>'
+    : '<span class="rank-n">'+r.tier+'</span>';
+
+  const body = person
+    ? rows.map(r => '<tr><td class="is-numeric num">'+rankCell(r)+'</td>' +
+        '<td><span class="who"><span class="who-n">'+esc(r.p.n)+'</span>' +
+        '<span class="who-s">'+esc(r.p.role)+', '+esc(r.p.comm)+'</span></span></td>' +
+        '<td class="is-numeric num">'+r.pts+'</td>' +
+        '<td><span class="state '+(upToDate(r.p) ? 'is-ok' : 'is-bad')+'">' +
+          ic(upToDate(r.p) ? 'check' : 'alert', 15) + (upToDate(r.p) ? 'Up to date' : esc(behind(r.p))) +
+        '</span></td></tr>').join('')
+    : rows.map((r, i) => '<tr><td class="is-numeric num">'+(i + 1)+'</td><td>'+esc(r.k)+'</td>' +
+        '<td class="is-numeric num">'+r.ok+' of '+r.n+'</td><td class="is-numeric num">'+r.pct+'%</td></tr>').join('');
+
+  /* Windowed page numbers, same component as the courses and sessions
+     tables, so a long roster never grows a hundred buttons. */
+  const win = [];
+  for (let i = 1; i <= pages; i++) {
+    if (i === 1 || i === pages || Math.abs(i - S.page) <= 1) win.push(i);
+    else if (win[win.length - 1] !== '...') win.push('...');
+  }
+  const pager = person && pages > 1
+    ? '<div class="pagination">' +
+        '<span class="page-spacer"></span>' +
+        '<span class="page-info">'+(from + 1)+'&ndash;'+(from + rows.length)+' of '+plural(all.length, 'learner')+'</span>' +
+        '<span class="page-controls">' +
+          '<button class="btn btn-surface is-sm" id="lbPrev"'+(S.page === 1 ? ' disabled' : '')+' aria-label="Previous page">'+ic('left', 14)+'</button>' +
+          win.map(i => i === '...'
+            ? '<span class="page-gap">&hellip;</span>'
+            : '<button class="btn '+(i === S.page ? 'btn-solid' : 'btn-surface')+' is-sm page-no" data-lbpage="'+i+'"' +
+              (i === S.page ? ' aria-current="page"' : '')+'>'+i+'</button>').join('') +
+          '<button class="btn btn-surface is-sm" id="lbNext"'+(S.page === pages ? ' disabled' : '')+' aria-label="Next page">'+ic('right', 14)+'</button>' +
+        '</span></div>'
+    : '';
+
+  return '<div class="card"><div class="panel-head"><div><div class="panel-title">Leaderboard</div>' +
+    '<div class="panel-sub">A rolling 90 days, so somebody who joined in March can still win it. ' +
+      (person ? 'Gold goes to everybody on the top score, silver to everybody on the next, bronze to the one after that.' : '') +
+      '</div></div></div>' +
+    '<div class="board-bar">' +
+      '<div class="field"><label class="field-label" for="scope">Rank</label>' +
+        '<select class="select" id="scope" style="min-width:300px;">' +
+          '<option value="person"'+(person ? ' selected' : '')+'>Individual learners, by points</option>' +
+          '<option value="comm"'+(S.scope === 'comm' ? ' selected' : '')+'>Communities, by completion rate</option>' +
+          '<option value="role"'+(S.scope === 'role' ? ' selected' : '')+'>Roles, by completion rate</option>' +
+        '</select></div>' +
+    '</div>' +
+    (person && medalled > 3
+      ? '<div style="margin-bottom:var(--space-4);">' + callout('info',
+          plural(medalled, 'person') + ' hold a medal this period rather than three, because a medal goes to ' +
+          'everybody on a score rather than to a position. Gold ' + tierSize(1) + ', silver ' + tierSize(2) +
+          ', bronze ' + tierSize(3) + '.') + '</div>' : '') +
+    /* The point of the screen. If the board and the compliance record
+       disagree, the points are paying for the wrong thing. */
+    (off.length
+      ? '<div style="margin-bottom:var(--space-4);">' + callout('warning',
+          '<strong>' + off.length + ' of the ' + topTier.length + ' who hold a medal are not up to date.</strong> ' +
+          esc(off[0].p.n) + ' is ' + esc(String(off[0].p.done < off[0].p.req ? (off[0].p.req - off[0].p.done) + ' courses short' : 'behind')) +
+          ' and still holds ' + MEDAL[off[0].tier].label.toLowerCase() + '. If the top of this board is not the top of your ' +
+          'compliance report, the points are paying for something other than getting training done.') + '</div>'
+      : (person ? '<div style="margin-bottom:var(--space-4);">' + callout('success',
+          'Everybody holding a medal is fully up to date, so the points and the compliance record agree.') + '</div>' : '')) +
+    '<div class="table-wrap"><table class="table"><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table></div>' +
+    pager +
+  '</div>';
+}
+
+function renderHolders() {
+  return '<div class="card"><div class="panel-head"><div><div class="panel-title">Who holds what</div>' +
+    '<div class="panel-sub">Across all ' + PEOPLE.length + ' learners. A badge nobody holds is set too high, or rewards something that is not happening.</div></div></div>' +
+    CFG.badges.map(b => { const h = holders(b);
+      return '<div class="bhold"><span class="bic">'+ic(BIC[b.k], 18)+'</span>' +
+        '<span class="bmeta"><span class="bn">'+esc(b.n)+'</span><span class="bw">'+esc(b.w)+'</span></span>' +
+        '<span class="bcount"><span class="n">'+h+'</span><span class="of"> of '+PEOPLE.length+'</span></span></div>';
+    }).join('') + '</div>';
+}
+
+/* The common course badge, as the supplied PNG rather than inlined SVG.
+
+   The first pass rebuilt the artwork as SVG and the gold came out wrong:
+   the source has a drop shadow AND an inner shadow on the shield, and
+   only the drop shadow survived the transcription. A raster of the
+   finished asset cannot drift from it.
+
+   It is also the same image in both themes, deliberately. A medal or a
+   badge is an object, not a piece of UI chrome, so it does not restate
+   itself per theme the way a token-backed surface does.
+
+/* One badge per course, given automatically on completion. Unlike the
+   three achievement badges above, this is not a rule anyone tunes: there
+   is nothing to configure, only a fact to display. Counts come from the
+   same completion roster the Learners and Assign screens use, so a number
+   here is never a second, disagreeing answer to who finished a course. */
+function renderCourseBadges() {
+  const cb = CFG.courseBadges;
+  if (!cb.length) return '';
+  return '<div class="card"><div class="panel-head"><div><div class="panel-title">Course badges</div>' +
+    '<div class="panel-sub">The same badge for every course, awarded automatically to anyone who completes it. Not a setting: there is nothing to tune, only a fact to show.</div></div></div>' +
+    '<div class="cb-grid">' + cb.map(b =>
+      '<div class="cb"><img class="cb-art" src="assets/course-badge.png" alt="" width="308" height="318" />' +
+      '<span class="cb-plate">'+esc(b.course)+'</span>' +
+      '<span class="cb-h">'+b.holders.length+' of '+PEOPLE.length+' hold it</span></div>').join('') +
+    '</div></div>';
+}
+
+function renderLog() {
+  return '<div class="card"><div class="panel-head"><div><div class="panel-title">Given by hand</div>' +
+    '<div class="panel-sub">Every manual award, with its reason. This is the part of the system a person can abuse, so it is the part that keeps a record.</div></div>' +
+    '<button class="btn btn-surface is-sm" id="awardBtn">'+ic('gift', 15)+' Award points</button></div>' +
+    '<div class="log">' + AWARDS.map(a =>
+      '<div class="log-row"><span class="log-pts'+(a.pts < 0 ? ' is-neg' : '')+'">'+(a.pts > 0 ? '+' : '')+a.pts+'</span>' +
+      '<span class="log-t"><span class="log-who">'+esc(a.who)+'</span><span class="log-why">'+esc(a.why)+'</span></span>' +
+      '<span class="log-when">'+esc(a.when)+'</span></div>').join('') + '</div></div>';
+}
+
+function render() {
+  $('view').innerHTML =
+    '<header class="page-header ph-row"><div class="ph-text"><h1>Recognition</h1>' +
+      '<p>What the points and badges have actually produced. The rules that drive them are in settings.</p></div>' +
+      '<div class="ph-acts"><a class="btn btn-surface" href="recognition-settings.html">'+ic('cog', 16)+' Settings</a></div></header>' +
+    (CFG.on
+      ? '<div class="stack-5">' + renderBoard() + renderHolders() + renderCourseBadges() + renderLog() + '</div>'
+      : '<div class="card"><div class="empty-state"><div class="empty-art">'+ic('trophy', 36)+'</div>' +
+        '<h2>Recognition is off</h2><p>Learners see no points and no badges, and there is nothing to show here. ' +
+        'Turn it on in settings and this page fills up on its own.</p>' +
+        '<a class="btn btn-solid" href="recognition-settings.html">Open settings</a></div></div>');
+}
+
+function closeDialog() { $('overlay').hidden = true; $('overlay').innerHTML = ''; }
+function openAward() {
+  $('overlay').hidden = false;
+  $('overlay').innerHTML =
+    '<div class="dialog" role="dialog" aria-modal="true" aria-labelledby="awT" style="max-width:520px;">' +
+      '<div class="dialog-title" id="awT">Award points by hand</div>' +
+      '<div class="dialog-body"><div class="stack-4">' +
+        '<div class="field"><label class="field-label" for="awWho">Learner<span class="req">*</span></label>' +
+          '<select class="select" id="awWho">' + PEOPLE.map(p => '<option>'+esc(p.n)+'</option>').join('') + '</select></div>' +
+        '<div class="field"><label class="field-label" for="awPts">Points<span class="req">*</span></label>' +
+          '<input class="input" type="number" id="awPts" value="10" style="max-width:140px;" />' +
+          '<span class="field-hint">A negative number takes points away. That is the only difference between awarding and adjusting.</span></div>' +
+        '<div class="field"><label class="field-label" for="awWhy">Why<span class="req">*</span></label>' +
+          '<textarea class="textarea" id="awWhy" rows="2" placeholder="Covered a shift so the whole floor could attend the lift training."></textarea>' +
+          '<span class="field-hint">The learner sees this, and so does anyone reading the list behind this dialog.</span></div>' +
+      '</div></div>' +
+      '<div class="dialog-footer"><button class="btn btn-surface" id="awCancel">Cancel</button>' +
+        '<button class="btn btn-solid" id="awGo">Award</button></div></div>';
+  const f = $('awWho'); if (f) f.focus();
+}
+
+document.addEventListener('change', e => {
+  if (e.target.id === 'scope') { S.scope = e.target.value; S.page = 1; return render(); }
+});
+document.addEventListener('click', e => {
+  const t = e.target;
+
+  const pg = t.closest('[data-lbpage]');
+  if (pg) { S.page = +pg.dataset.lbpage; return render(); }
+  if (t.closest('#lbPrev')) { S.page = Math.max(1, S.page - 1); return render(); }
+  if (t.closest('#lbNext')) { S.page++; return render(); }
+
+  if (t.closest('#awardBtn')) return openAward();
+  if (t.closest('#awCancel')) return closeDialog();
+  if (t.closest('#awGo')) {
+    const who = ($('awWho') || {}).value || '', pts = +(($('awPts') || {}).value || 0), why = (($('awWhy') || {}).value || '').trim();
+    if (!pts) { toast('Enter a number of points.'); return; }
+    if (!why) { toast('Say why.', 'The learner sees the reason, and so does the list. Points that arrive unexplained read as a mistake.'); return; }
+    AWARDS.unshift({ who:who, pts:pts, why:why, when:'just now' });
+    closeDialog(); render();
+    toast((pts > 0 ? '+' + pts : pts) + ' to ' + who + '.', 'On the record, with your reason.');
+    return;
+  }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('overlay').hidden) closeDialog(); });
+$('themeBtn').addEventListener('click', () => {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+  $('themeBtn').setAttribute('aria-label', dark ? 'Switch to dark theme' : 'Switch to light theme');
+});
+render();
+
+const viewAsBtn = document.getElementById('viewAsBtn');
+if (viewAsBtn) {
+  const menu = document.getElementById('viewAs');
+  viewAsBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = !menu.hidden;
+    menu.hidden = open;
+    viewAsBtn.setAttribute('aria-expanded', String(!open));
+  });
+  document.addEventListener('click', () => {
+    if (!menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+}
+
+/* Collapsing the rail is shell behaviour, so every page does it. It was
+   markup on twenty pages and wired on one, and standardising the nav dropped
+   the id the one handler depended on. */
+const railBtn = document.getElementById('railBtn');
+if (railBtn) {
+  railBtn.addEventListener('click', () => {
+    const shell = document.querySelector('.app-shell');
+    const side  = document.querySelector('.app-sidebar');
+    const on = shell.style.gridTemplateColumns === '0px 1fr';
+    shell.style.gridTemplateColumns = on ? '256px 1fr' : '0px 1fr';
+    if (side) side.style.visibility = on ? 'visible' : 'hidden';
+    railBtn.setAttribute('aria-label', on ? 'Collapse navigation' : 'Expand navigation');
+  });
+}
+</script>
+</body>
+</html>

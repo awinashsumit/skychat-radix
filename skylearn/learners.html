@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<!--
+  skyLearn - Learners, Radix flavour.
+  A list of PEOPLE, one row each, plus a learner record. The screen this
+  replaces listed enrollments under the heading Learners. See LEARNERS-IA.md.
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>skyLearn &middot; Learners</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../tokens.css?v=102" />
+<link rel="stylesheet" href="../dashboard.css?v=102" />
+<style>
+  .split-2 { gap: var(--space-5); }
+  .ph-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-5); flex-wrap: wrap; }
+  .ph-text { min-width: 0; }
+  .ph-cta { flex: 0 0 auto; margin-left: auto; }
+
+  /* --- KPI row, same shape as Courses ------------------------------- */
+  .tbar { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-4); }
+  .tbar .spacer { flex: 1; }
+
+  /* --- Table -------------------------------------------------------- */
+  .table th.is-sorted { color: var(--fg-high); }
+  .table th.is-sorted .th-sort { color: var(--accent-11); }
+  .l-who { display: flex; align-items: center; gap: var(--space-3); }
+  .l-name { display: flex; flex-direction: column; min-width: 0; }
+  .l-n { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+  .l-m { font-size: var(--fs-1); color: var(--fg-low); margin-top: 1px; }
+  .bar { position: relative; width: 92px; height: 6px; border-radius: var(--radius-full); background: var(--gray-4); display: inline-block; }
+  .bar span { display: block; height: 100%; border-radius: var(--radius-full); background: var(--success-solid); }
+  .bar span.is-low { background: var(--warning-solid); }
+  .req { display: flex; align-items: center; gap: var(--space-2); }
+  .req b { font-weight: var(--weight-regular); color: var(--table-fg); font-variant-numeric: tabular-nums; }
+  .row-go { display: inline-flex; color: var(--fg-subtle); opacity: 0; transition: opacity .12s; }
+  tr:hover .row-go, tr:focus-within .row-go { opacity: 1; }
+  @media (hover: none) { .row-go { opacity: 1; } }
+
+  /* --- Learner record ----------------------------------------------- */
+  .rec-head { display: flex; align-items: flex-start; gap: var(--space-4); flex-wrap: wrap; }
+  .rec-id { min-width: 0; flex: 1; }
+  .rec-name { font-size: var(--fs-7); line-height: var(--lh-7); font-weight: var(--weight-bold); color: var(--fg-high); }
+  .rec-sub { font-size: var(--fs-2); color: var(--fg-low); margin-top: var(--space-1); }
+  .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-4); }
+  @media (max-width: 900px) { .facts { grid-template-columns: repeat(2, 1fr); } }
+  .fact { padding: var(--space-4); border-radius: var(--radius-4); background: var(--color-panel-solid);
+    box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .fact-v { font-size: var(--fs-6); line-height: 1; font-weight: var(--weight-bold); color: var(--fg-high); font-variant-numeric: tabular-nums; }
+  .fact-l { font-size: var(--fs-1); color: var(--fg-low); margin-top: var(--space-2); }
+
+  .item { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) 0; }
+  .item + .item { border-top: var(--stroke-thin) solid var(--border-subtle); }
+  .item-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .item-n { font-size: var(--fs-2); color: var(--fg-high); }
+  .item-m { font-size: var(--fs-1); color: var(--fg-low); margin-top: 1px; }
+  .item-r { flex: 0 0 auto; font-size: var(--fs-1); color: var(--fg-low); font-variant-numeric: tabular-nums; }
+
+  .score-row + .score-row { margin-top: var(--space-4); }
+  .score-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+  .score-track { position: relative; height: 8px; margin-top: var(--space-2); border-radius: var(--radius-full); background: var(--gray-4); }
+  .score-fill { display: block; height: 100%; border-radius: var(--radius-full); background: var(--chart-1); }
+  .score-fill.is-below { background: var(--warning-solid); }
+  .track-mark { position: absolute; top: calc(-1 * var(--stroke-thick)); bottom: calc(-1 * var(--stroke-thick));
+    width: var(--stroke-thick); border-radius: var(--radius-full); background: var(--fg-subtle); }
+
+  /* --- Enroll dialog ------------------------------------------------ */
+  .toast-stack { position: fixed; left: 50%; bottom: var(--space-6); transform: translateX(-50%);
+    display: flex; flex-direction: column; gap: var(--space-2); z-index: 1400; }
+  .toast-stack .toast { animation: t-in .2s ease-out; }
+  @keyframes t-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  /* Conversation on the record. Two voices, so they lean apart; the review
+     queue's own opener is marked, because "the system said this" and "a person
+     said this" are different facts. */
+  .convo { display: flex; flex-direction: column; gap: var(--space-4); margin-bottom: var(--space-5); }
+  .msg { max-width: 78%; padding: var(--space-4) var(--space-5); border-radius: var(--radius-4);
+    background: var(--gray-2); box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .msg.is-me { align-self: flex-end; background: var(--accent-2); box-shadow: inset 0 0 0 1px var(--accent-6); }
+  .msg.is-auto { background: var(--color-panel-solid); }
+  .msg-h { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-2); }
+  .msg-n { font-size: var(--fs-2); font-weight: var(--weight-semibold); color: var(--fg-high); }
+  .msg-r { font-size: var(--fs-1); color: var(--fg-low); }
+  .msg-w { margin-left: auto; font-size: var(--fs-1); color: var(--fg-subtle); white-space: nowrap; }
+  .msg-b { font-size: var(--fs-2); line-height: 1.6; color: var(--fg-high); }
+
+  .convo-empty { padding: var(--space-7) 0; text-align: center; font-size: var(--fs-2); color: var(--fg-low); }
+  .convo-write { border-top: var(--stroke-thin) solid var(--border-subtle); padding-top: var(--space-4); }
+  .convo-foot { display: flex; align-items: center; gap: var(--space-4); margin-top: var(--space-3); }
+  .convo-note { flex: 1; min-width: 0; font-size: var(--fs-1); color: var(--fg-low); }
+
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header is-dark">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect width="24" height="24" rx="6" fill="var(--accent-9)"/><text x="12" y="16.5" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-contrast)">S</text></svg>
+      <span>skyLearn</span>
+    </div>
+    <div class="search hdr-search">
+      <span class="search-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+      <label class="sr-only" for="q">Search</label>
+      <input class="input" id="q" type="search" placeholder="Search courses and learners" autocomplete="off" />
+    </div>
+    <div class="header-right">
+      <span class="presence"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg><span><strong class="pt-num">4</strong> points</span></span>
+      <button class="icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="ic-badge">3</span></button>
+      <button class="icon-btn" id="themeBtn" aria-label="Switch to dark theme"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+      <span class="divider-v"></span>
+      <span class="header-wrap">
+        <button class="header-user" id="viewAsBtn" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar c6">SA</span>
+          <span class="hu-id"><span class="hu-name">Sumit Awinash</span><span class="hu-role">Administrator</span></span>
+        </button>
+        <div class="view-as" id="viewAs" role="menu" hidden>
+          <div class="view-as-t">View as</div>
+          <a href="index.html" role="menuitem" aria-current="true"><span class="vr"></span>
+            <span class="vw">Administrator<span>Everything, across all six communities</span></span></a>
+          <a href="teach.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Instructor<span>Your courses, learners and sessions</span></span></a>
+          <a href="learn.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Learner<span>What you have to do, and by when</span></span></a>
+          <div class="vs">
+            <a href="signin.html" role="menuitem">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
+              Sign out</a>
+          </div>
+        </div>
+      </span>
+    </div>
+  </header>
+
+  <nav class="app-sidebar" aria-label="Primary">
+    <button class="sidebar-toggle" id="railBtn" aria-label="Collapse navigation"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>
+    <a class="nav-item" href="index.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg><span class="nav-label">Dashboard</span></a>
+    <a class="nav-item" href="courses.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg><span class="nav-label">Courses</span></a>
+    <a class="nav-item is-active" href="learners.html" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg><span class="nav-label">Learners</span></a>
+    <a class="nav-item" href="certificate.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg><span class="nav-label">Certifications</span></a>
+    <a class="nav-item" href="sessions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg><span class="nav-label">Sessions</span></a>
+    <a class="nav-item" href="groups.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg><span class="nav-label">Groups</span></a>
+    <a class="nav-item" href="recognition.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0z"/></svg><span class="nav-label">Recognition</span></a>
+    <a class="nav-item" href="discussions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6V2H8"/><path d="m8 18-4 4V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2Z"/><path d="M2 12h2"/><path d="M9 11v2"/><path d="M15 11v2"/><path d="M20 12h2"/></svg><span class="nav-label">Discussions</span></a>
+    <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span class="nav-label">Reports</span></a>
+    <a class="nav-item" href="automations.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/><path d="m2 2 20 20"/></svg><span class="nav-label">Automations</span></a>
+    <a class="nav-item" href="surveys.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/><rect x="3" y="4" width="18" height="16" rx="2"/></svg><span class="nav-label">Surveys</span></a>
+    <a class="nav-item" href="grading.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="m9 11-1.5 1.5L9 14"/><path d="M16 16h-4"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg><span class="nav-label">Grading Hub</span></a>
+    <a class="nav-item" href="files.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span class="nav-label">Reference library</span></a>
+    <a class="nav-item nav-tail" href="#"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="nav-label">Help and support</span></a>
+  </nav>
+
+  <main class="app-content">
+    <div class="breadcrumbs" id="crumbs"></div>
+    <div class="content-body"><div id="view"></div></div>
+    <footer class="app-footer">
+      skyLearn, a Skypoint product. A learner record is what a surveyor asks to see, so it reads as a history, not a score.
+    </footer>
+  </main>
+</div>
+
+<div class="overlay" id="overlay" hidden></div>
+<div class="dropdown-menu" id="menu" role="listbox" style="position:fixed;z-index:1200;" hidden></div>
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+
+<script>
+/* ==============================================================
+   Roster. The same 44 people as the assign screen, with the
+   compliance state a learner record actually carries.
+   name | role | community | required | done | overdue | expiring | expired | competency | last seen (days)
+   ============================================================== */
+const RAW = `Dana Whitfield|CNA|Lakeside Manor|12|9|2|1|1|72/68/61|1
+Rosalind Vega|CNA|Lakeside Manor|12|11|0|0|1|81/77/70|2
+Marcus Ellery|Med Tech|Northgate|14|11|1|2|0|79/74/68|1
+Aurelie Bonnet|CNA|Northgate|12|10|0|1|1|76/71/64|4
+Piotr Zawadzki|Caregiver|Northgate|10|10|0|0|0|85/80/74|1
+Desmond Achebe|Caregiver|Lakeside Manor|10|8|1|0|0|74/70/63|3
+Imani Sowande|LPN|Willow Creek|15|15|0|1|0|90/86/79|1
+Yusuf Demirci|Caregiver|Willow Creek|10|9|1|0|0|77/73/66|2
+Theo Brannigan|Caregiver|Sunrise Terrace|10|4|1|0|0|-|1
+Fenella Wick|LPN|Sunrise Terrace|15|7|1|0|0|-|1
+Nadia Kerr|CNA|Harborview|12|6|0|0|0|-|2
+Oren Kaplan|Med Tech|Harborview|14|14|0|0|0|88/83/77|1
+Callum Reyes|Med Tech|Cedar Ridge|14|13|0|1|0|86/81/75|1
+Greta Lindqvist|CNA|Cedar Ridge|12|12|0|0|0|89/85/78|1
+Ines Halvorsen|CNA|Cedar Ridge|12|12|0|0|0|91/87/80|2
+Tomas Ruiz|Caregiver|Cedar Ridge|10|10|0|0|0|84/79/73|3
+Priya Raghavan|LPN|Cedar Ridge|15|13|0|0|0|87/82/76|46
+Bea Ferreira|CNA|Harborview|12|12|0|1|0|83/78/72|1
+Idris Mensah|Caregiver|Harborview|10|9|0|0|1|75/70/64|5
+Lena Vogt|CNA|Harborview|12|7|0|0|0|70/66/59|203
+Sofia Grandi|LPN|Willow Creek|15|14|0|0|0|88/84/77|1
+Hamid Nazari|Caregiver|Willow Creek|10|10|0|0|0|82/78/71|2
+Ruth Okonkwo|CNA|Willow Creek|12|12|0|0|0|90/86/80|1
+Malik Osei|Med Tech|Willow Creek|14|12|1|0|0|78/74/67|4
+Clara Bianchi|CNA|Sunrise Terrace|12|11|0|1|0|80/76/69|1
+Jonas Aalto|Caregiver|Sunrise Terrace|10|10|0|0|0|86/82/75|2
+Mira Solberg|LPN|Sunrise Terrace|15|12|0|0|0|84/80/73|38
+Ade Balogun|CNA|Northgate|12|10|1|0|0|76/72/65|3
+Freya Lindholm|Caregiver|Northgate|10|5|0|0|0|-|1
+Rafael Duarte|Med Tech|Northgate|14|13|0|0|0|85/81/74|1
+Zainab Farah|CNA|Lakeside Manor|12|6|0|0|0|-|2
+Otto Reinhardt|Caregiver|Lakeside Manor|10|9|1|0|0|73/69/62|6
+Silvia Marchetti|LPN|Lakeside Manor|15|12|1|1|0|81/77/70|2
+Kwame Boateng|CNA|Lakeside Manor|12|5|0|0|0|68/64/57|187
+Elena Petrova|CNA|Cedar Ridge|12|12|0|0|0|92/88/81|1
+Noor Haddad|Caregiver|Cedar Ridge|10|10|0|0|0|87/83/76|1
+Bram de Vries|Med Tech|Harborview|14|14|0|0|0|89/85/78|2
+Aiko Tanaka|CNA|Harborview|12|11|0|1|0|82/78/71|1
+Miguel Santos|Caregiver|Willow Creek|10|10|0|0|0|85/80/74|3
+Hana Novak|CNA|Sunrise Terrace|12|10|0|0|0|79/75/68|1
+Grace Mbeki|Housekeeping|Cedar Ridge|4|4|0|0|0|-|2
+Viktor Novikov|Housekeeping|Northgate|4|3|0|0|0|-|5
+Tara Sullivan|Administrator|Cedar Ridge|6|6|0|0|0|88/84/77|1
+Owen Fitzgerald|Administrator|Harborview|6|5|0|0|0|86/82/75|2`;
+
+const PEOPLE = RAW.split('\n').map((l, i) => {
+  const [n, role, comm, req, done, overdue, expiring, expired, comp, seen] = l.split('|');
+  const c = comp === '-' ? null : comp.split('/').map(Number);
+  return { i, n, role, comm, req: +req, done: +done, overdue: +overdue,
+           expiring: +expiring, expired: +expired, comp: c, seen: +seen,
+           email: n.toLowerCase().replace(/[^a-z ]/g,'').replace(/ /g,'.') + '@skypoint.ai' };
+});
+
+const COURSE_LIST = [
+  'Preventing Falls in Senior Living', 'HIPAA Privacy and Security',
+  'Infection Control Essentials', 'Resident Rights and Abuse Prevention',
+  'Medication Administration', 'Dementia Care, Level 2', 'Safe Lifting and Transfers'
+];
+/* Who already has each course, so the dialog can say so instead of silently
+   enrolling somebody twice. Same rule as the assign screen. */
+const ALREADY = { 'Preventing Falls in Senior Living': [1,4,6,11,13,14,17,22,34,36],
+                  'HIPAA Privacy and Security': [0,2,3,5,7,12,15,20] };
+
+const PASS = 75, DOMAINS = ['Knowledge and compliance','Standards and communication','Judgment and people skills'];
+
+/* One learner has exactly one state, and the order is the order that matters
+   to a surveyor: a lapsed certificate outranks a late course. */
+function stateOf(p) {
+  if (p.expired)  return 'expired';
+  if (p.overdue)  return 'overdue';
+  if (p.done < p.req) return 'inprogress';
+  if (p.expiring) return 'expiring';
+  return 'compliant';
+}
+const STATE = {
+  compliant:  { l:'Compliant',        b:'is-success' },
+  expiring:   { l:'Expiring soon',    b:'is-info' },
+  inprogress: { l:'Courses outstanding', b:'is-neutral' },
+  overdue:    { l:'Overdue',          b:'is-warning' },
+  expired:    { l:'Certificate lapsed', b:'is-danger' }
+};
+
+const IC = {
+  plus:'<path d="M5 12h14"/><path d="M12 5v14"/>',
+  x:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  check2:'<path d="M20 6 9 17l-5-5"/>',
+  users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/>',
+  check:'<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+  alert:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  gauge:'<path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/>',
+  chev:'<path d="m9 18 6-6-6-6"/>', down:'<path d="m6 9 6 6 6-6"/>',
+  back:'<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+  sort:'<path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/>',
+  left:'<path d="m15 18-6-6 6-6"/>', right:'<path d="m9 18 6-6-6-6"/>',
+  dl:'<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>',
+  award:'<path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/>'
+};
+const ic=(n,s)=>'<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+IC[n]+'</svg>';
+</script>
+
+<script>
+/* ==============================================================
+   State + helpers
+   ============================================================== */
+const S = { view:'list', at:-1, tab:'overview', q:'', comm:'All communities', state:'All statuses',
+            sort:'state', dir:1, page:1, per:20 };
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const HUES=['c1','c2','c3','c4','c5','c6','c7','c8'];
+const hue = n => HUES[(n.charCodeAt(0)+n.charCodeAt(n.indexOf(' ')+1))%8];
+const initials = n => n.split(' ').map(w=>w[0]).join('');
+const COMMS = [...new Set(PEOPLE.map(p=>p.comm))].sort();
+const seenTxt = d => d===1?'yesterday':d<7?d+' days ago':d<35?Math.round(d/7)+' weeks ago':Math.round(d/30)+' months ago';
+const RANK = { expired:0, overdue:1, inprogress:2, expiring:3, compliant:4 };
+
+function rows() {
+  let r = PEOPLE.slice();
+  if (S.q) { const q=S.q.toLowerCase();
+    r = r.filter(p => p.n.toLowerCase().includes(q) || p.role.toLowerCase().includes(q) || p.comm.toLowerCase().includes(q)); }
+  if (S.comm !== 'All communities') r = r.filter(p => p.comm === S.comm);
+  if (S.state !== 'All statuses') r = r.filter(p => STATE[stateOf(p)].l === S.state);
+  r.sort((a,b) => {
+    let x = S.sort==='state' ? RANK[stateOf(a)]-RANK[stateOf(b)]
+          : S.sort==='n' ? a.n.localeCompare(b.n)
+          : S.sort==='req' ? (a.done/a.req)-(b.done/b.req)
+          : S.sort==='comp' ? (a.comp?a.comp[0]:-1)-(b.comp?b.comp[0]:-1)
+          : b.seen-a.seen;
+    return x*S.dir;
+  });
+  return r;
+}
+function toast(t,b){ const el=document.createElement('div'); el.className='toast';
+  el.innerHTML='<div><div class="toast-title">'+esc(t)+'</div>'+(b?'<div class="toast-body">'+esc(b)+'</div>':'')+'</div>';
+  $('toasts').appendChild(el); setTimeout(()=>el.remove(),3600); }
+</script>
+
+<script>
+/* ==============================================================
+   List
+   ============================================================== */
+function listView() {
+  $('crumbs').innerHTML = '<a href="index.html">Home</a><span class="sep">'+ic('chev',14)+'</span><span class="current">Learners</span>';
+
+  const n = s => PEOPLE.filter(p => stateOf(p)===s).length;
+  const withComp = PEOPLE.filter(p=>p.comp);
+  const avg = Math.round(withComp.reduce((t,p)=>t+(p.comp[0]+p.comp[1]+p.comp[2])/3,0)/withComp.length);
+  /* Colour lives on the note line, and only where the note is a judgement.
+     Four accent colours across five cards said nothing except that a
+     designer had five colours. */
+  const cards = [
+    { v:PEOPLE.length, l:'Total learners', note:COMMS.length+' communities' },
+    { v:n('compliant')+n('expiring'), l:'Compliant today',
+      note:Math.round((n('compliant')+n('expiring'))/PEOPLE.length*100)+'% of everyone' },
+    { v:n('overdue'), l:'Overdue', note:'past a due date', tone:n('overdue') ? 'warn' : '' },
+    { v:n('expired'), l:'Certificate lapsed', note:'cannot work unsupervised', tone:n('expired') ? 'bad' : '' },
+    { v:avg+'%', l:'Average competency', note:withComp.length+' of '+PEOPLE.length+' assessed' }
+  ];
+
+  const dd=(id,val)=>'<button class="dropdown" data-menu="'+id+'" aria-haspopup="listbox" aria-expanded="false" style="min-width:190px;">'+
+    '<span style="flex:1;">'+esc(val)+'</span><span class="dropdown-chevron">'+ic('down',16)+'</span></button>';
+
+  const all = rows();
+  const pages = Math.max(1, Math.ceil(all.length/S.per));
+  if (S.page>pages) S.page=pages;
+  const from=(S.page-1)*S.per, page=all.slice(from,from+S.per);
+  const win=[]; for(let p=1;p<=pages;p++){ if(p===1||p===pages||Math.abs(p-S.page)<=1) win.push(p); else if(win[win.length-1]!=='...') win.push('...'); }
+
+  const COLS=[{k:'n',l:'Learner'},{k:'state',l:'Status'},{k:'req',l:'Required training'},
+              {k:'comp',l:'Competency',cls:'is-numeric'},{k:'seen',l:'Last active'}];
+
+  $('view').innerHTML =
+    '<header class="page-header ph-row"><div class="ph-text"><h1>Learners</h1>' +
+    '<p>One row per person. Who is compliant, who is not, and what is outstanding.</p></div>' +
+    '<button class="btn btn-solid ph-cta" id="enrollBtn">'+ic('plus',16)+' Enroll learners</button></header>' +
+
+    '<div class="stack-5"><div class="kpis">' + cards.map(k =>
+      '<div class="kpi"><span class="kpi-l">'+k.l+'</span>' +
+      '<span class="kpi-v">'+k.v+'</span>' +
+      '<span class="kpi-n'+(k.tone ? ' is-'+k.tone : '')+'">'+k.note+'</span></div>').join('') + '</div>' +
+
+    '<section><div class="tbar">' +
+      '<div class="search" style="min-width:260px;"><span class="search-icon">'+ic('users',16)+'</span>' +
+      '<label class="sr-only" for="tq">Search learners</label>' +
+      '<input class="input" id="tq" placeholder="Search by name, role or community" value="'+esc(S.q)+'" /></div>' +
+      dd('comm',S.comm) + dd('state',S.state) + '<span class="spacer"></span>' +
+      ((S.q||S.comm!=='All communities'||S.state!=='All statuses') ? '<button class="btn btn-ghost is-sm" id="clearAll">Clear filters</button>' : '') +
+    '</div>' +
+
+    '<div class="table-wrap"><table class="table"><thead><tr>' +
+      COLS.map(c=>'<th class="'+(c.cls||'')+' is-sortable'+(S.sort===c.k?' is-sorted':'')+'" data-sort="'+c.k+'" role="button" tabindex="0">'+
+        c.l+'<span class="th-sort">'+ic('sort',14)+'</span></th>').join('') + '<th></th></tr></thead><tbody>' +
+      (page.length ? page.map(p => {
+        const st = stateOf(p), pct = Math.round(p.done/p.req*100);
+        const cAvg = p.comp ? Math.round((p.comp[0]+p.comp[1]+p.comp[2])/3) : null;
+        return '<tr data-open="'+p.i+'" style="cursor:pointer;">' +
+          '<td><span class="l-who"><span class="avatar '+hue(p.n)+'">'+initials(p.n)+'</span>' +
+          '<span class="l-name"><span class="l-n">'+esc(p.n)+'</span>' +
+          '<span class="l-m">'+p.role+', '+p.comm+'</span></span></span></td>' +
+          '<td><span class="badge '+STATE[st].b+'">'+STATE[st].l+'</span></td>' +
+          '<td><span class="req"><span class="bar"><span class="'+(pct<100?'is-low':'')+'" style="width:'+pct+'%"></span></span>' +
+          '<b>'+p.done+' of '+p.req+'</b></span></td>' +
+          '<td class="is-numeric">'+(cAvg!==null
+            ? cAvg + (cAvg<PASS?' <span class="badge is-warning">below</span>':'')
+            : '<span class="cell-sub">not assessed</span>')+'</td>' +
+          '<td>'+seenTxt(p.seen)+'</td>' +
+          '<td><span class="row-go">'+ic('chev',16)+'</span></td></tr>';
+      }).join('')
+      : '<tr><td colspan="6" style="height:auto;padding:0;"><div class="empty-state">' +
+        '<div class="empty-art">'+ic('users',36)+'</div><h2>Nobody matches</h2>' +
+        '<p>Try a different search, or clear the filters.</p>' +
+        '<button class="btn btn-surface" id="clearAll2">Clear filters</button></div></td></tr>') +
+    '</tbody></table></div>' +
+
+    '<div class="pagination"><span class="page-info">Rows per page</span>' +
+      '<button class="dropdown" data-menu="per" aria-haspopup="listbox" aria-expanded="false" style="min-width:72px;height:26px;">' +
+      '<span style="flex:1;">'+S.per+'</span><span class="dropdown-chevron">'+ic('down',16)+'</span></button>' +
+      '<span class="page-spacer"></span>' +
+      '<span class="page-info">'+(all.length?from+1:0)+'&ndash;'+(from+page.length)+' of '+all.length+
+        (all.length!==PEOPLE.length?' filtered, '+PEOPLE.length+' in total':' learners')+'</span>' +
+      '<span class="page-controls">' +
+        '<button class="btn btn-surface is-sm" id="prev"'+(S.page===1?' disabled':'')+' aria-label="Previous page">'+ic('left',14)+'</button>' +
+        win.map(p=>p==='...'?'<span class="page-info">&hellip;</span>'
+          :'<button class="btn '+(p===S.page?'btn-solid':'btn-surface')+' is-sm" data-page="'+p+'" style="min-width:30px;justify-content:center;"'+(p===S.page?' aria-current="page"':'')+'>'+p+'</button>').join('') +
+        '<button class="btn btn-surface is-sm" id="next"'+(S.page===pages?' disabled':'')+' aria-label="Next page">'+ic('right',14)+'</button>' +
+      '</span></div></section></div>';
+}
+</script>
+
+<script>
+/* ==============================================================
+   Learner record
+   ============================================================== */
+const TRANSCRIPT = [
+  { c:'Preventing Falls in Senior Living', d:'12 Aug 2026', h:'2.5', s:88 },
+  { c:'HIPAA Privacy and Security',        d:'02 Jul 2026', h:'1.5', s:92 },
+  { c:'Infection Control Essentials',      d:'18 May 2026', h:'2.0', s:85 },
+  { c:'Safe Lifting and Transfers',        d:'27 Mar 2026', h:'1.5', s:79 },
+  { c:'Resident Rights and Abuse Prevention', d:'09 Feb 2026', h:'2.0', s:90 }
+];
+const CERTS = [
+  { n:'CPR and BLS',            issued:'14 Mar 2025', expires:'14 Mar 2027', days:574 },
+  { n:'First aid',              issued:'02 Jun 2025', expires:'02 Jun 2026', days:-76 },
+  { n:'Dementia care, level 2', issued:'21 Nov 2025', expires:'21 Nov 2026', days:96 }
+];
+
+/* ==============================================================
+   The conversation, attached to the record.
+
+   The live product has a standalone Messages inbox whose compose
+   dialog asks for a "Recipient user ID (UUID)", so nobody can
+   address anything and the inbox is empty. Rather than fix the
+   picker, the conversation moved to the thing it is about: it is
+   attributable, it is retained with the record, and whoever can
+   already see this learner can see it.
+   ============================================================== */
+const ME = { n:'Sumit Awinash', role:'Administrator' };
+
+/* Threads start from something that already happened. A referral out of the
+   review queue is the commonest opener, which is why nobody faces a blank
+   page: the reason for the conversation is the first message in it. */
+const THREADS = {};
+PEOPLE.forEach(function (p) {
+  const msgs = [];
+  if (p.comp && p.comp.some(s => s < PASS)) {
+    const worst = DOMAINS[p.comp.indexOf(Math.min.apply(null, p.comp))];
+    msgs.push({ by:ME.n, role:ME.role, w:'3 weeks ago', auto:true,
+      s:'Referred back to training after the ninety day check. ' + worst.toLowerCase() +
+        ' came out at ' + Math.min.apply(null, p.comp) + ', against a threshold of ' + PASS + '.' });
+  }
+  if (p.overdue) {
+    msgs.push({ by:p.n, role:p.role, w:'11 days ago',
+      s:'I have not been able to get to these on shift. Is there a way to do them before handover?' });
+    msgs.push({ by:ME.n, role:ME.role, w:'10 days ago',
+      s:'Yes. The day room machine is free from 6.45. I have moved your due date out a week.' });
+  }
+  if (msgs.length) THREADS[p.i] = msgs;
+});
+
+function convoView(p) {
+  const msgs = THREADS[p.i] || [];
+  const who = p.n.split(' ')[0];
+  return '<section class="card">' +
+    '<div class="panel-head"><div><div class="panel-title">Conversation</div>' +
+      '<div class="panel-sub">Between you and ' + esc(p.n) + ', kept on this record. ' +
+        'Anyone who can open this learner can read it.</div></div></div>' +
+    (msgs.length
+      ? '<div class="convo">' + msgs.map(m =>
+          '<div class="msg' + (m.by === ME.n ? ' is-me' : '') + (m.auto ? ' is-auto' : '') + '">' +
+            '<div class="msg-h"><span class="msg-n">' + esc(m.by) + '</span>' +
+              '<span class="msg-r">' + esc(m.role) + '</span>' +
+              (m.auto ? '<span class="badge is-neutral">from the review queue</span>' : '') +
+              '<span class="msg-w">' + esc(m.w) + '</span></div>' +
+            '<div class="msg-b">' + esc(m.s) + '</div>' +
+          '</div>').join('') + '</div>'
+      : '<div class="convo-empty">Nothing said yet. A referral out of the review queue starts a ' +
+        'thread here on its own.</div>') +
+    '<div class="convo-write">' +
+      '<label class="sr-only" for="msgIn">Message to ' + esc(who) + '</label>' +
+      '<textarea class="input" id="msgIn" rows="2" placeholder="Message ' + esc(who) + '&hellip;"></textarea>' +
+      '<div class="convo-foot"><span class="convo-note">Kept with the training record, not private mail.</span>' +
+        '<button class="btn btn-solid" id="msgSend" disabled>Send</button></div>' +
+    '</div></section>';
+}
+
+function recordView() {
+  const p = PEOPLE[S.at], st = stateOf(p), pct = Math.round(p.done/p.req*100);
+  $('crumbs').innerHTML = '<a href="index.html">Home</a><span class="sep">'+ic('chev',14)+'</span>' +
+    '<a href="#" id="toList">Learners</a><span class="sep">'+ic('chev',14)+'</span>' +
+    '<span class="current">'+esc(p.n)+'</span>';
+
+  const tab = (k,l)=>'<button class="tab'+(S.tab===k?' is-active':'')+'" role="tab" data-tab="'+k+'" aria-selected="'+(S.tab===k)+'">'+l+'</button>';
+
+  let body = '';
+  if (S.tab === 'overview') {
+    const out = [];
+    if (p.expired)  out.push(['Certificate lapsed', p.expired+' certificate'+(p.expired>1?'s have':' has')+' expired. They cannot work unsupervised until renewed.', 'is-danger']);
+    if (p.overdue)  out.push(['Overdue training', p.overdue+' required course'+(p.overdue>1?'s are':' is')+' past its due date.', 'is-warning']);
+    if (p.done<p.req) out.push(['Outstanding training', (p.req-p.done)+' required courses not finished yet.', 'is-info']);
+    if (p.expiring) out.push(['Expiring soon', p.expiring+' certificate'+(p.expiring>1?'s lapse':' lapses')+' within 30 days.', 'is-info']);
+
+    body =
+      '<div class="split-2" style="display:grid;grid-template-columns:1fr 340px;align-items:start;">' +
+      '<section class="card"><div class="panel-head"><div><div class="panel-title">What is outstanding</div>' +
+      '<div class="panel-sub">In the order a surveyor would ask about it.</div></div></div>' +
+      (out.length ? out.map(o =>
+        '<div class="callout '+o[2]+'" style="margin-bottom:var(--space-3);"><span class="co-icon">'+ic('alert',18)+'</span>' +
+        '<span><strong>'+o[0]+'.</strong> '+o[1]+'</span></div>').join('')
+        : '<div class="callout is-success"><span class="co-icon">'+ic('check',18)+'</span>' +
+          '<span><strong>Nothing outstanding.</strong> All '+p.req+' required courses are complete and every certificate is current.</span></div>') +
+      '</section>' +
+      '<section class="card"><div class="panel-head"><div><div class="panel-title">Competency</div>' +
+      '<div class="panel-sub">'+(p.comp?'Last 90 day check. Pass threshold '+PASS+'.':'No check recorded yet.')+'</div></div></div>' +
+      (p.comp ? DOMAINS.map((d,i)=>{ const v=p.comp[i], low=v<PASS;
+        return '<div class="score-row"><div class="score-head"><span style="font-size:var(--fs-2);">'+d+'</span>' +
+          '<span style="font-weight:var(--weight-medium);font-variant-numeric:tabular-nums;">'+v+
+          (low?' <span class="badge is-warning">below</span>':'')+'</span></div>' +
+          '<div class="score-track"><span class="score-fill'+(low?' is-below':'')+'" style="width:'+v+'%"></span>' +
+          '<span class="track-mark" style="left:'+PASS+'%"></span></div></div>'; }).join('')
+        : '<p class="field-hint">Their first check is due at day 90. Nothing has been scored, which is different from scoring zero.</p>') +
+      '</section></div>';
+  }
+
+  if (S.tab === 'courses') {
+    body = '<section class="card"><div class="panel-head"><div><div class="panel-title">Required training</div>' +
+      '<div class="panel-sub">'+p.done+' of '+p.req+' complete.</div></div></div>' +
+      TRANSCRIPT.slice(0, Math.min(p.done, TRANSCRIPT.length)).map(t =>
+        '<div class="item"><span class="badge is-success">Complete</span>' +
+        '<span class="item-t"><span class="item-n">'+t.c+'</span>' +
+        '<span class="item-m">Finished '+t.d+', scored '+t.s+'</span></span>' +
+        '<span class="item-r">'+t.h+' h</span></div>').join('') +
+      (p.overdue ? '<div class="item"><span class="badge is-warning">Overdue</span>' +
+        '<span class="item-t"><span class="item-n">Medication administration</span>' +
+        '<span class="item-m">Was due 9 days ago</span></span><span class="item-r">1.5 h</span></div>' : '') +
+      (p.done<p.req ? '<div class="item"><span class="badge is-neutral">Not started</span>' +
+        '<span class="item-t"><span class="item-n">'+(p.req-p.done-p.overdue)+' more required courses</span>' +
+        '<span class="item-m">Assigned, no due date passed</span></span></div>' : '') +
+      '</section>';
+  }
+
+  if (S.tab === 'certs') {
+    body = '<section class="card"><div class="panel-head"><div><div class="panel-title">Certifications</div>' +
+      '<div class="panel-sub">What they hold, and when it lapses.</div></div></div>' +
+      CERTS.map(c => {
+        const state = c.days<0 ? ['is-danger','Expired'] : c.days<120 ? ['is-warning','Expires soon'] : ['is-success','Current'];
+        return '<div class="item"><span class="badge '+state[0]+'">'+state[1]+'</span>' +
+          '<span class="item-t"><span class="item-n">'+c.n+'</span>' +
+          '<span class="item-m">Issued '+c.issued+', expires '+c.expires+'</span></span>' +
+          '<span class="item-r">'+(c.days<0?Math.abs(c.days)+' days ago':'in '+c.days+' days')+'</span></div>';
+      }).join('') + '</section>';
+  }
+
+  if (S.tab === 'convo') body = convoView(p);
+
+  if (S.tab === 'transcript') {
+    const hrs = TRANSCRIPT.reduce((t,x)=>t+parseFloat(x.h),0);
+    body = '<section class="card"><div class="panel-head"><div><div class="panel-title">Training record</div>' +
+      '<div class="panel-sub">Every completion, newest first. '+hrs.toFixed(1)+' hours in total. This is the document a survey asks for.</div></div>' +
+      '<button class="btn btn-surface" id="exportBtn">'+ic('dl',16)+' Export</button></div>' +
+      '<div class="table-wrap"><table class="table"><thead><tr><th>Course</th><th>Completed</th>' +
+      '<th class="is-numeric">Hours</th><th class="is-numeric">Score</th></tr></thead><tbody>' +
+      TRANSCRIPT.map(t=>'<tr><td class="cell-strong">'+t.c+'</td><td>'+t.d+'</td>' +
+        '<td class="is-numeric">'+t.h+'</td><td class="is-numeric">'+t.s+'</td></tr>').join('') +
+      '</tbody></table></div></section>';
+  }
+
+  $('view').innerHTML =
+    '<header class="page-header"><div class="rec-head">' +
+      '<span class="avatar '+hue(p.n)+'" style="width:56px;height:56px;font-size:var(--fs-4);">'+initials(p.n)+'</span>' +
+      '<div class="rec-id"><div class="rec-name">'+esc(p.n)+'</div>' +
+      '<div class="rec-sub">'+p.role+' at '+p.comm+' &middot; '+esc(p.email)+' &middot; last active '+seenTxt(p.seen)+'</div></div>' +
+      '<span class="badge '+STATE[st].b+'" style="height:26px;">'+STATE[st].l+'</span>' +
+      '<button class="btn btn-surface" id="backBtn">'+ic('back',16)+' Learners</button>' +
+    '</div></header>' +
+
+    '<div class="stack-5"><div class="facts">' +
+      '<div class="fact"><div class="fact-v">'+p.done+'/'+p.req+'</div><div class="fact-l">Required training complete</div></div>' +
+      '<div class="fact"><div class="fact-v">'+(p.overdue+p.expired)+'</div><div class="fact-l">Items needing action</div></div>' +
+      '<div class="fact"><div class="fact-v">'+(p.comp?Math.round((p.comp[0]+p.comp[1]+p.comp[2])/3):'&ndash;')+'</div><div class="fact-l">Competency average</div></div>' +
+      '<div class="fact"><div class="fact-v">'+pct+'%</div><div class="fact-l">Of their curriculum</div></div>' +
+    '</div>' +
+    '<div class="tabs" role="tablist" aria-label="Learner record">' +
+      tab('overview','Overview')+tab('courses','Courses')+tab('certs','Certifications')+tab('transcript','Transcript')+tab('convo','Conversation') +
+    '</div>' + body + '</div>';
+}
+
+/* ==============================================================
+   Enroll learners. The client's four fields kept exactly: Course,
+   Learners, Due date, Mandatory. Only the Learners field changed,
+   from a box for comma-separated emails to a picker that ALSO
+   accepts pasted emails, so nothing was taken away.
+   ============================================================== */
+const E = { open:false, course:'', ids:'', due:'17/09/2026', mandatory:false };
+
+/* Accepts emails or names, comma separated, exactly as the field promises.
+   Anything that matches nobody is reported rather than silently dropped. */
+function parseIds(s) {
+  return s.split(',').map(x => x.trim()).filter(Boolean);
+}
+function matchId(tok) {
+  const t = tok.toLowerCase();
+  return PEOPLE.find(p => p.email === t || p.n.toLowerCase() === t) || null;
+}
+
+function enrollDialog() {
+  const entered = parseIds(E.ids);
+
+  $('overlay').innerHTML =
+  '<div class="dialog" role="dialog" aria-modal="true" aria-labelledby="enT" style="width:min(620px,94vw);">' +
+    '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-3);">' +
+      '<div class="dialog-title" id="enT">Enroll learners</div>' +
+      '<button class="icon-btn" id="enClose" aria-label="Close">'+ic('x',18)+'</button></div>' +
+
+    '<div class="field" style="margin-top:var(--space-4);">' +
+      '<span class="field-label">Course <span class="req" style="color:var(--danger-text);">*</span></span>' +
+      '<button class="dropdown" data-menu="course" aria-haspopup="listbox" aria-expanded="false" style="width:100%;">' +
+      '<span style="flex:1;">'+(E.course ? esc(E.course) : 'Select a course')+'</span>' +
+      '<span class="dropdown-chevron">'+ic('down',16)+'</span></button></div>' +
+
+    '<div class="field" style="margin-top:var(--space-4);">' +
+      '<label class="field-label" for="enIds">Learner IDs <span style="color:var(--danger-text);">*</span></label>' +
+      '<input class="input" id="enIds" placeholder="user1@example.com, user2@example.com" value="'+esc(E.ids)+'" />' +
+      '<span class="field-hint">Enter comma-separated learner IDs or email addresses</span></div>' +
+
+    '<div class="field" style="margin-top:var(--space-4);">' +
+      '<label class="field-label" for="enDue">Due date</label>' +
+      '<input class="input" id="enDue" value="'+esc(E.due)+'" />' +
+      '<span class="field-hint">Optional deadline for course completion. Without one, nothing can ever be overdue.</span></div>' +
+
+    '<label class="checkbox" style="margin-top:var(--space-4);"><input type="checkbox" id="enMand"'+(E.mandatory?' checked':'')+' /> ' +
+      'Mandatory, mark this as a required course</label>' +
+
+    '<div class="dialog-footer">' +
+      '<button class="btn btn-surface" id="enCancel">Cancel</button>' +
+      '<button class="btn btn-solid" id="enGo"'+((E.course && entered.length)?'':' disabled')+'>Enroll</button></div>' +
+  '</div>';
+  $('overlay').hidden = false;
+}
+
+function render() {
+  S.view==='list' ? listView() : recordView();
+  if (E.open) enrollDialog();
+}
+</script>
+
+<script>
+/* ==============================================================
+   Behaviour
+   ============================================================== */
+const menu=$('menu'); let menuKey=null;
+const OPTS = {
+  comm: ['All communities'].concat(COMMS),
+  state:['All statuses'].concat(Object.values(STATE).map(s=>s.l)),
+  per:  ['10','20','50'],
+  course: COURSE_LIST
+};
+function openMenu(btn){
+  menuKey=btn.dataset.menu;
+  const cur = menuKey==='comm'?S.comm : menuKey==='state'?S.state
+            : menuKey==='course'?E.course : String(S.per);
+  menu.innerHTML = OPTS[menuKey].map(o=>'<div class="list-item'+(o===cur?' is-selected':'')+'" role="option" data-opt="'+esc(o)+'" aria-selected="'+(o===cur)+'">'+esc(o)+'</div>').join('');
+  menu.hidden=false;
+  const r=btn.getBoundingClientRect();
+  menu.style.width=Math.max(190,r.width)+'px'; menu.style.top=(r.bottom+6)+'px'; menu.style.left=r.left+'px';
+  btn.setAttribute('aria-expanded','true');
+}
+function closeMenu(){ menu.hidden=true; menuKey=null;
+  document.querySelectorAll('[data-menu]').forEach(b=>b.setAttribute('aria-expanded','false')); }
+menu.addEventListener('click', e=>{
+  const o=e.target.closest('[data-opt]'); if(!o||!menuKey) return;
+  if(menuKey==='course'){ E.course=o.dataset.opt; closeMenu(); return enrollDialog(); }
+  if(menuKey==='comm') S.comm=o.dataset.opt; else if(menuKey==='state') S.state=o.dataset.opt; else S.per=+o.dataset.opt;
+  S.page=1; closeMenu(); render();
+});
+
+let qt;
+document.addEventListener('input', e=>{
+  if(e.target.id==='enIds'){ E.ids=e.target.value; const go=$('enGo');
+    if(go) go.disabled = !(E.course && parseIds(E.ids).length); return; }
+  if(e.target.id==='enDue'){ E.due=e.target.value; return; }
+  if(e.target.id==='tq'||e.target.id==='q'){ clearTimeout(qt);
+    qt=setTimeout(()=>{ S.q=e.target.value.trim(); S.page=1; if(S.view!=='list'){S.view='list';} render();
+      const b=$('tq'); if(b){b.focus(); b.setSelectionRange(b.value.length,b.value.length);} },160); }
+});
+
+document.addEventListener('click', e=>{
+  const t=e.target;
+  const mb=t.closest('[data-menu]');
+  if(mb){ e.stopPropagation(); const was=!menu.hidden&&menuKey===mb.dataset.menu; closeMenu(); if(!was) openMenu(mb); return; }
+  if(!menu.hidden && !t.closest('#menu')) closeMenu();
+
+  if(t.closest('#enrollBtn')){ E.open=true; return enrollDialog(); }
+  if(t.closest('#enClose')||t.closest('#enCancel')||t===$('overlay')){ E.open=false; $('overlay').hidden=true; return; }
+  if(t.closest('#enGo')){
+    const has = ALREADY[E.course] || [];
+    const toks = parseIds(E.ids);
+    const found = toks.map(matchId);
+    const unknown = toks.filter((_,i)=>!found[i]).length;
+    const people = found.filter(Boolean);
+    const dup = people.filter(p=>has.includes(p.i)).length;
+    const fresh = people.length - dup;
+    E.open=false; $('overlay').hidden=true;
+    /* The result reports what happened rather than claiming a clean run:
+       duplicates and unrecognised entries are both worth knowing about. */
+    toast(fresh + ' enrolled on ' + E.course + '.',
+      [dup ? dup+' already had it, skipped' : '',
+       unknown ? unknown+' not recognised' : '',
+       'Due '+E.due + (E.mandatory?', marked required':'')]
+      .filter(Boolean).join('. ') + '.');
+    E.ids=''; E.course='';
+    return;
+  }
+
+  const open=t.closest('[data-open]');
+  if(open){ S.at=+open.dataset.open; S.view='record'; S.tab='overview'; return render(); }
+  if(t.closest('#backBtn')||t.closest('#toList')){ e.preventDefault(); S.view='list'; return render(); }
+
+  const tb=t.closest('[data-tab]'); if(tb){ S.tab=tb.dataset.tab; return render(); }
+  if (t.closest('#msgSend')) {
+    const box = $('msgIn'), p = PEOPLE[S.at];
+    if (!box || !box.value.trim()) return;
+    (THREADS[p.i] = THREADS[p.i] || []).push({ by:ME.n, role:ME.role, w:'Just now', s:box.value.trim() });
+    toast('Sent to ' + p.n.split(' ')[0] + '.', 'It is on their record, where the next person to open it will see it.');
+    return render();
+  }
+  const sh=t.closest('[data-sort]');
+  if(sh){ const k=sh.dataset.sort; if(S.sort===k) S.dir=-S.dir; else { S.sort=k; S.dir=(k==='n'||k==='state')?1:-1; } return render(); }
+  const pg=t.closest('[data-page]'); if(pg){ S.page=+pg.dataset.page; return render(); }
+  if(t.closest('#prev')){ S.page=Math.max(1,S.page-1); return render(); }
+  if(t.closest('#next')){ S.page++; return render(); }
+  if(t.closest('#clearAll')||t.closest('#clearAll2')){ S.q=''; S.comm='All communities'; S.state='All statuses'; S.page=1; return render(); }
+  if(t.closest('#exportBtn')){ toast('Training record exported.','A dated PDF and CSV, both signed, ready for a survey binder.'); return; }
+});
+
+document.addEventListener('input', e => {
+  if (e.target && e.target.id === 'msgIn') {
+    const b = $('msgSend'); if (b) b.disabled = !e.target.value.trim();
+  }
+});
+document.addEventListener('change', e=>{
+  if(e.target.id==='enMand'){ E.mandatory = e.target.checked; }
+});
+
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape' && !menu.hidden) return closeMenu();
+  if(e.key==='Escape' && E.open){ E.open=false; $('overlay').hidden=true; return; }
+  if((e.key==='Enter'||e.key===' ') && e.target.closest && e.target.closest('[data-sort],[data-open]')){ e.preventDefault(); e.target.click(); }
+});
+
+$('themeBtn').addEventListener('click', ()=>{
+  const dark=document.documentElement.getAttribute('data-theme')==='dark';
+  document.documentElement.setAttribute('data-theme', dark?'light':'dark');
+  $('themeBtn').setAttribute('aria-label', dark?'Switch to dark theme':'Switch to light theme');
+});
+
+render();
+
+const viewAsBtn = document.getElementById('viewAsBtn');
+if (viewAsBtn) {
+  const menu = document.getElementById('viewAs');
+  viewAsBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = !menu.hidden;
+    menu.hidden = open;
+    viewAsBtn.setAttribute('aria-expanded', String(!open));
+  });
+  document.addEventListener('click', () => {
+    if (!menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+}
+
+/* Collapsing the rail is shell behaviour, so every page does it. It was
+   markup on twenty pages and wired on one, and standardising the nav dropped
+   the id the one handler depended on. */
+const railBtn = document.getElementById('railBtn');
+if (railBtn) {
+  railBtn.addEventListener('click', () => {
+    const shell = document.querySelector('.app-shell');
+    const side  = document.querySelector('.app-sidebar');
+    const on = shell.style.gridTemplateColumns === '0px 1fr';
+    shell.style.gridTemplateColumns = on ? '256px 1fr' : '0px 1fr';
+    if (side) side.style.visibility = on ? 'visible' : 'hidden';
+    railBtn.setAttribute('aria-label', on ? 'Collapse navigation' : 'Expand navigation');
+  });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<!--
+  skyLearn - Recognition settings, Radix flavour.
+  Configuration only. What it produces lives on recognition.html.
+  There are no levels; the reason is on the page. See GAMIFICATION-IA.md.
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>skyLearn &middot; Recognition settings</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../tokens.css?v=102" />
+<link rel="stylesheet" href="../dashboard.css?v=102" />
+<style>
+  /* Shell bits shared with the other skyLearn screens */
+  .ph-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-5); flex-wrap: wrap; }
+  .ph-text { flex: 1; min-width: 0; }
+  .ph-acts { display: flex; gap: var(--space-3); flex: 0 0 auto; margin-left: auto; }
+  .tally { font-size: var(--fs-2); color: var(--fg-low); }
+  .toast-stack { position: fixed; left: 50%; bottom: var(--space-6); transform: translateX(-50%);
+    display: flex; flex-direction: column; gap: var(--space-2); z-index: 1400; }
+  .toast-stack .toast { animation: t-in .2s ease-out; }
+  @keyframes t-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  .master { display: flex; align-items: flex-start; gap: var(--space-4); }
+  .master-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+  .master-h { font-size: var(--fs-4); font-weight: var(--weight-bold); color: var(--fg-high); }
+  .master-p { font-size: var(--fs-2); color: var(--fg-low); }
+  .is-off { opacity: .45; pointer-events: none; }
+  .rule { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-3) 0; }
+  .rule + .rule { border-top: var(--stroke-thin) solid var(--border-subtle); }
+  .rule-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .rule-n { font-size: var(--fs-2); color: var(--fg-high); }
+  .rule-w { font-size: var(--fs-1); color: var(--fg-low); margin-top: 2px; }
+  .rule-p { display: flex; align-items: center; gap: var(--space-2); flex: 0 0 auto; }
+  .rule-p .input { width: 74px; text-align: right; }
+  .rule-p .unit { font-size: var(--fs-1); color: var(--fg-subtle); }
+  .badge-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-3); }
+  .bcard { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-4);
+    border-radius: var(--radius-4); background: var(--color-panel-solid); box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .bic { width: 40px; height: 40px; flex: 0 0 auto; border-radius: var(--radius-3); display: inline-flex;
+    align-items: center; justify-content: center; background: var(--accent-3); color: var(--accent-11); }
+  .bt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .bn { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+  .bw { font-size: var(--fs-1); color: var(--fg-low); margin-top: 2px; }
+  .bh { font-size: var(--fs-1); color: var(--fg-subtle); margin-top: var(--space-2); font-variant-numeric: tabular-nums; }
+  .bh.is-none { color: var(--warning-text); }
+  .wrap { max-width: 880px; }
+  .ov { display: flex; flex-direction: column; gap: var(--space-2); }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header is-dark">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect width="24" height="24" rx="6" fill="var(--accent-9)"/><text x="12" y="16.5" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-contrast)">S</text></svg>
+      <span>skyLearn</span>
+    </div>
+    <div class="search hdr-search">
+      <span class="search-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+      <label class="sr-only" for="q">Search</label>
+      <input class="input" id="q" type="search" placeholder="Search courses and learners" autocomplete="off" />
+    </div>
+    <div class="header-right">
+      <span class="presence"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg><span><strong class="pt-num">4</strong> points</span></span>
+      <button class="icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="ic-badge">3</span></button>
+      <button class="icon-btn" id="themeBtn" aria-label="Switch to dark theme"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+      <span class="divider-v"></span>
+      <span class="header-wrap">
+        <button class="header-user" id="viewAsBtn" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar c6">SA</span>
+          <span class="hu-id"><span class="hu-name">Sumit Awinash</span><span class="hu-role">Administrator</span></span>
+        </button>
+        <div class="view-as" id="viewAs" role="menu" hidden>
+          <div class="view-as-t">View as</div>
+          <a href="index.html" role="menuitem" aria-current="true"><span class="vr"></span>
+            <span class="vw">Administrator<span>Everything, across all six communities</span></span></a>
+          <a href="teach.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Instructor<span>Your courses, learners and sessions</span></span></a>
+          <a href="learn.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Learner<span>What you have to do, and by when</span></span></a>
+          <div class="vs">
+            <a href="signin.html" role="menuitem">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
+              Sign out</a>
+          </div>
+        </div>
+      </span>
+    </div>
+  </header>
+
+  <nav class="app-sidebar" aria-label="Primary">
+    <button class="sidebar-toggle" id="railBtn" aria-label="Collapse navigation"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>
+    <a class="nav-item" href="index.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg><span class="nav-label">Dashboard</span></a>
+    <a class="nav-item" href="courses.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg><span class="nav-label">Courses</span></a>
+    <a class="nav-item" href="learners.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg><span class="nav-label">Learners</span></a>
+    <a class="nav-item" href="certificate.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg><span class="nav-label">Certifications</span></a>
+    <a class="nav-item" href="sessions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg><span class="nav-label">Sessions</span></a>
+    <a class="nav-item" href="groups.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg><span class="nav-label">Groups</span></a>
+    <a class="nav-item is-active" href="recognition.html" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0z"/></svg><span class="nav-label">Recognition</span></a>
+    <a class="nav-item" href="discussions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6V2H8"/><path d="m8 18-4 4V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2Z"/><path d="M2 12h2"/><path d="M9 11v2"/><path d="M15 11v2"/><path d="M20 12h2"/></svg><span class="nav-label">Discussions</span></a>
+    <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span class="nav-label">Reports</span></a>
+    <a class="nav-item" href="automations.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/><path d="m2 2 20 20"/></svg><span class="nav-label">Automations</span></a>
+    <a class="nav-item" href="surveys.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/><rect x="3" y="4" width="18" height="16" rx="2"/></svg><span class="nav-label">Surveys</span></a>
+    <a class="nav-item" href="grading.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="m9 11-1.5 1.5L9 14"/><path d="M16 16h-4"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg><span class="nav-label">Grading Hub</span></a>
+    <a class="nav-item" href="files.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span class="nav-label">Reference library</span></a>
+    <a class="nav-item nav-tail" href="#"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="nav-label">Help and support</span></a>
+  </nav>
+
+  <main class="app-content">
+    <div class="breadcrumbs"><a href="index.html">Home</a><span class="sep"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span><a href="recognition.html">Recognition</a><span class="sep"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span><span class="current">Settings</span></div>
+    <div class="content-body"><div id="view"></div></div>
+  </main>
+</div>
+<div class="overlay" id="overlay" hidden></div>
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+
+<script>
+/* ==============================================================
+   The same 44 people as every other screen.
+   name | role | community | required | done | overdue | expired | competency
+   ============================================================== */
+const PEOPLE = `Dana Whitfield|CNA|Lakeside Manor|12|9|2|1|72/68/61
+Rosalind Vega|CNA|Lakeside Manor|12|11|0|1|81/77/70
+Marcus Ellery|Med Tech|Northgate|14|11|1|0|79/74/68
+Aurelie Bonnet|CNA|Northgate|12|10|0|1|76/71/64
+Piotr Zawadzki|Caregiver|Northgate|10|10|0|0|85/80/74
+Desmond Achebe|Caregiver|Lakeside Manor|10|8|1|0|74/70/63
+Imani Sowande|LPN|Willow Creek|15|15|0|0|90/86/79
+Yusuf Demirci|Caregiver|Willow Creek|10|9|1|0|77/73/66
+Theo Brannigan|Caregiver|Sunrise Terrace|10|4|1|0|-
+Fenella Wick|LPN|Sunrise Terrace|15|7|1|0|-
+Nadia Kerr|CNA|Harborview|12|6|0|0|-
+Oren Kaplan|Med Tech|Harborview|14|14|0|0|88/83/77
+Callum Reyes|Med Tech|Cedar Ridge|14|13|0|0|86/81/75
+Greta Lindqvist|CNA|Cedar Ridge|12|12|0|0|89/85/78
+Ines Halvorsen|CNA|Cedar Ridge|12|12|0|0|91/87/80
+Tomas Ruiz|Caregiver|Cedar Ridge|10|10|0|0|84/79/73
+Priya Raghavan|LPN|Cedar Ridge|15|13|0|0|87/82/76
+Bea Ferreira|CNA|Harborview|12|12|0|0|83/78/72
+Idris Mensah|Caregiver|Harborview|10|9|0|1|75/70/64
+Lena Vogt|CNA|Harborview|12|7|0|0|70/66/59
+Sofia Grandi|LPN|Willow Creek|15|14|0|0|88/84/77
+Hamid Nazari|Caregiver|Willow Creek|10|10|0|0|82/78/71
+Ruth Okonkwo|CNA|Willow Creek|12|12|0|0|90/86/80
+Malik Osei|Med Tech|Willow Creek|14|12|1|0|78/74/67
+Clara Bianchi|CNA|Sunrise Terrace|12|11|0|0|80/76/69
+Jonas Aalto|Caregiver|Sunrise Terrace|10|10|0|0|86/82/75
+Mira Solberg|LPN|Sunrise Terrace|15|12|0|0|84/80/73
+Ade Balogun|CNA|Northgate|12|10|1|0|76/72/65
+Freya Lindholm|Caregiver|Northgate|10|5|0|0|-
+Rafael Duarte|Med Tech|Northgate|14|13|0|0|85/81/74
+Zainab Farah|CNA|Lakeside Manor|12|6|0|0|-
+Otto Reinhardt|Caregiver|Lakeside Manor|10|9|1|0|73/69/62
+Silvia Marchetti|LPN|Lakeside Manor|15|12|1|0|81/77/70
+Kwame Boateng|CNA|Lakeside Manor|12|5|0|0|68/64/57
+Elena Petrova|CNA|Cedar Ridge|12|12|0|0|92/88/81
+Noor Haddad|Caregiver|Cedar Ridge|10|10|0|0|87/83/76
+Bram de Vries|Med Tech|Harborview|14|14|0|0|89/85/78
+Aiko Tanaka|CNA|Harborview|12|11|0|0|82/78/71
+Miguel Santos|Caregiver|Willow Creek|10|10|0|0|85/80/74
+Hana Novak|CNA|Sunrise Terrace|12|10|0|0|79/75/68
+Grace Mbeki|Housekeeping|Cedar Ridge|4|4|0|0|-
+Viktor Novikov|Housekeeping|Northgate|4|3|0|0|-
+Tara Sullivan|Administrator|Cedar Ridge|6|6|0|0|88/84/77
+Owen Fitzgerald|Administrator|Harborview|6|5|0|0|86/82/75`
+  .trim().split('\n').map(l => { const a = l.split('|');
+    const c = a[7] === '-' ? null : a[7].split('/').map(Number);
+    return { n:a[0], role:a[1], comm:a[2], req:+a[3], done:+a[4], overdue:+a[5], expired:+a[6], comp:c }; });
+
+const $   = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+/* Not every plural is +s. `person` was rendering as "13 persons" on five
+   screens; anything else irregular goes in the same map rather than being
+   worked around at the call site. */
+const IRREGULAR = { person:'people' };
+const plural = (n, w) => n + ' ' + (n === 1 ? w : (IRREGULAR[w] || w + 's'));
+const PASS = 75;
+
+/* One shared configuration. Two screens read it: this one sets it, the
+   other shows what it produced. */
+const CFG = {
+  on: true,
+  rules: [
+    { k:'ontime', n:'Finished a required course before it was due', p:10, on:true,
+      w:'The behaviour the whole product exists to produce.' },
+    { k:'late',   n:'Finished a required course after it was due',  p:2,  on:true,
+      w:'Still worth credit. Worth less than on time, or on time means nothing.' },
+    { k:'comp',   n:'Passed a competency check at ' + PASS + ' or above', p:15, on:true,
+      w:'Competency, not completion, is what this product sells.' },
+    { k:'ilt',    n:'Attended an instructor-led session', p:15, on:true,
+      w:'The hardest thing to get people to do, and the only proof for hands-on skills.' },
+    { k:'renew',  n:'Renewed a certification before it lapsed', p:20, on:true,
+      w:'A lapsed certificate stops somebody working unsupervised.' }
+  ],
+  /* Three badges, three different questions. The set before this had six,
+     and Sumit spotted the problem in it by eye:
+
+       "On time, every time" and "First year done" awarded to the same 16
+       people and always would. `overdue` counts what is currently late, so
+       anybody who finished their set has zero by definition. Two rules
+       that can never disagree are one badge written twice.
+
+       "Steady" was (nothing overdue) AND (nothing lapsed), and the second
+       half is exactly the "Current" badge. A compound of two others.
+
+       "Nearly there" went to 33 people, 17 of whom had not finished. It
+       was a badge for almost doing the thing.
+
+     What is left asks: did you finish what you must, are your credentials
+     in date, and can you actually do the job. Nothing here is another way
+     of counting courses, because the required set resets every year: a
+     ladder needs a number that keeps climbing, and this one does not. */
+  badges: [
+    { k:'complete',  n:'Set complete', w:'Finished every required course for the year.',
+      holds: p => p.done >= p.req },
+    { k:'current',   n:'All current', w:'No lapsed certification.',
+      holds: p => p.expired === 0 },
+    { k:'competent', n:'Competent', w:'All three competency domains at ' + PASS + ' or above.',
+      holds: p => !!p.comp && p.comp.every(v => v >= PASS) }
+  ],
+  /* One badge per course, given automatically to everyone who completes
+     it. Not configured here: it is not a rule anyone tunes, it is a
+     record of a fact. The two below use the same completion rosters as
+     the Learners and Assign screens (`ALREADY`, by roster index), so a
+     count here matches the count there rather than inventing a second
+     answer to "who finished this course". A real build reads this off
+     enrollment records; there are only two courses with that record in
+     this prototype, so there are only two course badges. */
+  courseBadges: [
+    { course:'Preventing Falls in Senior Living', cat:'Safety and health', tone:'blue',
+      ic:'shield', holders:[1,4,6,11,13,14,17,22,34,36] },
+    { course:'HIPAA Privacy and Security', cat:'Compliance', tone:'purple',
+      ic:'lock', holders:[0,2,3,5,7,12,15,20] }
+  ]
+};
+const rule = k => CFG.rules.find(r => r.k === k);
+const val  = k => { const r = rule(k); return r && r.on ? r.p : 0; };
+const holders = b => PEOPLE.filter(b.holds).length;
+const held = b => new Set(PEOPLE.filter(b.holds).map(p => p.n));
+
+/* A badge set is only worth having if the badges say different things.
+   Sumit found two defects in the last set by reading it; this finds them
+   by running it, so the next badge somebody adds gets the same test.
+
+   Identical is always a defect: two rules that award to the same people
+   are one badge written twice. Implication is only sometimes one, and the
+   difference is whether it is the rule or the roster that causes it, so
+   it is reported rather than judged. */
+function badgeOverlaps() {
+  const b = CFG.badges, out = [];
+  for (let i = 0; i < b.length; i++) {
+    for (let j = 0; j < b.length; j++) {
+      if (i === j) continue;
+      const A = held(b[i]), B = held(b[j]);
+      if (!A.size) continue;
+      const inside = [...A].every(x => B.has(x));
+      if (!inside) continue;
+      if (A.size === B.size && j > i) out.push({ kind:'same', a:b[i], b:b[j], n:A.size });
+      /* An implication is only interesting when the bigger badge is not
+         nearly universal. If 40 of 44 hold it, everything is inside it,
+         and the thing worth saying is that the bar is low. */
+      else if (A.size < B.size && B.size / PEOPLE.length < 0.85)
+        out.push({ kind:'inside', a:b[i], b:b[j], an:A.size, bn:B.size });
+    }
+  }
+  return out;
+}
+
+/* A badge almost everyone holds separates nobody from anybody. */
+const weak = () => CFG.badges.filter(b => { const h = holders(b);
+  return h / PEOPLE.length >= 0.85 && h < PEOPLE.length; });
+
+/* Points earned in a rolling 90 days, derived from the roster so both
+   screens and every other module agree. */
+function periodPts(p) {
+  const courses = Math.round(p.done / 4);
+  const late = Math.min(p.overdue, courses);
+  return (courses - late) * val('ontime') + late * val('late') +
+         (p.comp && p.comp.every(v => v >= PASS) ? val('comp') : 0) +
+         (p.expired === 0 ? val('renew') : 0);
+}
+/* Whether the person the board is praising is actually up to date. */
+const upToDate = p => p.done >= p.req && p.overdue === 0 && p.expired === 0;
+function behind(p) {
+  return [p.done < p.req ? plural(p.req - p.done, 'course') + ' outstanding' : '',
+          p.overdue ? plural(p.overdue, 'course') + ' overdue' : '',
+          p.expired ? plural(p.expired, 'certificate') + ' lapsed' : ''].filter(Boolean).join(', ');
+}
+</script>
+
+<script>
+const IC = {
+  info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  alert:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>',
+  gift:'<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/>',
+  cog:'<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+  clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  award:'<path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/>',
+  star:'<path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>',
+  up:'<path d="M12 20V10"/><path d="m5 15 7-7 7 7"/>',
+  back:'<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+  trophy:'<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0z"/>'
+};
+const ic = (n, s) => '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+IC[n]+'</svg>';
+const BIC = { complete:'check', current:'clock', competent:'award' };
+const callout = (tone, text) => '<div class="callout is-'+tone+'"><span class="co-icon">' +
+  ic(tone === 'info' ? 'info' : tone === 'success' ? 'check' : 'alert', 18)+'</span><span>'+text+'</span></div>';
+function toast(title, body) {
+  const el = document.createElement('div'); el.className = 'toast';
+  el.innerHTML = '<div><div class="toast-title">'+esc(title)+'</div>'+(body ? '<div class="toast-body">'+esc(body)+'</div>' : '')+'</div>';
+  $('toasts').appendChild(el); setTimeout(() => el.remove(), 5000);
+}
+</script>
+<script>
+/* ==============================================================
+   Recognition settings.
+
+   Configuration only, and configuration is a different job from looking
+   at results: it is done once, at setup, by one person, and then almost
+   never again. Putting it on the same page as the leaderboard meant the
+   thing you read weekly sat under six things you set once.
+
+   Two sections, because there are two decisions: what earns points, and
+   which badges exist.
+
+   Levels are not here, and that is deliberate. See below.
+   ============================================================== */
+function sw(on, id) {
+  return '<label class="switch"><input type="checkbox" id="'+id+'"'+(on ? ' checked' : '')+' />' +
+    '<span class="sr-only">Turn on</span></label>';
+}
+
+function economy() {
+  const p = PEOPLE.find(x => x.role === 'CNA');
+  return { courses:p.req, total: p.req * val('ontime') + 4 * val('comp') + 2 * val('ilt') + 2 * val('renew') };
+}
+
+function renderMaster() {
+  return '<div class="card"><div class="master">' +
+    '<span class="master-t"><span class="master-h">Recognition is ' + (CFG.on ? 'on' : 'off') + '</span>' +
+    '<span class="master-p">' + (CFG.on
+      ? 'Learners see their own points and badges on their dashboard. Nobody sees anybody else&rsquo;s unless the leaderboard is on.'
+      : 'Learners see nothing at all. Turn this on and they get their own points and badges, visible only to them.') +
+    '</span></span>' + sw(CFG.on, 'master') + '</div></div>';
+}
+
+function renderRules() {
+  const e = economy();
+  return '<div class="card' + (CFG.on ? '' : ' is-off') + '">' +
+    '<div class="panel-head"><div><div class="panel-title">What earns points</div>' +
+    '<div class="panel-sub">Five things, all of them things the organisation needs done.</div></div></div>' +
+    CFG.rules.map(r => '<div class="rule">' + sw(r.on, 'r-' + r.k) +
+      '<span class="rule-t"><span class="rule-n">'+esc(r.n)+'</span><span class="rule-w">'+esc(r.w)+'</span></span>' +
+      '<span class="rule-p"><input class="input" type="number" value="'+r.p+'" min="0" data-pts="'+r.k+'" />' +
+      '<span class="unit">pts</span></span></div>').join('') +
+    '<div style="margin-top:var(--space-5);">' +
+      callout('info', 'A CNA who finishes all <strong>'+e.courses+'</strong> required courses on time, passes four competency checks, ' +
+        'attends two sessions and renews two certificates earns <strong>'+e.total+'</strong> points a year.') + '</div>' +
+    '<div style="margin-top:var(--space-2);">' +
+      callout('warning', 'The rule that used to sit at the top of this list, <em>each login, 1 pt</em>, paid <strong>365</strong> ' +
+        'points a year for opening the app and closing it again. It outscored every piece of training a CNA does. It is gone, ' +
+        'and so is <em>each upvote on discussion comments</em>, which paid a learner for what other people do.') + '</div>' +
+  '</div>';
+}
+
+function renderBadges() {
+  const none = CFG.badges.filter(b => holders(b) === 0).length;
+  return '<div class="card' + (CFG.on ? '' : ' is-off') + '">' +
+    '<div class="panel-head"><div><div class="panel-title">Badges</div>' +
+    '<div class="panel-sub">Six, and every one earnable inside a year. Each shows how many of your ' +
+      PEOPLE.length + ' learners hold it today, so a badge set too high shows up now rather than in two years.</div></div></div>' +
+    '<div class="badge-grid">' + CFG.badges.map(b => { const h = holders(b);
+      return '<div class="bcard"><span class="bic">'+ic(BIC[b.k], 20)+'</span>' +
+        '<span class="bt"><span class="bn">'+esc(b.n)+'</span><span class="bw">'+esc(b.w)+'</span>' +
+        '<span class="bh'+(h ? '' : ' is-none')+'">' + (h ? h + ' of ' + PEOPLE.length + ' hold it today'
+          : 'nobody holds it') + '</span></span></div>'; }).join('') + '</div>' +
+    (none ? '<div style="margin-top:var(--space-4);">' + callout('warning',
+      plural(none, 'badge') + ' nobody holds. Either the bar is too high or the thing it rewards is not happening.') + '</div>' : '') +
+    renderOverlap() +
+
+    /* Levels were a third currency that restated the first two, and the
+       badge ladder was already a level system in disguise. */
+    '<div class="divider" style="margin:var(--space-5) 0;"></div>' +
+    '<div class="panel-title" style="margin-bottom:var(--space-2);">There are no levels</div>' +
+    '<p class="tally">A badge <em>is</em> a level, with a name on it. The set this replaces had eight tiers per category — ' +
+      'Newbie, Grower, Adventurer, Explorer, Star, Superstar, Master, Grandmaster — which is a level system wearing badge icons, ' +
+      'and then a separate <em>Levels</em> tab on top of it. Two mechanisms for one idea, and the one nobody could explain was ' +
+      'the unnamed number.</p>' +
+    '<p class="tally" style="margin-top:var(--space-3);">A level also said nothing. <em>Level 2</em> does not tell a learner what ' +
+      'to do next and does not tell a director anything they cannot read off the compliance report. ' +
+      '<strong>On time, every time</strong> does both. So the badges are the levels, and they say what you did to get them.</p>' +
+  '</div>';
+}
+
+/* Shown whether or not anything is wrong, because "these three say
+   different things" is the reassurance the last set never earned. */
+function renderOverlap() {
+  const o = badgeOverlaps();
+  const same = o.filter(x => x.kind === 'same');
+  const inside = o.filter(x => x.kind === 'inside');
+  const soft = weak();
+  if (!same.length && !inside.length && !soft.length)
+    return '<div style="margin-top:var(--space-4);">' + callout('success',
+      'No two of these award to the same people, and none is guaranteed by another. Each is asking a different question.') + '</div>';
+  return '<div style="margin-top:var(--space-4);" class="ov">' +
+    same.map(x => callout('warning',
+      '<strong>' + esc(x.a.n) + '</strong> and <strong>' + esc(x.b.n) + '</strong> award to exactly the same ' +
+      plural(x.n, 'person') + ', and always will. That is one badge written twice.')).join('') +
+    inside.map(x => callout('info',
+      'Everyone with <strong>' + esc(x.a.n) + '</strong> (' + x.an + ') also has <strong>' + esc(x.b.n) + '</strong> (' + x.bn +
+      '), so the second one is not telling you anything the first did not.')).join('') +
+    soft.map(b => callout('info',
+      '<strong>' + esc(b.n) + '</strong> is held by ' + holders(b) + ' of ' + PEOPLE.length +
+      '. A badge almost everyone has separates nobody from anybody, which may be exactly right for a ' +
+      'baseline, or may mean the bar is too low.')).join('') +
+  '</div>';
+}
+
+function render() {
+  $('view').innerHTML =
+    '<header class="page-header ph-row"><div class="ph-text"><h1>Recognition settings</h1>' +
+      '<p>Set once, at setup. What it produces is on the Recognition screen.</p></div>' +
+      '<div class="ph-acts"><a class="btn btn-surface" href="recognition.html">'+ic('back', 16)+' Back to Recognition</a>' +
+      '<button class="btn btn-solid" id="save">Save</button></div></header>' +
+    '<div class="wrap"><div class="stack-5">' + renderMaster() + renderRules() + renderBadges() + '</div></div>';
+}
+
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.id === 'master') { CFG.on = t.checked; return render(); }
+  const r = String(t.id).slice(0, 2) === 'r-' ? CFG.rules.find(x => 'r-' + x.k === t.id) : null;
+  if (r) { r.on = t.checked; return render(); }
+  const pts = t.closest && t.closest('[data-pts]');
+  if (pts) { const x = CFG.rules.find(y => y.k === pts.dataset.pts); if (x) x.p = +t.value || 0; return render(); }
+});
+document.addEventListener('click', e => {
+  if (e.target.closest('#save')) return toast('Saved.', CFG.on
+    ? 'Learners see their own points and badges from their next sign-in.'
+    : 'Recognition stays off. Nothing changes for learners.');
+});
+$('themeBtn').addEventListener('click', () => {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+  $('themeBtn').setAttribute('aria-label', dark ? 'Switch to dark theme' : 'Switch to light theme');
+});
+render();
+
+const viewAsBtn = document.getElementById('viewAsBtn');
+if (viewAsBtn) {
+  const menu = document.getElementById('viewAs');
+  viewAsBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = !menu.hidden;
+    menu.hidden = open;
+    viewAsBtn.setAttribute('aria-expanded', String(!open));
+  });
+  document.addEventListener('click', () => {
+    if (!menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+}
+
+/* Collapsing the rail is shell behaviour, so every page does it. It was
+   markup on twenty pages and wired on one, and standardising the nav dropped
+   the id the one handler depended on. */
+const railBtn = document.getElementById('railBtn');
+if (railBtn) {
+  railBtn.addEventListener('click', () => {
+    const shell = document.querySelector('.app-shell');
+    const side  = document.querySelector('.app-sidebar');
+    const on = shell.style.gridTemplateColumns === '0px 1fr';
+    shell.style.gridTemplateColumns = on ? '256px 1fr' : '0px 1fr';
+    if (side) side.style.visibility = on ? 'visible' : 'hidden';
+    railBtn.setAttribute('aria-label', on ? 'Collapse navigation' : 'Expand navigation');
+  });
+}
+</script>
+</body>
+</html>

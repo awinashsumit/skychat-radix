@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<!--
+  skyLearn - Review queue (was Grading Hub), Radix flavour.
+  Nothing in the app produces a gradable submission -- there is no assignment
+  unit -- which is why Grading Hub read 0/0/0. What DOES wait on a person is a
+  competency check-off and a course awaiting approval. See GRADING-IA.md.
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>skyLearn &middot; Grading Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../tokens.css?v=102" />
+<link rel="stylesheet" href="../dashboard.css?v=102" />
+<style>
+  .ph-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-5); flex-wrap: wrap; }
+  .ph-text { flex: 1; min-width: 0; }
+  .tally { font-size: var(--fs-2); color: var(--fg-low); }
+
+  .filters { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-5); }
+  .fl { height: 32px; padding: 0 var(--space-4); border: 0; border-radius: var(--radius-full); cursor: pointer;
+    background: var(--gray-3); color: var(--fg-low); font-family: var(--font-base); font-size: var(--fs-2); }
+  .fl:hover { color: var(--fg-high); }
+  .fl.is-on { background: var(--accent-9); color: var(--accent-contrast); font-weight: var(--weight-medium); }
+  .fl-sp { flex: 1; }
+
+  /* ---- The queue. One row per decision somebody owes. ---- */
+  .q { display: flex; flex-direction: column; }
+  .qi { display: grid; grid-template-columns: 34px 1fr auto auto; gap: var(--space-4);
+    align-items: center; width: 100%; text-align: left; padding: var(--space-4) var(--space-5);
+    border: 0; border-bottom: var(--stroke-thin) solid var(--border-subtle);
+    background: var(--color-panel-solid); cursor: pointer; }
+  .qi:last-child { border-bottom: 0; }
+  .qi:hover { background: var(--row-accent); }
+  .qi.is-done { opacity: .62; }
+
+  .qk { width: 30px; height: 30px; border-radius: var(--radius-3); display: flex;
+    align-items: center; justify-content: center; flex: 0 0 auto; }
+  .qk.is-comp   { background: var(--accent-3); color: var(--accent-11); }
+  .qk.is-course { background: var(--info-bg);  color: var(--info-text); }
+  .qk.is-enrol  { background: var(--success-bg); color: var(--success-text); }
+  .qk.is-work   { background: var(--gray-3);   color: var(--fg-low); }
+
+  .qt { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .qt-n { font-size: var(--fs-3); font-weight: var(--weight-medium); color: var(--fg-high);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .qt-w { font-size: var(--fs-2); color: var(--fg-low); }
+  .qt-w b { font-weight: var(--weight-semibold); color: var(--fg-high); }
+
+  /* Age is the whole reason to sort a queue. Say it, and shout when it is bad. */
+  .age { font-size: var(--fs-2); color: var(--fg-low); white-space: nowrap;
+    font-variant-numeric: tabular-nums; }
+  .age.is-old { color: var(--danger-text); font-weight: var(--weight-medium); }
+
+  /* ---- The decision panel ---- */
+  .d-head { display: flex; align-items: flex-start; gap: var(--space-4); margin-bottom: var(--space-5); }
+  .d-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+  .d-n { font-size: var(--fs-6); line-height: var(--lh-6); font-weight: var(--weight-bold); color: var(--fg-high); }
+  .d-s { font-size: var(--fs-2); color: var(--fg-low); }
+
+  .panes { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--space-5); align-items: start; }
+  @media (max-width: 1080px) { .panes { grid-template-columns: 1fr; } }
+  .pane { padding: var(--space-5); border-radius: var(--radius-4); background: var(--color-panel-solid);
+    box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .pane + .pane { margin-top: var(--space-4); }
+  .pane-t { font-size: var(--fs-3); font-weight: var(--weight-semibold); color: var(--fg-high);
+    margin-bottom: var(--space-4); }
+
+  /* Score entry. The threshold is drawn on the track, not left in a footnote:
+     a number you have to remember is a number people get wrong. */
+  .dom { display: flex; flex-direction: column; gap: var(--space-3); }
+  .dom + .dom { margin-top: var(--space-5); }
+  .dom-h { display: flex; align-items: baseline; gap: var(--space-3); }
+  .dom-n { flex: 1; min-width: 0; font-size: var(--fs-2); color: var(--fg-high); }
+  .dom-v { font-size: var(--fs-4); font-weight: var(--weight-bold); color: var(--fg-high);
+    font-variant-numeric: tabular-nums; }
+  .dom-v.is-below { color: var(--danger-text); }
+  .dom-track { position: relative; height: 10px; border-radius: var(--radius-full);
+    background: var(--gray-3); overflow: visible; }
+  .dom-fill { display: block; height: 100%; border-radius: var(--radius-full); background: var(--success-solid); }
+  .dom-fill.is-below { background: var(--danger-solid); }
+  .dom-mark { position: absolute; top: -3px; width: 2px; height: 16px; background: var(--fg-high); border-radius: 1px; }
+  .dom-mark::after { content: attr(data-l); position: absolute; top: 19px; left: 50%;
+    transform: translateX(-50%); font-size: var(--fs-1); color: var(--fg-low); white-space: nowrap; }
+  .dom-in { width: 100%; }
+
+  .facts { display: flex; flex-direction: column; gap: var(--space-4); }
+  .fact { display: flex; flex-direction: column; gap: 2px; }
+  .fact-l { font-size: var(--fs-1); letter-spacing: .05em; text-transform: uppercase; color: var(--fg-subtle); }
+  .fact-v { font-size: var(--fs-3); color: var(--fg-high); }
+
+  /* Deciding says what will happen. A button whose consequence is invisible
+     is a button people click twice and trust once. */
+  .acts { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-5); }
+  .act-b { width: 100%; justify-content: center; }
+  .conseq { font-size: var(--fs-1); color: var(--fg-low); line-height: 1.55; }
+
+  .diffs { display: flex; flex-direction: column; gap: var(--space-3); }
+  .diff { display: grid; grid-template-columns: 1fr auto; gap: var(--space-4); align-items: baseline;
+    padding-bottom: var(--space-3); border-bottom: var(--stroke-thin) solid var(--border-subtle); font-size: var(--fs-2); }
+  .diff:last-child { border-bottom: 0; padding-bottom: 0; }
+  .diff-n { color: var(--fg-high); }
+  .diff-v { color: var(--fg-low); }
+
+  .toast-stack { position: fixed; left: 50%; bottom: var(--space-6); transform: translateX(-50%);
+    z-index: 80; display: flex; flex-direction: column; gap: var(--space-3); }
+  .toast { min-width: 280px; max-width: 440px; padding: var(--space-4) var(--space-5);
+    border-radius: var(--radius-3); background: var(--gray-12); color: var(--gray-1); box-shadow: var(--shadow-4); }
+  .toast-title { font-size: var(--fs-2); font-weight: var(--weight-semibold); }
+  .toast-body { margin-top: var(--space-1); font-size: var(--fs-2); opacity: .82; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header is-dark">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect width="24" height="24" rx="6" fill="var(--accent-9)"/><text x="12" y="16.5" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-contrast)">S</text></svg>
+      <span>skyLearn</span>
+    </div>
+    <div class="search hdr-search">
+      <span class="search-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+      <label class="sr-only" for="q">Search</label>
+      <input class="input" id="q" type="search" placeholder="Search courses and learners" autocomplete="off" />
+    </div>
+    <div class="header-right">
+      <span class="presence"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg><span><strong class="pt-num">4</strong> points</span></span>
+      <button class="icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="ic-badge">3</span></button>
+      <button class="icon-btn" id="themeBtn" aria-label="Switch to dark theme"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+      <span class="divider-v"></span>
+      <span class="header-wrap">
+        <button class="header-user" id="viewAsBtn" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar c6">SA</span>
+          <span class="hu-id"><span class="hu-name">Sumit Awinash</span><span class="hu-role">Administrator</span></span>
+        </button>
+        <div class="view-as" id="viewAs" role="menu" hidden>
+          <div class="view-as-t">View as</div>
+          <a href="index.html" role="menuitem" aria-current="true"><span class="vr"></span>
+            <span class="vw">Administrator<span>Everything, across all six communities</span></span></a>
+          <a href="teach.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Instructor<span>Your courses, learners and sessions</span></span></a>
+          <a href="learn.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Learner<span>What you have to do, and by when</span></span></a>
+          <div class="vs">
+            <a href="signin.html" role="menuitem">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
+              Sign out</a>
+          </div>
+        </div>
+      </span>
+    </div>
+  </header>
+
+  <nav class="app-sidebar" aria-label="Primary">
+    <button class="sidebar-toggle" id="railBtn" aria-label="Collapse navigation"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>
+    <a class="nav-item" href="index.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg><span class="nav-label">Dashboard</span></a>
+    <a class="nav-item" href="courses.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg><span class="nav-label">Courses</span></a>
+    <a class="nav-item" href="learners.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg><span class="nav-label">Learners</span></a>
+    <a class="nav-item" href="certificate.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg><span class="nav-label">Certifications</span></a>
+    <a class="nav-item" href="sessions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg><span class="nav-label">Sessions</span></a>
+    <a class="nav-item" href="groups.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg><span class="nav-label">Groups</span></a>
+    <a class="nav-item" href="recognition.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0z"/></svg><span class="nav-label">Recognition</span></a>
+    <a class="nav-item" href="discussions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6V2H8"/><path d="m8 18-4 4V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2Z"/><path d="M2 12h2"/><path d="M9 11v2"/><path d="M15 11v2"/><path d="M20 12h2"/></svg><span class="nav-label">Discussions</span></a>
+    <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span class="nav-label">Reports</span></a>
+    <a class="nav-item" href="automations.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/><path d="m2 2 20 20"/></svg><span class="nav-label">Automations</span></a>
+    <a class="nav-item" href="surveys.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/><rect x="3" y="4" width="18" height="16" rx="2"/></svg><span class="nav-label">Surveys</span></a>
+    <a class="nav-item is-active" href="grading.html" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="m9 11-1.5 1.5L9 14"/><path d="M16 16h-4"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg><span class="nav-label">Grading Hub</span></a>
+    <a class="nav-item" href="files.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span class="nav-label">Reference library</span></a>
+    <a class="nav-item nav-tail" href="#"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="nav-label">Help and support</span></a>
+  </nav>
+
+  <main class="app-content">
+    <div class="breadcrumbs"><a href="index.html">Home</a><span class="sep"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span><span class="current">Grading Hub</span></div>
+    <div class="content-body">
+      <header class="page-header ph-row">
+        <div class="ph-text"><h1>Grading Hub</h1>
+          <p>Everything waiting on somebody's judgement, oldest first.</p></div>
+      </header>
+      <div id="view"></div>
+    </div>
+  </main>
+</div>
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+<script>
+/* ==============================================================
+   The same 44 people, in the same format as every other screen.
+   name|role|community|required|done|overdue|expiring|expired|competency|weeks seen
+   ============================================================== */
+const RAW = `Dana Whitfield|CNA|Lakeside Manor|12|9|2|1|1|72/68/61|1
+Rosalind Vega|CNA|Lakeside Manor|12|11|0|0|1|81/77/70|2
+Marcus Ellery|Med Tech|Northgate|14|11|1|2|0|79/74/68|1
+Aurelie Bonnet|CNA|Northgate|12|10|0|1|1|76/71/64|4
+Piotr Zawadzki|Caregiver|Northgate|10|10|0|0|0|85/80/74|1
+Desmond Achebe|Caregiver|Lakeside Manor|10|8|1|0|0|74/70/63|3
+Imani Sowande|LPN|Willow Creek|15|15|0|1|0|90/86/79|1
+Yusuf Demirci|Caregiver|Willow Creek|10|9|1|0|0|77/73/66|2
+Theo Brannigan|Caregiver|Sunrise Terrace|10|4|1|0|0|-|1
+Fenella Wick|LPN|Sunrise Terrace|15|7|1|0|0|-|1
+Nadia Kerr|CNA|Harborview|12|6|0|0|0|-|2
+Oren Kaplan|Med Tech|Harborview|14|14|0|0|0|88/83/77|1
+Callum Reyes|Med Tech|Cedar Ridge|14|13|0|1|0|86/81/75|1
+Greta Lindqvist|CNA|Cedar Ridge|12|12|0|0|0|89/85/78|1
+Ines Halvorsen|CNA|Cedar Ridge|12|12|0|0|0|91/87/80|2
+Tomas Ruiz|Caregiver|Cedar Ridge|10|10|0|0|0|84/79/73|3
+Priya Raghavan|LPN|Cedar Ridge|15|13|0|0|0|87/82/76|46
+Bea Ferreira|CNA|Harborview|12|12|0|1|0|83/78/72|1
+Idris Mensah|Caregiver|Harborview|10|9|0|0|1|75/70/64|5
+Lena Vogt|CNA|Harborview|12|7|0|0|0|70/66/59|203
+Sofia Grandi|LPN|Willow Creek|15|14|0|0|0|88/84/77|1
+Hamid Nazari|Caregiver|Willow Creek|10|10|0|0|0|82/78/71|2
+Ruth Okonkwo|CNA|Willow Creek|12|12|0|0|0|90/86/80|1
+Malik Osei|Med Tech|Willow Creek|14|12|1|0|0|78/74/67|4
+Clara Bianchi|CNA|Sunrise Terrace|12|11|0|1|0|80/76/69|1
+Jonas Aalto|Caregiver|Sunrise Terrace|10|10|0|0|0|86/82/75|2
+Mira Solberg|LPN|Sunrise Terrace|15|12|0|0|0|84/80/73|38
+Ade Balogun|CNA|Northgate|12|10|1|0|0|76/72/65|3
+Freya Lindholm|Caregiver|Northgate|10|5|0|0|0|-|1
+Rafael Duarte|Med Tech|Northgate|14|13|0|0|0|85/81/74|1
+Zainab Farah|CNA|Lakeside Manor|12|6|0|0|0|-|2
+Otto Reinhardt|Caregiver|Lakeside Manor|10|9|1|0|0|73/69/62|6
+Silvia Marchetti|LPN|Lakeside Manor|15|12|1|1|0|81/77/70|2
+Kwame Boateng|CNA|Lakeside Manor|12|5|0|0|0|68/64/57|187
+Elena Petrova|CNA|Cedar Ridge|12|12|0|0|0|92/88/81|1
+Noor Haddad|Caregiver|Cedar Ridge|10|10|0|0|0|87/83/76|1
+Bram de Vries|Med Tech|Harborview|14|14|0|0|0|89/85/78|2
+Aiko Tanaka|CNA|Harborview|12|11|0|1|0|82/78/71|1
+Miguel Santos|Caregiver|Willow Creek|10|10|0|0|0|85/80/74|3
+Hana Novak|CNA|Sunrise Terrace|12|10|0|0|0|79/75/68|1
+Grace Mbeki|Housekeeping|Cedar Ridge|4|4|0|0|0|-|2
+Viktor Novikov|Housekeeping|Northgate|4|3|0|0|0|-|5
+Tara Sullivan|Administrator|Cedar Ridge|6|6|0|0|0|88/84/77|1
+Owen Fitzgerald|Administrator|Harborview|6|5|0|0|0|86/82/75|2`;
+
+const PASS = 75;
+const DOMAINS = ['Knowledge and compliance','Standards and communication','Judgment and people skills'];
+
+const PEOPLE = RAW.split('\n').map(function (l, i) {
+  const f = l.split('|');
+  return { i:i, n:f[0], role:f[1], comm:f[2], req:+f[3], done:+f[4],
+           comp: f[8] === '-' ? null : f[8].split('/').map(Number), seen:+f[9] };
+});
+
+/* The skills the catalogue asks people to DO rather than know. A check-off is
+   somebody watching one of these and signing it, which is the thing that has
+   never had a queue. */
+const SKILLS = ['Applying a Wrist Restraint','Safe Lifting and Transfers',
+                'Safe Resident Handling','CPR and First Aid'];
+
+/* ==============================================================
+   The queue. Three kinds of work, one shape, one vocabulary.
+
+   The old screen used two: Assignments were Pending/Graded/All and
+   Activities were Pending/Approved/Rejected -- the same idea under
+   different words, and "Returned" was counted in a KPI you could
+   not filter to.
+   ============================================================== */
+const KIND = {
+  comp:   { l:'Competency check',   ic:'clip',  yes:'Pass',    no:'Refer' },
+  course: { l:'Course review',      ic:'book',  yes:'Approve', no:'Send back' },
+  enrol:  { l:'Enrolment request',  ic:'users', yes:'Approve', no:'Decline' },
+  work:   { l:'Submission',         ic:'file',  yes:'Accept',  no:'Return' }
+};
+
+/* Waiting time is deterministic, derived from the roster, so the queue reads
+   the same on every load. */
+function age(p, base) { return base + (p.i * 7) % 34; }
+
+const ITEMS = [];
+PEOPLE.forEach(function (p) {
+  if (!p.comp) {
+    ITEMS.push({ id:'c' + p.i, kind:'comp', who:p, why:'never assessed',
+                 skill:SKILLS[p.i % SKILLS.length], scores:null, days:age(p, 12), state:'waiting' });
+  } else if (p.comp.some(s => s < PASS)) {
+    ITEMS.push({ id:'c' + p.i, kind:'comp', who:p, why:'below threshold',
+                 skill:SKILLS[p.i % SKILLS.length], scores:p.comp.slice(), days:age(p, 4), state:'waiting' });
+  }
+});
+
+/* Courses an instructor submitted for approval. course-create.html already
+   has that flow -- instructor writes, admin approves -- and until now the
+   admin had nowhere to see what was waiting. */
+[['Wandering and Elopement: Recognition, Prevention, and Response','Priya Raghavan', 9,
+  [['Objectives', '4 stated, 4 covered'], ['Length', '38 minutes'], ['Quiz', '8 questions'], ['Ohio topics', '6 of 6']]],
+ ['Understanding Dementia’s Impact: Supporting Families','Tomas Ruiz', 3,
+  [['Objectives', '5 stated, 3 covered'], ['Length', '52 minutes'], ['Quiz', '12 questions'], ['Ohio topics', '4 of 6']]],
+ ['Nutrition and Hydration Refresher','Greta Lindqvist', 21,
+  [['Objectives', '3 stated, 3 covered'], ['Length', '19 minutes'], ['Quiz', 'none'], ['Ohio topics', 'not required']]]
+].forEach(function (c, i) {
+  ITEMS.push({ id:'r' + i, kind:'course', title:c[0], by:c[1], days:c[2], facts:c[3], state:'waiting' });
+});
+
+/* Enrolment requests. Optional catalogue courses only -- mandatory training is
+   pushed by the requirement sets in Groups, so nobody requests HIPAA. What
+   people ask for is the course beyond their requirements, and that is a
+   judgement about time and cover, not about compliance. */
+[['Dementia Care: Advanced Practice', 3, 'I sit with Mrs Achebe most evenings and I want to understand the sundowning better.'],
+ ['Wound Care for Non-Clinical Staff', 17, 'I keep spotting things on the morning round and I never know what is worth reporting.'],
+ ['Leadership for Charge Nurses', 8, 'I am covering charge two nights a week now.']
+].forEach(function (r, i) {
+  const p = PEOPLE[[3, 11, 26][i]];
+  ITEMS.push({ id:'e' + i, kind:'enrol', who:p, course:r[0], days:r[1], said:r[2], state:'waiting' });
+});
+
+const $   = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const S = { filter:'all', show:'waiting', at:null, draft:null };
+</script>
+<script>
+const IC = {
+  clip:'<path d="M12 11h4"/><path d="m9 11-1.5 1.5L9 14"/><path d="M16 16h-4"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>',
+  book:'<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
+  users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/>',
+  file:'<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/>',
+  back:'<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>'
+};
+const ic = (n, s) => '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" fill="none" stroke="currentColor" ' +
+  'stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+IC[n]+'</svg>';
+
+function toast(title, body) {
+  const el = document.createElement('div'); el.className = 'toast';
+  el.innerHTML = '<div><div class="toast-title">'+esc(title)+'</div>' +
+    (body ? '<div class="toast-body">'+esc(body)+'</div>' : '')+'</div>';
+  $('toasts').appendChild(el); setTimeout(() => el.remove(), 4600);
+}
+const days = n => n === 1 ? '1 day' : n + ' days';
+const title = it => it.kind === 'course' ? it.title : it.who.n;
+
+function why(it) {
+  if (it.kind === 'course') return '<b>' + esc(it.by) + '</b> submitted it for approval';
+  if (it.kind === 'enrol')  return esc(it.who.role) + ' at ' + esc(it.who.comm) +
+    ' &middot; asked for <b>' + esc(it.course) + '</b>';
+  const w = it.why === 'never assessed'
+    ? 'has <b>never been assessed</b>'
+    : 'scored <b>' + Math.min.apply(null, it.scores) + '</b> against a threshold of ' + PASS;
+  return esc(it.who.role) + ' at ' + esc(it.who.comm) + ' &middot; ' + w;
+}
+
+/* ==============================================================
+   The queue
+   ============================================================== */
+function visible() {
+  return ITEMS
+    .filter(it => S.filter === 'all' || it.kind === S.filter)
+    .filter(it => S.show === 'all' || it.state === S.show)
+    .sort((a, b) => b.days - a.days);
+}
+
+function tQueue() {
+  const rows = visible();
+  const waiting = ITEMS.filter(it => it.state === 'waiting');
+  const oldest  = waiting.length ? Math.max.apply(null, waiting.map(it => it.days)) : 0;
+  const counts  = k => ITEMS.filter(it => it.state === 'waiting' && (k === 'all' || it.kind === k)).length;
+
+  const chips = [['all','Everything'], ['comp','Competency'], ['course','Courses'],
+                 ['enrol','Enrolment'], ['work','Submissions']]
+    .map(f => '<button class="fl'+(S.filter === f[0] ? ' is-on' : '')+'" data-f="'+f[0]+'">' +
+      f[1] + ' (' + counts(f[0]) + ')</button>').join('');
+  const shows = [['waiting','Waiting'], ['done','Decided'], ['all','All']]
+    .map(f => '<button class="fl'+(S.show === f[0] ? ' is-on' : '')+'" data-s="'+f[0]+'">'+f[1]+'</button>').join('');
+
+  return '<div class="tally" style="margin-bottom:var(--space-4);">' +
+      (waiting.length
+        ? '<b>' + waiting.length + '</b> waiting on a decision. The oldest has been there <b>' + days(oldest) + '</b>.'
+        : 'Nothing is waiting.') +
+    '</div>' +
+    '<div class="filters">' + chips + '<span class="fl-sp"></span>' + shows + '</div>' +
+    (rows.length
+      ? '<div class="card" style="padding:0;overflow:hidden;"><div class="q">' + rows.map(function (it) {
+          const k = KIND[it.kind];
+          return '<button class="qi'+(it.state === 'done' ? ' is-done' : '')+'" data-open="'+it.id+'">' +
+            '<span class="qk is-'+it.kind+'">'+ic(k.ic, 16)+'</span>' +
+            '<span class="qt"><span class="qt-n">'+esc(title(it))+'</span>' +
+              '<span class="qt-w">'+why(it)+'</span></span>' +
+            '<span class="age'+(it.days >= 21 ? ' is-old' : '')+'">'+days(it.days)+'</span>' +
+            '<span class="badge '+(it.state === 'done' ? 'is-success' : 'is-neutral')+'">' +
+              (it.state === 'done' ? (it.outcome || 'Decided') : k.l)+'</span>' +
+          '</button>';
+        }).join('') + '</div></div>'
+      : '<div class="card"><div class="empty-state"><div class="empty-art">'+ic('check', 34)+'</div>' +
+        '<h2>Nothing here</h2><p>' + (S.show === 'waiting'
+          ? 'Nothing of this kind is waiting on a decision.'
+          : 'No items match this filter.') + '</p></div></div>');
+}
+</script>
+<script>
+/* ==============================================================
+   The decision.
+
+   This is where a competency score is entered. learners.html has
+   displayed those scores all along and nothing anywhere let you
+   put one in; the number arrived from nowhere.
+   ============================================================== */
+function scoreRow(i, v) {
+  const below = v < PASS;
+  return '<div class="dom">' +
+    '<div class="dom-h"><label class="dom-n" for="d'+i+'">'+esc(DOMAINS[i])+'</label>' +
+      '<span class="dom-v'+(below ? ' is-below' : '')+'">'+v+'</span></div>' +
+    '<div class="dom-track"><i class="dom-fill'+(below ? ' is-below' : '')+'" style="width:'+v+'%;"></i>' +
+      '<i class="dom-mark" style="left:'+PASS+'%;" data-l="pass '+PASS+'"></i></div>' +
+    '<input class="dom-in" type="range" min="0" max="100" step="1" id="d'+i+'" value="'+v+'" data-dom="'+i+'" ' +
+      'aria-label="'+esc(DOMAINS[i])+' score" />' +
+  '</div>';
+}
+
+function tDecide(it) {
+  const k = KIND[it.kind];
+  const head =
+    '<div class="d-head">' +
+      '<button class="btn btn-surface" id="backBtn" aria-label="Back to the queue">'+ic('back', 18)+'</button>' +
+      '<div class="d-t"><span class="d-n">'+esc(title(it))+'</span>' +
+        '<span class="d-s">'+k.l+' &middot; waiting '+days(it.days)+'</span></div>' +
+      '<span class="badge '+(it.state === 'done' ? 'is-success' : 'is-neutral')+'">' +
+        (it.state === 'done' ? (it.outcome || 'Decided') : 'Waiting')+'</span>' +
+    '</div>';
+
+  if (it.kind === 'course') {
+    const gaps = it.facts.filter(f => /(\d+) stated, (\d+) covered/.test(f[1]) &&
+      RegExp.$1 !== RegExp.$2).length;
+    return head + '<div class="panes"><div>' +
+      '<div class="pane"><div class="pane-t">What the author built</div>' +
+        '<div class="diffs">' + it.facts.map(f =>
+          '<div class="diff"><span class="diff-n">'+esc(f[0])+'</span>' +
+          '<span class="diff-v">'+esc(f[1])+'</span></div>').join('') + '</div></div>' +
+      (gaps ? '<div class="pane"><div class="pane-t">Worth a look before you approve</div>' +
+        '<p class="conseq">An objective is stated but never covered by a slide. Approving publishes ' +
+        'it to every learner the course is assigned to.</p></div>' : '') +
+    '</div><div class="pane"><div class="pane-t">Decide</div>' +
+      '<div class="facts"><div class="fact"><span class="fact-l">Submitted by</span>' +
+        '<span class="fact-v">'+esc(it.by)+'</span></div>' +
+        '<div class="fact"><span class="fact-l">Waiting</span><span class="fact-v">'+days(it.days)+'</span></div></div>' +
+      '<div class="acts">' +
+        '<button class="btn btn-solid act-b" data-yes="'+it.id+'"'+(it.state === 'done' ? ' disabled' : '')+'>'+k.yes+'</button>' +
+        '<button class="btn btn-surface act-b" data-no="'+it.id+'"'+(it.state === 'done' ? ' disabled' : '')+'>'+k.no+'</button>' +
+        '<p class="conseq">Approving publishes it and tells ' + esc(it.by) + '. ' +
+          'Sending it back returns it to draft so they can edit, and nobody else sees it.</p>' +
+      '</div></div></div>';
+  }
+
+  if (it.kind === 'enrol') {
+    const p = it.who;
+    const room = p.req - p.done;
+    return head + '<div class="panes"><div>' +
+      '<div class="pane"><div class="pane-t">Why they asked</div>' +
+        '<p class="conseq" style="font-size:var(--fs-3);color:var(--fg-high);line-height:1.6;">' +
+          '&ldquo;' + esc(it.said) + '&rdquo;</p></div>' +
+      '<div class="pane"><div class="pane-t">Where they stand</div>' +
+        '<div class="diffs">' +
+          '<div class="diff"><span class="diff-n">Required training</span>' +
+            '<span class="diff-v">' + p.done + ' of ' + p.req + ' done' +
+            (room > 0 ? ', ' + room + ' outstanding' : '') + '</span></div>' +
+          '<div class="diff"><span class="diff-n">Competency</span><span class="diff-v">' +
+            (p.comp ? Math.round((p.comp[0] + p.comp[1] + p.comp[2]) / 3) + ' average' : 'never assessed') +
+            '</span></div>' +
+          '<div class="diff"><span class="diff-n">Role and community</span>' +
+            '<span class="diff-v">' + esc(p.role) + ', ' + esc(p.comm) + '</span></div>' +
+        '</div></div>' +
+    '</div><div class="pane"><div class="pane-t">Decide</div>' +
+      '<div class="facts">' +
+        '<div class="fact"><span class="fact-l">Course</span><span class="fact-v">' + esc(it.course) + '</span></div>' +
+        '<div class="fact"><span class="fact-l">Waiting</span><span class="fact-v">' + days(it.days) + '</span></div>' +
+      '</div>' +
+      '<div class="acts">' +
+        '<button class="btn btn-solid act-b" data-yes="' + it.id + '"' + (it.state === 'done' ? ' disabled' : '') + '>' +
+          KIND.enrol.yes + '</button>' +
+        '<button class="btn btn-surface act-b" data-no="' + it.id + '"' + (it.state === 'done' ? ' disabled' : '') + '>' +
+          KIND.enrol.no + '</button>' +
+        '<p class="conseq">' + (room > 0
+          ? 'This is on top of ' + room + ' required course' + (room === 1 ? '' : 's') +
+            ' they have not finished. Approving enrols them anyway; declining leaves a note on their record.'
+          : 'Their required training is complete, so this is extra. Approving enrols them; declining leaves a note on their record.') +
+        '</p>' +
+      '</div></div></div>';
+  }
+
+  /* Competency */
+  const sc = S.draft || (it.scores ? it.scores.slice() : [PASS, PASS, PASS]);
+  const avg = Math.round(sc.reduce((a, b) => a + b, 0) / sc.length);
+  const fails = sc.filter(v => v < PASS).length;
+  const p = it.who;
+  return head + '<div class="panes"><div>' +
+    '<div class="pane"><div class="pane-t">' +
+        (it.scores ? 'Re-check after scoring ' + Math.min.apply(null, it.scores) : 'First assessment') +
+        ' &mdash; ' + esc(it.skill) + '</div>' +
+      sc.map(function (v, i) { return scoreRow(i, v); }).join('') +
+    '</div></div>' +
+    '<div class="pane"><div class="pane-t">Decide</div>' +
+      '<div class="facts">' +
+        '<div class="fact"><span class="fact-l">Average</span>' +
+          '<span class="fact-v">'+avg+' against a threshold of '+PASS+'</span></div>' +
+        '<div class="fact"><span class="fact-l">Below threshold</span>' +
+          '<span class="fact-v">'+(fails ? fails + ' of 3 domains' : 'none')+'</span></div>' +
+        '<div class="fact"><span class="fact-l">Role and community</span>' +
+          '<span class="fact-v">'+esc(p.role)+', '+esc(p.comm)+'</span></div>' +
+        '<div class="fact"><span class="fact-l">Training</span>' +
+          '<span class="fact-v">'+p.done+' of '+p.req+' required courses done</span></div>' +
+      '</div>' +
+      '<div class="acts">' +
+        '<button class="btn btn-solid act-b" data-yes="'+it.id+'"'+(fails || it.state === 'done' ? ' disabled' : '')+'>' +
+          KIND.comp.yes+'</button>' +
+        '<button class="btn btn-surface act-b" data-no="'+it.id+'"'+(it.state === 'done' ? ' disabled' : '')+'>' +
+          KIND.comp.no+'</button>' +
+        '<p class="conseq">' + (fails
+          ? 'Pass is unavailable while ' + fails + ' domain' + (fails === 1 ? ' is' : 's are') +
+            ' below ' + PASS + '. Refer sends ' + esc(p.n.split(' ')[0]) + ' back to ' +
+            esc(it.skill) + ' and tells their manager.'
+          : 'Passing records ' + avg + ' on ' + esc(p.n) + '&rsquo;s record and starts the next ' +
+            'ninety day clock. Refer sends them back to ' + esc(it.skill) + '.') + '</p>' +
+      '</div></div></div>';
+}
+</script>
+
+<script>
+/* ==============================================================
+   Render and wiring
+   ============================================================== */
+function render() {
+  const it = S.at ? ITEMS.filter(x => x.id === S.at)[0] : null;
+  $('view').innerHTML = it ? tDecide(it) : tQueue();
+  wire();
+}
+
+function decide(id, yes) {
+  const it = ITEMS.filter(x => x.id === id)[0];
+  const k = KIND[it.kind];
+  it.state = 'done';
+  it.outcome = yes ? k.yes + 'ed'.replace(/^ed$/, '') : k.no;
+  if (it.kind === 'comp') {
+    const sc = S.draft || it.scores || [PASS, PASS, PASS];
+    it.scores = sc.slice();
+    it.outcome = yes ? 'Passed' : 'Referred';
+    toast(yes ? 'Passed' : 'Referred to training',
+      yes ? Math.round(sc.reduce((a, b) => a + b, 0) / 3) + ' recorded on ' + it.who.n +
+            '’s record. Next check due in ninety days.'
+          : it.who.n + ' is back on ' + it.skill + ', and their manager has been told.');
+  } else if (it.kind === 'enrol') {
+    it.outcome = yes ? 'Approved' : 'Declined';
+    toast(yes ? 'Enrolled' : 'Declined',
+      yes ? it.who.n + ' is on ' + it.course + '. It sits alongside their required training, not instead of it.'
+          : it.who.n + ' has been told, and the reason is on their record.');
+  } else {
+    it.outcome = yes ? 'Approved' : 'Sent back';
+    toast(yes ? 'Approved' : 'Sent back to the author',
+      yes ? '“' + it.title + '” is published, and ' + it.by + ' has been told.'
+          : it.by + ' can edit it again. Nobody else sees it meanwhile.');
+  }
+  S.at = null; S.draft = null; render();
+}
+
+function wire() {
+  const v = $('view');
+  v.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { S.filter = b.dataset.f; render(); });
+  v.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { S.show = b.dataset.s; render(); });
+  v.querySelectorAll('[data-open]').forEach(b => b.onclick = () => {
+    S.at = b.dataset.open; S.draft = null; render();
+  });
+  if ($('backBtn')) $('backBtn').onclick = () => { S.at = null; S.draft = null; render(); };
+  v.querySelectorAll('[data-dom]').forEach(function (r) {
+    r.oninput = function () {
+      const it = ITEMS.filter(x => x.id === S.at)[0];
+      if (!S.draft) S.draft = (it.scores ? it.scores.slice() : [PASS, PASS, PASS]);
+      S.draft[+r.dataset.dom] = +r.value;
+      render();
+      const again = $('d' + r.dataset.dom);
+      if (again) again.focus();
+    };
+  });
+  v.querySelectorAll('[data-yes]').forEach(b => b.onclick = () => decide(b.dataset.yes, true));
+  v.querySelectorAll('[data-no]').forEach(b => b.onclick = () => decide(b.dataset.no, false));
+}
+
+$('themeBtn').addEventListener('click', () => {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+  $('themeBtn').setAttribute('aria-label', dark ? 'Switch to dark theme' : 'Switch to light theme');
+});
+
+render();
+
+const viewAsBtn = document.getElementById('viewAsBtn');
+if (viewAsBtn) {
+  const menu = document.getElementById('viewAs');
+  viewAsBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = !menu.hidden;
+    menu.hidden = open;
+    viewAsBtn.setAttribute('aria-expanded', String(!open));
+  });
+  document.addEventListener('click', () => {
+    if (!menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+}
+
+/* Collapsing the rail is shell behaviour, so every page does it. It was
+   markup on twenty pages and wired on one, and standardising the nav dropped
+   the id the one handler depended on. */
+const railBtn = document.getElementById('railBtn');
+if (railBtn) {
+  railBtn.addEventListener('click', () => {
+    const shell = document.querySelector('.app-shell');
+    const side  = document.querySelector('.app-sidebar');
+    const on = shell.style.gridTemplateColumns === '0px 1fr';
+    shell.style.gridTemplateColumns = on ? '256px 1fr' : '0px 1fr';
+    if (side) side.style.visibility = on ? 'visible' : 'hidden';
+    railBtn.setAttribute('aria-label', on ? 'Collapse navigation' : 'Expand navigation');
+  });
+}
+</script>
+</body>
+</html>

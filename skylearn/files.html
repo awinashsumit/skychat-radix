@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<!--
+  skyLearn - Reference library (was Files Library), Radix flavour.
+  Course content already lives in the course. This holds only the documents
+  meant to be reused or looked up, and every one says what uses it and who can
+  see it. See FILES-IA.md.
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>skyLearn &middot; Reference library</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../tokens.css?v=102" />
+<link rel="stylesheet" href="../dashboard.css?v=102" />
+<style>
+  .ph-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-5); flex-wrap: wrap; }
+  .ph-text { flex: 1; min-width: 0; }
+  .ph-acts { display: flex; gap: var(--space-3); flex: 0 0 auto; margin-left: auto; }
+  .tally { font-size: var(--fs-2); color: var(--fg-low); }
+
+  .filters { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-5); }
+  .fl { height: 32px; padding: 0 var(--space-4); border: 0; border-radius: var(--radius-full); cursor: pointer;
+    background: var(--gray-3); color: var(--fg-low); font-family: var(--font-base); font-size: var(--fs-2); }
+  .fl:hover { color: var(--fg-high); }
+  .fl.is-on { background: var(--accent-9); color: var(--accent-contrast); font-weight: var(--weight-medium); }
+
+  /* A document is only worth keeping here if something points at it, so
+     "used by" is a column and not a detail you have to go looking for. */
+  .docs { display: flex; flex-direction: column; }
+  .doc { display: grid; grid-template-columns: 38px 1fr 220px 150px 92px; gap: var(--space-4);
+    align-items: center; width: 100%; text-align: left; padding: var(--space-4) var(--space-5);
+    border: 0; border-bottom: var(--stroke-thin) solid var(--border-subtle);
+    background: var(--color-panel-solid); cursor: pointer; }
+  .doc:last-child { border-bottom: 0; }
+  .doc:hover { background: var(--row-accent); }
+  @media (max-width: 1080px) { .doc { grid-template-columns: 38px 1fr auto; } .doc .doc-use, .doc .doc-who { display: none; } }
+
+  .doc-ic { width: 34px; height: 34px; border-radius: var(--radius-3); display: flex;
+    align-items: center; justify-content: center; flex: 0 0 auto;
+    font-size: var(--fs-1); font-weight: var(--weight-bold); letter-spacing: .02em; }
+  .doc-ic.is-pdf { background: var(--danger-bg);  color: var(--danger-text); }
+  .doc-ic.is-doc { background: var(--info-bg);    color: var(--info-text); }
+  .doc-ic.is-img { background: var(--success-bg); color: var(--success-text); }
+  .doc-ic.is-vid { background: var(--accent-3);   color: var(--accent-11); }
+
+  .doc-t { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .doc-n { font-size: var(--fs-3); font-weight: var(--weight-medium); color: var(--fg-high);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .doc-m { font-size: var(--fs-1); color: var(--fg-subtle); }
+  .doc-use { font-size: var(--fs-2); color: var(--fg-low); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .doc-use.is-none { color: var(--warning-text); }
+  .doc-who { font-size: var(--fs-2); color: var(--fg-low); white-space: nowrap; }
+  .doc-age { font-size: var(--fs-2); color: var(--fg-subtle); text-align: right; white-space: nowrap; }
+  .doc-age.is-stale { color: var(--warning-text); }
+
+  /* Detail */
+  .d-head { display: flex; align-items: flex-start; gap: var(--space-4); margin-bottom: var(--space-5); }
+  .d-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+  .d-n { font-size: var(--fs-6); line-height: var(--lh-6); font-weight: var(--weight-bold); color: var(--fg-high); }
+  .d-s { font-size: var(--fs-2); color: var(--fg-low); }
+  .panes { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--space-5); align-items: start; }
+  @media (max-width: 1080px) { .panes { grid-template-columns: 1fr; } }
+  .pane { padding: var(--space-5); border-radius: var(--radius-4); background: var(--color-panel-solid);
+    box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .pane + .pane { margin-top: var(--space-4); }
+  .pane-t { font-size: var(--fs-3); font-weight: var(--weight-semibold); color: var(--fg-high); margin-bottom: var(--space-4); }
+  .uses { display: flex; flex-direction: column; gap: var(--space-3); }
+  .use { display: grid; grid-template-columns: 1fr auto; gap: var(--space-4); align-items: baseline;
+    padding-bottom: var(--space-3); border-bottom: var(--stroke-thin) solid var(--border-subtle); font-size: var(--fs-2); }
+  .use:last-child { border-bottom: 0; padding-bottom: 0; }
+  .use-n { color: var(--fg-high); }
+  .use-w { color: var(--fg-low); }
+  .facts { display: flex; flex-direction: column; gap: var(--space-4); }
+  .fact { display: flex; flex-direction: column; gap: 2px; }
+  .fact-l { font-size: var(--fs-1); letter-spacing: .05em; text-transform: uppercase; color: var(--fg-subtle); }
+  .fact-v { font-size: var(--fs-3); color: var(--fg-high); }
+  .acts { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-5); }
+  .act-b { width: 100%; justify-content: center; }
+  .conseq { font-size: var(--fs-1); color: var(--fg-low); line-height: 1.55; }
+
+  /* Upload */
+  .ov { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center;
+    justify-content: center; padding: var(--space-5); background: rgba(0,0,0,.45); }
+  .dlg { width: min(640px, 100%); border-radius: var(--radius-5); background: var(--color-panel-solid);
+    box-shadow: var(--shadow-5); }
+  .dlg-h { display: flex; align-items: flex-start; gap: var(--space-4);
+    padding: var(--space-5) var(--space-6); border-bottom: var(--stroke-thin) solid var(--border-subtle); }
+  .dlg-h h2 { flex: 1; min-width: 0; font-size: var(--fs-5); line-height: var(--lh-5); font-weight: var(--weight-bold); }
+  .dlg-b { padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-5); }
+  .dlg-f { display: flex; align-items: center; gap: var(--space-3);
+    padding: var(--space-5) var(--space-6); border-top: var(--stroke-thin) solid var(--border-subtle); }
+  .dlg-f .sp { flex: 1; }
+  .drop { padding: var(--space-8) var(--space-6); border-radius: var(--radius-4); text-align: center;
+    border: 2px dashed var(--accent-8); background: var(--accent-2); }
+  .drop b { display: block; font-size: var(--fs-4); font-weight: var(--weight-semibold); color: var(--fg-high); }
+  .drop span { display: block; margin-top: var(--space-2); font-size: var(--fs-2); color: var(--fg-low); }
+  .drop .btn { margin-top: var(--space-4); }
+  .field { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+  .field-label { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+  .field-hint { font-size: var(--fs-1); color: var(--fg-low); }
+
+  .toast-stack { position: fixed; left: 50%; bottom: var(--space-6); transform: translateX(-50%);
+    z-index: 80; display: flex; flex-direction: column; gap: var(--space-3); }
+  .toast { min-width: 280px; max-width: 440px; padding: var(--space-4) var(--space-5);
+    border-radius: var(--radius-3); background: var(--gray-12); color: var(--gray-1); box-shadow: var(--shadow-4); }
+  .toast-title { font-size: var(--fs-2); font-weight: var(--weight-semibold); }
+  .toast-body { margin-top: var(--space-1); font-size: var(--fs-2); opacity: .82; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header is-dark">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect width="24" height="24" rx="6" fill="var(--accent-9)"/><text x="12" y="16.5" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-contrast)">S</text></svg>
+      <span>skyLearn</span>
+    </div>
+    <div class="search hdr-search">
+      <span class="search-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+      <label class="sr-only" for="q">Search</label>
+      <input class="input" id="q" type="search" placeholder="Search courses and learners" autocomplete="off" />
+    </div>
+    <div class="header-right">
+      <span class="presence"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg><span><strong class="pt-num">4</strong> points</span></span>
+      <button class="icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="ic-badge">3</span></button>
+      <button class="icon-btn" id="themeBtn" aria-label="Switch to dark theme"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+      <span class="divider-v"></span>
+      <span class="header-wrap">
+        <button class="header-user" id="viewAsBtn" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar c6">SA</span>
+          <span class="hu-id"><span class="hu-name">Sumit Awinash</span><span class="hu-role">Administrator</span></span>
+        </button>
+        <div class="view-as" id="viewAs" role="menu" hidden>
+          <div class="view-as-t">View as</div>
+          <a href="index.html" role="menuitem" aria-current="true"><span class="vr"></span>
+            <span class="vw">Administrator<span>Everything, across all six communities</span></span></a>
+          <a href="teach.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Instructor<span>Your courses, learners and sessions</span></span></a>
+          <a href="learn.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Learner<span>What you have to do, and by when</span></span></a>
+          <div class="vs">
+            <a href="signin.html" role="menuitem">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
+              Sign out</a>
+          </div>
+        </div>
+      </span>
+    </div>
+  </header>
+
+  <nav class="app-sidebar" aria-label="Primary">
+    <button class="sidebar-toggle" id="railBtn" aria-label="Collapse navigation"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>
+    <a class="nav-item" href="index.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg><span class="nav-label">Dashboard</span></a>
+    <a class="nav-item" href="courses.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg><span class="nav-label">Courses</span></a>
+    <a class="nav-item" href="learners.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg><span class="nav-label">Learners</span></a>
+    <a class="nav-item" href="certificate.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg><span class="nav-label">Certifications</span></a>
+    <a class="nav-item" href="sessions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg><span class="nav-label">Sessions</span></a>
+    <a class="nav-item" href="groups.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg><span class="nav-label">Groups</span></a>
+    <a class="nav-item" href="recognition.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0z"/></svg><span class="nav-label">Recognition</span></a>
+    <a class="nav-item" href="discussions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6V2H8"/><path d="m8 18-4 4V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2Z"/><path d="M2 12h2"/><path d="M9 11v2"/><path d="M15 11v2"/><path d="M20 12h2"/></svg><span class="nav-label">Discussions</span></a>
+    <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span class="nav-label">Reports</span></a>
+    <a class="nav-item" href="automations.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/><path d="m2 2 20 20"/></svg><span class="nav-label">Automations</span></a>
+    <a class="nav-item" href="surveys.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/><rect x="3" y="4" width="18" height="16" rx="2"/></svg><span class="nav-label">Surveys</span></a>
+    <a class="nav-item" href="grading.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="m9 11-1.5 1.5L9 14"/><path d="M16 16h-4"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg><span class="nav-label">Grading Hub</span></a>
+    <a class="nav-item is-active" href="files.html" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span class="nav-label">Reference library</span></a>
+    <a class="nav-item nav-tail" href="#"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="nav-label">Help and support</span></a>
+  </nav>
+
+  <main class="app-content">
+    <div class="breadcrumbs"><a href="index.html">Home</a><span class="sep"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span><span class="current">Reference library</span></div>
+    <div class="content-body">
+      <header class="page-header ph-row">
+        <div class="ph-text"><h1>Reference library</h1>
+          <p>Documents meant to be reused or looked up. Course content lives in the course.</p></div>
+        <div class="ph-acts"><button class="btn btn-solid" id="upBtn">Add a document</button></div>
+      </header>
+      <div id="view"></div>
+    </div>
+  </main>
+</div>
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+<div id="modal"></div>
+<script>
+/* ==============================================================
+   A reference document earns its place by being pointed at.
+
+   The live screen was "upload, organize, and share files across
+   your portal" with no folders, no permissions and nothing linking
+   a file to what uses it -- a fourth home for files, next to the
+   three that already exist inside courses. Here every row says what
+   uses it and who can see it, and a document nothing points at is
+   flagged rather than quietly kept.
+   ============================================================== */
+const TYPE = {
+  pdf: { cls:'is-pdf', l:'PDF' }, doc: { cls:'is-doc', l:'DOC' },
+  img: { cls:'is-img', l:'IMG' }, vid: { cls:'is-vid', l:'MP4' }
+};
+const WHO = {
+  all:     'Everyone',
+  staff:   'All staff',
+  clinical:'Clinical roles',
+  admin:   'Administrators'
+};
+
+const DOCS = [
+  { id:'f1', n:'Resident Handling Policy 2026', t:'pdf', size:'1.4 MB', by:'Priya Raghavan',
+    age:12, who:'staff', kind:'Policy',
+    uses:[['Safe Resident Handling','course'], ['Safe Lifting and Transfers','course'],
+          ['CNA annual in-service','requirement set']] },
+
+  { id:'f2', n:'Ohio Administrative Code 3701-17-07', t:'pdf', size:'820 KB', by:'Priya Raghavan',
+    age:64, who:'admin', kind:'Regulation',
+    uses:[['Preventing Falls in Senior Living','course'], ['Compliance report','report']] },
+
+  { id:'f3', n:'Fire evacuation map, Lakeside Manor', t:'img', size:'2.1 MB', by:'Tomas Ruiz',
+    age:8, who:'all', kind:'Procedure card',
+    uses:[['Emergency Preparedness','course'], ['Fire drill and evacuation','session']] },
+
+  { id:'f4', n:'Hand hygiene procedure card', t:'img', size:'640 KB', by:'Greta Lindqvist',
+    age:21, who:'all', kind:'Procedure card',
+    uses:[['Infection Prevention','course']] },
+
+  { id:'f5', n:'Wrist restraint check-off sheet', t:'doc', size:'96 KB', by:'Greta Lindqvist',
+    age:5, who:'clinical', kind:'Assessment form',
+    uses:[['Applying a Wrist Restraint','course'], ['Competency check','review queue']] },
+
+  { id:'f6', n:'Transfer technique, full demonstration', t:'vid', size:'184 MB', by:'Tomas Ruiz',
+    age:41, who:'staff', kind:'Demonstration',
+    uses:[['Safe Resident Handling','course']] },
+
+  { id:'f7', n:'Abuse reporting flowchart', t:'pdf', size:'310 KB', by:'Priya Raghavan',
+    age:96, who:'all', kind:'Procedure card',
+    uses:[] },
+
+  { id:'f8', n:'Old orientation handbook (2023)', t:'pdf', size:'4.8 MB', by:'Oren Kaplan',
+    age:412, who:'staff', kind:'Handbook',
+    uses:[] }
+];
+
+const $   = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const S = { q:'', filter:'all', at:null, open:false };
+</script>
+
+<script>
+const IC = {
+  back:'<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+  down:'<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>',
+  search:'<path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/>',
+  warn:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  plus:'<path d="M5 12h14"/><path d="M12 5v14"/>'
+};
+const ic = (n, s) => '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" fill="none" stroke="currentColor" ' +
+  'stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+IC[n]+'</svg>';
+
+function toast(title, body) {
+  const el = document.createElement('div'); el.className = 'toast';
+  el.innerHTML = '<div><div class="toast-title">'+esc(title)+'</div>' +
+    (body ? '<div class="toast-body">'+esc(body)+'</div>' : '')+'</div>';
+  $('toasts').appendChild(el); setTimeout(() => el.remove(), 4600);
+}
+function ago(d) {
+  if (d < 31)  return d + ' days ago';
+  if (d < 365) return Math.round(d / 30) + ' months ago';
+  const y = (d / 365).toFixed(1).replace('.0', '');
+  return y + (y === '1' ? ' year ago' : ' years ago');
+}
+const STALE = 365;   /* a policy older than a year is a policy nobody has checked */
+const hit = (q, f) => !q || f.some(x => String(x).toLowerCase().indexOf(q.toLowerCase()) >= 0);
+
+function visible() {
+  return DOCS
+    .filter(d => S.filter === 'all' ||
+      (S.filter === 'unused' ? !d.uses.length :
+       S.filter === 'stale'  ? d.age >= STALE : d.t === S.filter))
+    .filter(d => hit(S.q, [d.n, d.kind, d.by]));
+}
+
+function tList() {
+  const rows = visible();
+  const unused = DOCS.filter(d => !d.uses.length).length;
+  const stale  = DOCS.filter(d => d.age >= STALE).length;
+  const chips = [['all','Everything',DOCS.length], ['pdf','PDF',DOCS.filter(d=>d.t==='pdf').length],
+                 ['img','Images',DOCS.filter(d=>d.t==='img').length], ['vid','Video',DOCS.filter(d=>d.t==='vid').length],
+                 ['unused','Nothing uses it',unused], ['stale','Not touched in a year',stale]]
+    .map(f => '<button class="fl'+(S.filter === f[0] ? ' is-on' : '')+'" data-f="'+f[0]+'">' +
+      f[1] + ' (' + f[2] + ')</button>').join('');
+
+  return '<div class="table-toolbar">' +
+      '<div class="search" style="min-width:300px;"><span class="search-icon">'+ic('search', 16)+'</span>' +
+        '<label class="sr-only" for="q2">Search documents</label>' +
+        '<input class="input" id="q2" placeholder="Search documents..." value="'+esc(S.q)+'" /></div>' +
+      '<span class="tally">' + DOCS.length + ' documents' +
+        (unused ? ' &middot; ' + unused + ' that nothing points at' : '') +
+        (stale ? ' &middot; ' + stale + ' untouched for over a year' : '') + '</span>' +
+    '</div>' +
+    '<div class="filters">' + chips + '</div>' +
+    (rows.length
+      ? '<div class="card" style="padding:0;overflow:hidden;"><div class="docs">' + rows.map(function (d) {
+          return '<button class="doc" data-open="'+d.id+'">' +
+            '<span class="doc-ic '+TYPE[d.t].cls+'">'+TYPE[d.t].l+'</span>' +
+            '<span class="doc-t"><span class="doc-n">'+esc(d.n)+'</span>' +
+              '<span class="doc-m">'+esc(d.kind)+' &middot; '+esc(d.size)+'</span></span>' +
+            '<span class="doc-use'+(d.uses.length ? '' : ' is-none')+'">' +
+              (d.uses.length ? d.uses.length + ' place' + (d.uses.length === 1 ? '' : 's') + ' use it'
+                             : 'nothing uses it') + '</span>' +
+            '<span class="doc-who">'+esc(WHO[d.who])+'</span>' +
+            '<span class="doc-age'+(d.age >= STALE ? ' is-stale' : '')+'">'+ago(d.age)+'</span>' +
+          '</button>';
+        }).join('') + '</div></div>'
+      : '<div class="card"><div class="empty-state"><div class="empty-art">'+ic('search', 30)+'</div>' +
+        '<h2>Nothing matches</h2><p>Try a shorter search, or clear the filter.</p>' +
+        '<button class="btn btn-surface" id="clearQ">Clear</button></div></div>');
+}
+
+function tDoc(d) {
+  return '<div class="d-head">' +
+      '<button class="btn btn-surface" id="backBtn" aria-label="Back to the library">'+ic('back', 18)+'</button>' +
+      '<div class="d-t"><span class="d-n">'+esc(d.n)+'</span>' +
+        '<span class="d-s">'+esc(d.kind)+' &middot; '+TYPE[d.t].l+' &middot; '+esc(d.size)+'</span></div>' +
+      '<button class="btn btn-surface" data-get="'+esc(d.n)+'">'+ic('down', 16)+' Download</button>' +
+    '</div>' +
+    '<div class="panes"><div>' +
+      '<div class="pane"><div class="pane-t">What points at this</div>' +
+        (d.uses.length
+          ? '<div class="uses">' + d.uses.map(u =>
+              '<div class="use"><span class="use-n">'+esc(u[0])+'</span>' +
+              '<span class="use-w">'+esc(u[1])+'</span></div>').join('') + '</div>'
+          : '<p class="conseq" style="font-size:var(--fs-3);color:var(--warning-text);">' +
+            'Nothing points at this document. Either attach it to the course that needs it, ' +
+            'or remove it &mdash; a reference nobody reaches is a reference nobody maintains.</p>') +
+      '</div>' +
+      (d.age >= STALE ? '<div class="pane"><div class="pane-t">Worth a look</div>' +
+        '<p class="conseq">Last touched '+ago(d.age)+'. A policy or a regulation that has not been ' +
+        'opened in over a year is usually one nobody has checked against the current rules.</p></div>' : '') +
+    '</div><div class="pane"><div class="pane-t">Details</div>' +
+      '<div class="facts">' +
+        '<div class="fact"><span class="fact-l">Who can see it</span><span class="fact-v">'+esc(WHO[d.who])+'</span></div>' +
+        '<div class="fact"><span class="fact-l">Added by</span><span class="fact-v">'+esc(d.by)+'</span></div>' +
+        '<div class="fact"><span class="fact-l">Last touched</span><span class="fact-v">'+ago(d.age)+'</span></div>' +
+        '<div class="fact"><span class="fact-l">Used in</span><span class="fact-v">' +
+          (d.uses.length ? d.uses.length + ' place' + (d.uses.length === 1 ? '' : 's') : 'nowhere') + '</span></div>' +
+      '</div>' +
+      '<div class="acts">' +
+        '<button class="btn btn-surface act-b" data-replace="'+d.id+'">Replace it</button>' +
+        '<p class="conseq">Replacing keeps the same link, so everything already pointing at it ' +
+          'picks up the new version. ' + (d.uses.length
+            ? 'That is ' + d.uses.length + ' place' + (d.uses.length === 1 ? '' : 's') + '.'
+            : 'Nothing points at it, so nothing changes.') + '</p>' +
+      '</div></div></div>';
+}
+</script>
+<script>
+/* The upload dialog asks the two questions the old one did not: what is this
+   for, and who is allowed to see it. A document with neither is how a library
+   turns into a drawer. */
+function dialog() {
+  return '<div class="ov" id="ov"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="uT">' +
+    '<div class="dlg-h"><h2 id="uT">Add a document</h2>' +
+      '<button class="btn btn-ghost is-sm" id="xBtn" aria-label="Close">Close</button></div>' +
+    '<div class="dlg-b">' +
+      '<div class="drop">' + ic('plus', 26) +
+        '<b>Drag a document here</b><span>or</span>' +
+        '<button class="btn btn-surface" id="browse">Browse</button>' +
+        '<span>PDF, image, video or document</span></div>' +
+      '<div class="field"><label class="field-label" for="uKind">What is it</label>' +
+        '<select class="select" id="uKind">' +
+          ['Policy','Regulation','Procedure card','Assessment form','Demonstration','Handbook'].map(k =>
+            '<option>'+k+'</option>').join('') + '</select>' +
+        '<span class="field-hint">Course content does not belong here &mdash; put slides and videos ' +
+          'in the course that uses them. This is for things more than one place points at.</span></div>' +
+      '<div class="field"><label class="field-label" for="uWho">Who can see it</label>' +
+        '<select class="select" id="uWho">' + Object.keys(WHO).map(k =>
+          '<option value="'+k+'">'+esc(WHO[k])+'</option>').join('') + '</select></div>' +
+    '</div>' +
+    '<div class="dlg-f"><span class="sp"></span>' +
+      '<button class="btn btn-surface" id="cancelBtn">Cancel</button>' +
+      '<button class="btn btn-solid" id="addBtn">Add it</button></div>' +
+  '</div></div>';
+}
+
+function render() {
+  const d = S.at ? DOCS.filter(x => x.id === S.at)[0] : null;
+  $('view').innerHTML = d ? tDoc(d) : tList();
+  $('modal').innerHTML = S.open ? dialog() : '';
+  wire();
+}
+
+function wire() {
+  const v = $('view'), m = $('modal');
+  v.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { S.filter = b.dataset.f; render(); });
+  v.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { S.at = b.dataset.open; render(); });
+  v.querySelectorAll('[data-get]').forEach(b => b.onclick = () =>
+    toast('Downloading ' + b.dataset.get, 'The current version, as everything pointing at it sees it.'));
+  v.querySelectorAll('[data-replace]').forEach(b => b.onclick = () => {
+    const d = DOCS.filter(x => x.id === b.dataset.replace)[0];
+    toast('Replace ' + d.n, d.uses.length
+      ? 'The ' + d.uses.length + ' place' + (d.uses.length === 1 ? '' : 's') + ' pointing at it will pick up the new version.'
+      : 'Nothing points at it, so nothing else changes.');
+  });
+  if ($('backBtn')) $('backBtn').onclick = () => { S.at = null; render(); };
+  if ($('clearQ'))  $('clearQ').onclick  = () => { S.q = ''; S.filter = 'all'; render(); };
+  const q = $('q2');
+  if (q) q.oninput = () => {
+    S.q = q.value; render();
+    const again = $('q2');
+    if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); }
+  };
+
+  const close = () => { S.open = false; render(); };
+  if (m.querySelector('#xBtn'))      m.querySelector('#xBtn').onclick = close;
+  if (m.querySelector('#cancelBtn')) m.querySelector('#cancelBtn').onclick = close;
+  const ov = m.querySelector('#ov');
+  if (ov) ov.onclick = e => { if (e.target === ov) close(); };
+  if (m.querySelector('#browse')) m.querySelector('#browse').onclick = () =>
+    toast('Choose a file', 'Not wired up in this prototype.');
+  if (m.querySelector('#addBtn')) m.querySelector('#addBtn').onclick = () => {
+    S.open = false; render();
+    toast('Added', 'Attach it to a course to make it reachable — until something points at it, ' +
+      'it shows under “Nothing uses it”.');
+  };
+}
+
+$('upBtn').onclick = () => { S.open = true; render(); };
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && S.open) { S.open = false; render(); } });
+
+$('themeBtn').addEventListener('click', () => {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+  $('themeBtn').setAttribute('aria-label', dark ? 'Switch to dark theme' : 'Switch to light theme');
+});
+
+render();
+
+const viewAsBtn = document.getElementById('viewAsBtn');
+if (viewAsBtn) {
+  const menu = document.getElementById('viewAs');
+  viewAsBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = !menu.hidden;
+    menu.hidden = open;
+    viewAsBtn.setAttribute('aria-expanded', String(!open));
+  });
+  document.addEventListener('click', () => {
+    if (!menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+}
+
+/* Collapsing the rail is shell behaviour, so every page does it. It was
+   markup on twenty pages and wired on one, and standardising the nav dropped
+   the id the one handler depended on. */
+const railBtn = document.getElementById('railBtn');
+if (railBtn) {
+  railBtn.addEventListener('click', () => {
+    const shell = document.querySelector('.app-shell');
+    const side  = document.querySelector('.app-sidebar');
+    const on = shell.style.gridTemplateColumns === '0px 1fr';
+    shell.style.gridTemplateColumns = on ? '256px 1fr' : '0px 1fr';
+    if (side) side.style.visibility = on ? 'visible' : 'hidden';
+    railBtn.setAttribute('aria-label', on ? 'Collapse navigation' : 'Expand navigation');
+  });
+}
+</script>
+</body>
+</html>

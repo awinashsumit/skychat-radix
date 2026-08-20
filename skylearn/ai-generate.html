@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<!--
+  skyLearn - AI Course Generator, Radix flavour.
+  Three stages in one file: source, generating, review. The review stage is
+  the module: what comes back is a draft to be checked, not a course to be
+  published. See AI-GENERATE-IA.md.
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>skyLearn &middot; AI Course Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../tokens.css?v=102" />
+<link rel="stylesheet" href="../dashboard.css?v=102" />
+<style>
+  .stack-2 { display: flex; flex-direction: column; gap: var(--space-2); }
+
+  /* Shell bits shared with the other skyLearn screens */
+  .ph-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-5); flex-wrap: wrap; }
+  /* Without this the text claims its full content width and pushes the
+     actions onto a second line. Same shape the other screens use. */
+  .ph-text { flex: 1; min-width: 0; }
+
+  /* Section switcher and the two course-level actions, on one line. It sits
+     in the content column like every other screen, rather than replacing
+     the app chrome: creating a course and generating one are the same job
+     and should not be framed differently. */
+  .rv-bar { display: flex; align-items: center; gap: var(--space-1); overflow-x: auto;
+    border-bottom: var(--stroke-thin) solid var(--border-subtle); margin-bottom: var(--space-5); }
+  .rv-title { display: flex; align-items: center; gap: var(--space-3); }
+  .ph-acts { display: flex; gap: var(--space-3); flex: 0 0 auto; margin-left: auto; }
+  .ed-tab { display: inline-flex; align-items: center; gap: var(--space-2); height: 40px;
+    padding: 0 var(--space-3); border: 0; background: transparent; cursor: pointer;
+    font-family: var(--font-base); font-size: var(--fs-2); color: var(--fg-low);
+    border-bottom: 2px solid transparent; white-space: nowrap; }
+  .ed-tab:hover { color: var(--fg-high); }
+  .ed-tab.is-active { color: var(--fg-high); border-bottom-color: var(--accent-9); font-weight: var(--weight-semibold); }
+  .ed-tab .count { font-size: var(--fs-1); color: var(--fg-subtle); font-variant-numeric: tabular-nums; }
+  .ed-tab .dot { width: 6px; height: 6px; border-radius: var(--radius-full); background: var(--warning-solid); }
+
+  .wrap { max-width: 880px; padding: 0 0 var(--space-7); }
+  /* The review stage sits under a full-width header, so it is full width too */
+  .wrap.is-full { max-width: none; }
+  /* The waiting state has nothing to align to, so it centres on the whole
+     content area rather than sitting at the top of an 880px column. */
+  .wrap.is-centre { max-width: none; min-height: 62vh; display: flex; align-items: center; justify-content: center; }
+
+  /* --- Source stage ------------------------------------------------- */
+  .seg-row { display: flex; gap: var(--space-1); border-bottom: var(--stroke-thin) solid var(--border-subtle); margin-bottom: var(--space-5); }
+  .seg-btn { height: 36px; padding: 0 var(--space-3); border: 0; background: transparent; cursor: pointer;
+    font-family: var(--font-base); font-size: var(--fs-2); color: var(--fg-low); border-bottom: 2px solid transparent; }
+  .seg-btn.is-active { color: var(--fg-high); border-bottom-color: var(--accent-9); font-weight: var(--weight-semibold); }
+  .drop { display: flex; flex-direction: column; align-items: center; gap: var(--space-2);
+    padding: var(--space-7) var(--space-5); border-radius: var(--radius-4); text-align: center;
+    background: var(--color-panel-solid); box-shadow: inset 0 0 0 1px var(--border-ui); cursor: pointer; }
+  .drop:hover { background: var(--accent-2); box-shadow: inset 0 0 0 1px var(--accent-8); }
+  .drop-ic { width: 44px; height: 44px; border-radius: var(--radius-3); display: inline-flex;
+    align-items: center; justify-content: center; background: var(--accent-3); color: var(--accent-11); }
+  .drop-hint { font-size: var(--fs-1); color: var(--fg-subtle); }
+  .doc { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4);
+    border-radius: var(--radius-3); background: var(--color-panel-solid); box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .doc-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .doc-name { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+  .doc-sub { font-size: var(--fs-1); color: var(--fg-low); margin-top: 1px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-4); }
+  @media (max-width: 700px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+  .tpl-prev { border-radius: var(--radius-3); box-shadow: inset 0 0 0 1px var(--border-subtle);
+    padding: var(--space-4); background: var(--color-panel-solid); }
+  .tpl-cap { font-size: var(--fs-1); color: var(--fg-low); margin-top: var(--space-2); }
+  .foot-row { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-5); }
+  .foot-row .spacer { flex: 1; }
+  .foot-note { font-size: var(--fs-1); color: var(--fg-subtle); }
+
+  /* --- Generating --------------------------------------------------- */
+  .gen { display: flex; flex-direction: column; align-items: center; gap: var(--space-5); }
+  .gen-art { width: 240px; height: 240px; flex: 0 0 auto; }
+  .gen-art img { width: 100%; height: 100%; display: block; }
+  .gen-h { font-size: var(--fs-5); line-height: var(--lh-5); font-weight: var(--weight-bold); color: var(--fg-high); text-align: center; }
+  .gen-p { font-size: var(--fs-3); color: var(--fg-low); text-align: center; max-width: 460px; }
+  .gen-steps { width: 100%; max-width: 460px; display: flex; flex-direction: column; gap: var(--space-1); }
+  .gen-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-3); font-size: var(--fs-2); color: var(--fg-subtle); }
+  .gen-row.is-doing { color: var(--fg-high); background: var(--accent-2); }
+  .gen-row.is-done { color: var(--fg-low); }
+  .gen-mark { width: 18px; height: 18px; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; }
+  .gen-mark .dot { width: 7px; height: 7px; border-radius: var(--radius-full); background: var(--gray-7); }
+  .gen-row.is-doing .gen-mark .dot { background: var(--accent-9); }
+  .gen-row.is-done .gen-mark { color: var(--success-text); }
+  .gen-found { margin-left: auto; font-size: var(--fs-1); color: var(--fg-low); font-variant-numeric: tabular-nums; }
+
+  /* --- Review ------------------------------------------------------- */
+  .tally { font-size: var(--fs-2); color: var(--fg-low); }
+  .q-list { display: flex; flex-direction: column; gap: var(--space-2); }
+  .q-item { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-3); background: var(--color-panel-solid); box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .q-item.is-ok { opacity: .6; }
+  .q-ic { width: 18px; height: 18px; flex: 0 0 auto; margin-top: 1px; color: var(--warning-solid); }
+  .q-item.is-ok .q-ic { color: var(--success-solid); }
+  .q-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .q-where { font-size: var(--fs-1); color: var(--fg-low); margin-top: 2px; }
+  .q-acts { display: flex; gap: var(--space-2); flex: 0 0 auto; }
+
+  .unit-row { display: flex; align-items: center; gap: var(--space-4); width: 100%; text-align: left;
+    padding: var(--space-4) var(--space-5); border-radius: var(--radius-4); cursor: pointer;
+    background: var(--color-panel-solid); box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .unit-row:hover { box-shadow: inset 0 0 0 1px var(--border-strong); }
+  .unit-n { width: 32px; height: 32px; flex: 0 0 auto; border-radius: var(--radius-full);
+    display: inline-flex; align-items: center; justify-content: center; font-size: var(--fs-2);
+    font-weight: var(--weight-semibold); color: var(--accent-11); box-shadow: inset 0 0 0 1px var(--accent-8); }
+  .unit-t { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
+  .unit-name { font-size: var(--fs-3); font-weight: var(--weight-medium); color: var(--fg-high); }
+  .unit-sub { font-size: var(--fs-1); color: var(--fg-low); margin-top: 2px; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 var(--space-2);
+    border-radius: var(--radius-2); font-size: var(--fs-1); background: var(--gray-3); color: var(--fg-low); }
+  .chip.is-flag { background: var(--warning-bg); color: var(--warning-text); }
+  .chip.is-src { background: transparent; box-shadow: inset 0 0 0 1px var(--border-subtle); }
+
+  .lesson { border-radius: var(--radius-4); background: var(--color-panel-solid);
+    box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .lesson.is-open { box-shadow: inset 0 0 0 1px var(--accent-8); }
+  .lesson-head { display: flex; align-items: flex-start; gap: var(--space-3); width: 100%;
+    text-align: left; padding: var(--space-4) var(--space-5); cursor: pointer; background: transparent; }
+  .lesson-t { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
+  .lesson-n { font-size: var(--fs-3); font-weight: var(--weight-medium); color: var(--fg-high); }
+  .lesson-d { font-size: var(--fs-2); color: var(--fg-low); margin-top: 2px; }
+  .lesson-body { padding: 0 var(--space-5) var(--space-5); display: flex; flex-direction: column; gap: var(--space-5); }
+  .sec-h { font-size: var(--fs-1); font-weight: var(--weight-semibold); text-transform: uppercase;
+    letter-spacing: .05em; color: var(--fg-low); }
+
+  /* Slides read as slides. A generated deck reviewed as stacked text inputs
+     is a deck nobody looks at, and looking is the whole job. */
+  /* Every element here declares its display. The first pass left .thumb-art
+     and .thumb-lab as inline spans, which silently ignore width, height,
+     overflow and vertical margin, so each slide rendered at full size, spilled
+     out of its frame and dragged its label to a different baseline. */
+  .strip { display: flex; align-items: flex-start; gap: var(--space-3);
+    overflow-x: auto; padding-bottom: var(--space-2); }
+  .thumb { flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px;
+    width: 128px; cursor: pointer; background: transparent; padding: 0; }
+  .thumb-art { display: block; position: relative; width: 128px; height: 76px; overflow: hidden;
+    border-radius: var(--radius-2); background: #fff; box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .thumb.is-active .thumb-art { box-shadow: inset 0 0 0 2px var(--accent-9); }
+  /* 128 / 400, so the scaled page keeps the slide's real proportions */
+  .thumb-page { display: block; position: absolute; top: 0; left: 0;
+    width: 400px; height: 238px; padding: 14px 16px;
+    transform: scale(.32); transform-origin: top left; color: #1A1A1A; }
+  .thumb-lab { display: block; font-size: var(--fs-1); line-height: 1.35;
+    color: var(--fg-low); text-align: left; }
+  .thumb.is-flag .thumb-lab { color: var(--warning-text); }
+  .canvas { border-radius: var(--radius-3); background: #fff; box-shadow: inset 0 0 0 1px var(--border-subtle);
+    padding: var(--space-6); min-height: 190px; color: #1A1A1A; }
+  .cv-kicker { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #8A8A8A; }
+  .cv-h { font-size: 22px; font-weight: 700; margin-top: 6px; }
+  .cv-sub { font-size: 14px; color: #5A5A5A; margin-top: 8px; }
+  .cv-list { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .cv-li { display: flex; gap: 8px; font-size: 14px; }
+  .cv-num { color: var(--accent-11); font-weight: 700; flex: 0 0 auto; }
+  .cv-quote { font-size: 17px; line-height: 1.5; font-style: italic; }
+  .cv-img { height: 84px; border-radius: 6px; background: #F2F2F2; display: flex; align-items: center;
+    justify-content: center; color: #9A9A9A; font-size: 12px; margin-top: 10px; text-align: center; padding: 0 12px; }
+
+  .qz { border-radius: var(--radius-3); box-shadow: inset 0 0 0 1px var(--border-subtle); padding: var(--space-4); }
+  .qz + .qz { margin-top: var(--space-3); }
+  .qz.is-flag { box-shadow: inset 0 0 0 1px var(--warning-solid); background: var(--warning-bg); }
+  .qz-q { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+  .qz-opts { margin-top: var(--space-3); display: flex; flex-direction: column; gap: var(--space-1); }
+  .qz-o { display: flex; align-items: baseline; gap: var(--space-2); font-size: var(--fs-2); color: var(--fg-low); }
+  .qz-o.is-right { color: var(--success-text); font-weight: var(--weight-medium); }
+  .qz-why { font-size: var(--fs-1); color: var(--warning-text); margin-top: var(--space-3);
+    display: flex; align-items: flex-start; gap: var(--space-2); }
+  .qz-why svg { flex: 0 0 auto; margin-top: 1px; }
+
+  .empty-add { display: flex; align-items: center; justify-content: center; gap: var(--space-2);
+    width: 100%; padding: var(--space-5); border-radius: var(--radius-4); cursor: pointer;
+    background: transparent; color: var(--fg-low); font-size: var(--fs-2);
+    box-shadow: inset 0 0 0 1px var(--border-ui); }
+  .empty-add:hover { color: var(--accent-11); box-shadow: inset 0 0 0 1px var(--accent-8); background: var(--accent-2); }
+
+  .toast-stack { position: fixed; left: 50%; bottom: var(--space-6); transform: translateX(-50%);
+    display: flex; flex-direction: column; gap: var(--space-2); z-index: 1400; }
+  .toast-stack .toast { animation: t-in .2s ease-out; }
+  @keyframes t-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header is-dark">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect width="24" height="24" rx="6" fill="var(--accent-9)"/><text x="12" y="16.5" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-contrast)">S</text></svg>
+      <span>skyLearn</span>
+    </div>
+    <div class="search hdr-search">
+      <span class="search-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+      <label class="sr-only" for="q">Search</label>
+      <input class="input" id="q" type="search" placeholder="Search courses and learners" autocomplete="off" />
+    </div>
+    <div class="header-right">
+      <span class="presence"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg><span><strong class="pt-num">4</strong> points</span></span>
+      <button class="icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="ic-badge">3</span></button>
+      <button class="icon-btn" id="themeBtn" aria-label="Switch to dark theme"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+      <span class="divider-v"></span>
+      <span class="header-wrap">
+        <button class="header-user" id="viewAsBtn" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar c6">SA</span>
+          <span class="hu-id"><span class="hu-name">Sumit Awinash</span><span class="hu-role">Administrator</span></span>
+        </button>
+        <div class="view-as" id="viewAs" role="menu" hidden>
+          <div class="view-as-t">View as</div>
+          <a href="index.html" role="menuitem" aria-current="true"><span class="vr"></span>
+            <span class="vw">Administrator<span>Everything, across all six communities</span></span></a>
+          <a href="teach.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Instructor<span>Your courses, learners and sessions</span></span></a>
+          <a href="learn.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Learner<span>What you have to do, and by when</span></span></a>
+          <div class="vs">
+            <a href="signin.html" role="menuitem">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
+              Sign out</a>
+          </div>
+        </div>
+      </span>
+    </div>
+  </header>
+
+  <nav class="app-sidebar" aria-label="Primary">
+    <button class="sidebar-toggle" id="railBtn" aria-label="Collapse navigation"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>
+    <a class="nav-item" href="index.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg><span class="nav-label">Dashboard</span></a>
+    <a class="nav-item is-active" href="courses.html" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg><span class="nav-label">Courses</span></a>
+    <a class="nav-item" href="learners.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg><span class="nav-label">Learners</span></a>
+    <a class="nav-item" href="certificate.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg><span class="nav-label">Certifications</span></a>
+    <a class="nav-item" href="sessions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg><span class="nav-label">Sessions</span></a>
+    <a class="nav-item" href="groups.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg><span class="nav-label">Groups</span></a>
+    <a class="nav-item" href="recognition.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0z"/></svg><span class="nav-label">Recognition</span></a>
+    <a class="nav-item" href="discussions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6V2H8"/><path d="m8 18-4 4V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2Z"/><path d="M2 12h2"/><path d="M9 11v2"/><path d="M15 11v2"/><path d="M20 12h2"/></svg><span class="nav-label">Discussions</span></a>
+    <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span class="nav-label">Reports</span></a>
+    <a class="nav-item" href="automations.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/><path d="m2 2 20 20"/></svg><span class="nav-label">Automations</span></a>
+    <a class="nav-item" href="surveys.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/><rect x="3" y="4" width="18" height="16" rx="2"/></svg><span class="nav-label">Surveys</span></a>
+    <a class="nav-item" href="grading.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="m9 11-1.5 1.5L9 14"/><path d="M16 16h-4"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg><span class="nav-label">Grading Hub</span></a>
+    <a class="nav-item" href="files.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span class="nav-label">Reference library</span></a>
+    <a class="nav-item nav-tail" href="#"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="nav-label">Help and support</span></a>
+  </nav>
+
+  <main class="app-content">
+    <div class="breadcrumbs">
+      <a href="index.html">Home</a>
+      <span class="sep"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+      <a href="courses.html">Courses</a>
+      <span class="sep"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+      <span class="current" id="crumb">AI Course Generator</span>
+    </div>
+    <div class="content-body">
+      <div id="bar"></div>
+      <div id="view"></div>
+    </div>
+  </main>
+</div>
+<div class="overlay" id="overlay" hidden></div>
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+
+<script>
+/* ==============================================================
+   The source document, and the course that came back from it.
+   Lesson 1.1 is reproduced exactly as the generator produced it,
+   voiceover gaps and all, because the review screen is only worth
+   judging on output that has real faults in it.
+   ============================================================== */
+const DOC = { name:'Stellar Data Centre Exit Plan.pdf', size:'1.8 MB', pages:24 };
+
+const S = { stage:'source', src:'upload', file:DOC, tab:'overview',
+            openLesson:null, slide:0, resolved:new Set(), video:new Set(), title:'Stellar Data Centre Exit' };
+
+const sl = (kind, o) => Object.assign({ kind:kind, vo:'' }, o);
+
+/* Filler for the lessons the reviewer has not reached yet. Real enough to
+   count and to be flagged, short enough that this file stays readable. */
+function deck(topic, n, gaps) {
+  const out = [sl('title', { h:topic, sub:'What this lesson covers and why it matters.', vo:'' })];
+  for (let i = 1; i < n - 1; i++) {
+    out.push(i % 2
+      ? sl('bullets', { h:topic + ', key points', items:['The first point that matters here.','A second detail worth remembering.','A third thing to keep in mind.'],
+          vo: gaps && gaps.indexOf(i) > -1 ? '' : 'In this section we look at ' + topic.toLowerCase() + ' and what it means in practice.' })
+      : sl('steps', { h:'How it works', items:[['Step one','Begin here'],['Step two','Then this'],['Step three','Finish here']],
+          vo: gaps && gaps.indexOf(i) > -1 ? '' : 'These are the stages, in the order they happen.' }));
+  }
+  out.push(sl('end', { h:'Lesson Complete', sub:topic, vo:'' }));
+  return out;
+}
+/* `faults` decides which of the two classic generated-quiz problems this
+   lesson carries, so the review queue reads like real output rather than
+   the same template six times. */
+function quiz(topic, a, faults) {
+  faults = faults || '';
+  return [
+    { q:'Which statement best describes ' + topic.toLowerCase() + '?',
+      opts: faults.indexOf('long') > -1
+        ? ['It is optional and can be skipped.',
+           'It is the coordinated process described in the plan, carried out in the agreed order and to the agreed dates.',
+           'It applies only to external contractors.',
+           'It has not yet been decided.']
+        : ['A step that can be skipped safely.',
+           'The coordinated process set out in the plan.',
+           'A task owned by external contractors.',
+           'A decision that has not been taken yet.'], a:1 },
+    { q:'Who is accountable for ' + topic.toLowerCase() + '?',
+      opts:['Skypoint','Delta Dental of Arizona','The Stellar Data Centre IT team',
+            faults.indexOf('dud') > -1 ? 'A party not mentioned in the document' : 'The joint migration board'], a:a },
+    { q:'When does this stage complete?',
+      opts:['September 2026','December 2026','April 2027','May 2027'], a:2 }
+  ];
+}
+
+const COURSE = {
+  title:'Stellar Data Centre Exit',
+  difficulty:'Intermediate',
+  template:'Community default',
+  desc:'This course outlines the comprehensive plan for migrating Stellar Data Centre operations to a Skypoint-managed Azure environment. We will cover the project scope, key milestones, and critical dependencies required for a successful transition.',
+  units:[
+    { t:'Project Overview and Scope', lessons:[
+      { t:'Introduction to the Migration', pages:[1, 4], mins:18,
+        objectives:['Understand the main objective and timeline of the Stellar Data Centre exit.',
+                    'Identify the key parties involved in the migration.'],
+        content:'This lesson introduces the Stellar Data Centre exit project, its primary goal of migrating to Skypoint-managed Azure, and the overall timeline for completion.',
+        slides:[
+          sl('title', { h:'Introduction to the Migration',
+            sub:'This lesson introduces the Stellar Data Centre exit project, its primary goal of migrating to Skypoint-managed Azure.', vo:'' }),
+          sl('image', { cap:'Delta Dental of Arizona moves to Skypoint-managed Azure cloud by May 2027.',
+            alt:'Architects at a desk looking at blueprints of a new, modern data center while an old, traditional data center is in the background.',
+            vo:'Welcome to our course on the Stellar Data Centre Exit. This project is a critical move for Delta Dental of Arizona, transitioning their on-premise infrastructure to a modern, Skypoint-managed Azure cloud environment. Our goal is to achieve a seamless go-live by April 2027, with the full Stellar exit by May 2027.' }),
+          sl('steps', { h:'Migration Plan Stages',
+            items:[['Initial Discovery','Reconcile existing assets'],['Migration and Transition','Move infrastructure to Azure'],['Final Decommissioning','Exit Stellar data centre']],
+            vo:'The project is structured around a detailed execution plan, ensuring every step is meticulously managed. This plan covers everything from initial discovery and reconciliation of existing assets to the final decommissioning of the Stellar data centre.' }),
+          sl('bullets', { h:'Benefits of Cloud Migration',
+            items:['Enhanced scalability and flexibility','Improved security posture','Increased operational efficiency','Modernized infrastructure'],
+            vo:'This transition is crucial for Delta Dental of Arizona, bringing their infrastructure into a cloud environment managed by Skypoint. This strategic move promises enhanced scalability, security, and operational efficiency.' }),
+          sl('quote', { quote:'This project involves highly confidential and proprietary information from Skypoint and Delta Dental of Arizona.', by:'',
+            vo:'Before we dive deeper, it is important to understand that this project carries a high level of confidentiality. All information shared within this course is proprietary to Skypoint and Delta Dental of Arizona.' }),
+          sl('end', { h:'Lesson Complete', sub:'Understand the main objective and timeline of the Stellar Data Centre exit', vo:'' })
+        ],
+        quiz:[
+          { q:'What is the primary goal of the Stellar Data Centre Exit project?',
+            opts:['To upgrade existing Stellar servers.',
+                  'To migrate Stellar Data Centre operations to Skypoint-managed Azure.',
+                  'To decommission the Stellar Data Centre immediately without migration.',
+                  'To outsource all IT operations to Delta Dental of Arizona.'], a:1 },
+          { q:'When is the target go-live date for the project?',
+            opts:['September 2026','December 2026','April 2027','May 2027'], a:2 },
+          { q:'Who is managing the new cloud environment?',
+            opts:['Delta Dental of Arizona directly','An external consultant not mentioned','Skypoint','Stellar Data Centre IT team'], a:2 }
+        ] },
+      { t:'Stellar Estate: Assets in Scope', pages:[5, 9], mins:21,
+        objectives:['List the asset classes inside the migration boundary.','Recognise what is explicitly out of scope.'],
+        content:'This lesson details the various assets, data volumes, and components currently within the Stellar estate that are in scope for the migration.',
+        slides:deck('Assets in Scope', 7, [3]), quiz:quiz('the asset inventory', 0, 'dud') }
+    ] },
+    { t:'Migration Strategy and Timeline', lessons:[
+      { t:'Migration in Waves', pages:[10, 12], mins:20,
+        objectives:['Explain why the migration is run in waves.','Identify which systems move in each wave.'],
+        content:'How the estate is split into waves, and what determines the order.',
+        slides:deck('Migration in Waves', 6, [2]), quiz:quiz('wave sequencing', 0) },
+      { t:'Key Milestones and Critical Path', pages:[18, 21], mins:20,
+        objectives:['Name the milestones that gate go-live.','Describe what sits on the critical path.'],
+        content:'The dates the project is measured against, and the dependencies between them.',
+        slides:deck('Key Milestones', 6), quiz:quiz('the critical path', 3, 'long') }
+    ] },
+    { t:'Decisions and Risks', lessons:[
+      { t:'Crucial Decisions and Next Steps', pages:[22, 24], mins:21,
+        objectives:['Summarise the decisions still open.','State who owns each next step.'],
+        content:'The open decisions that need an owner before the next stage can begin.',
+        slides:deck('Crucial Decisions', 6), quiz:quiz('the open decisions', 0) },
+      { t:'Mitigating Project Risks', pages:null, mins:20,
+        objectives:['Identify the top project risks.','Match each risk to its mitigation.'],
+        content:'The risks recorded against the project and how each one is being handled.',
+        slides:deck('Project Risks', 6, [1, 3]), quiz:quiz('risk mitigation', 0, 'long dud') }
+    ] }
+  ]
+};
+
+const units   = () => COURSE.units;
+const lessons = () => COURSE.units.reduce((a, u) => a.concat(u.lessons), []);
+const allSlides = () => lessons().reduce((a, l) => a.concat(l.slides), []);
+const allQ    = () => lessons().reduce((a, l) => a.concat(l.quiz), []);
+const totalMins = () => lessons().reduce((a, l) => a + l.mins, 0);
+</script>
+
+<script>
+/* ==============================================================
+   What a reviewer should actually look at.
+
+   A generated course arrives looking finished. Every lesson has a title,
+   every slide has a heading, every question has four plausible options,
+   and none of that is evidence that any of it is right. The reviewer
+   either reads all thirty-six slides, which nobody does, or publishes
+   unread, which everybody does.
+
+   So the screen does the first pass. These are the faults generated
+   course material actually has, and every one of them is found by
+   traversing the output rather than by being written down here.
+   ============================================================== */
+
+/* An option that is markedly longer than its rivals is the answer, and a
+   test-wise learner will pick it without reading the question. It is the
+   single most common artefact in generated multiple choice. */
+function longestIsRight(q) {
+  const len = q.opts.map(o => o.length);
+  const max = Math.max.apply(null, len);
+  return len.indexOf(max) === q.a && max > Math.min.apply(null, len) * 1.6;
+}
+/* A distractor nobody could pick is not a distractor. It makes a
+   four-option question a three-option one. */
+const DUD = /not mentioned|none of the above|all of the above|not applicable|none of these/i;
+const dudOption = q => q.opts.some((o, i) => i !== q.a && DUD.test(o));
+
+const noVoice = s => !s.vo || !s.vo.trim();
+
+/* The slide text a learner would actually see, for checking that the
+   lesson delivers what its objectives promise. */
+function slideText(s) {
+  return [s.h, s.sub, s.cap, s.quote, s.alt,
+          (s.items || []).map(i => Array.isArray(i) ? i.join(' ') : i).join(' ')]
+    .filter(Boolean).join(' ').toLowerCase();
+}
+const STOP = /^(the|and|of|to|a|an|in|for|its|it|is|are|that|this|with|from|main|key|what|how|why|understand|identify|explain|describe|recognise|list|name|state|summarise|match|each)$/;
+function uncoveredObjective(l) {
+  const text = l.slides.map(slideText).join(' ');
+  return l.objectives.find(o => {
+    const words = o.toLowerCase().replace(/[^a-z ]/g, '').split(/\s+/).filter(w => w.length > 3 && !STOP.test(w));
+    return words.length && !words.some(w => text.includes(w));
+  }) || null;
+}
+
+/* Pages of the source that no lesson claims. Summarising a document is
+   lossy, and the lost part is invisible unless something counts it. */
+function unusedPages() {
+  const used = new Set();
+  lessons().forEach(l => { if (l.pages) for (let p = l.pages[0]; p <= l.pages[1]; p++) used.add(p); });
+  const gaps = [];
+  for (let p = 1; p <= DOC.pages; p++) if (!used.has(p)) gaps.push(p);
+  return gaps;
+}
+const ranges = ns => { const out = []; let i = 0;
+  while (i < ns.length) { let j = i; while (j + 1 < ns.length && ns[j + 1] === ns[j] + 1) j++;
+    out.push(i === j ? String(ns[i]) : ns[i] + '–' + ns[j]); i = j + 1; }
+  return out.join(', '); };
+
+function findings() {
+  const out = [];
+  const add = (id, kind, msg, where) => out.push({ id, kind, msg, where });
+
+  COURSE.units.forEach((u, ui) => u.lessons.forEach((l, li) => {
+    const at = 'Unit ' + (ui + 1) + ' · ' + (ui + 1) + '.' + (li + 1) + ' ' + l.t;
+
+    if (!l.pages) add('src-' + ui + '-' + li, 'source',
+      'This lesson is not traceable to any page of ' + DOC.name + '.', { at, ui, li });
+
+    const un = uncoveredObjective(l);
+    if (un) add('obj-' + ui + '-' + li, 'objective',
+      'An objective is never covered by a slide: “' + un + '”', { at, ui, li });
+
+    const silent = l.slides.map((s, si) => noVoice(s) ? si + 1 : 0).filter(Boolean);
+    if (silent.length) add('vo-' + ui + '-' + li, 'voice',
+      silent.length + ' of ' + l.slides.length + ' slides have no voiceover script, so the video would run them in silence.',
+      { at: at + ' · slide ' + silent.join(', '), ui, li, slide: silent[0] - 1 });
+
+    l.quiz.forEach((q, qi) => {
+      if (longestIsRight(q)) add('len-' + ui + '-' + li + '-' + qi, 'quiz',
+        'The right answer is the longest option, which gives it away without reading the question.',
+        { at: at + ' · question ' + (qi + 1), ui, li, q: qi });
+      if (dudOption(q)) add('dud-' + ui + '-' + li + '-' + qi, 'quiz',
+        'One option cannot plausibly be chosen, so this is a three-option question wearing four.',
+        { at: at + ' · question ' + (qi + 1), ui, li, q: qi });
+    });
+  }));
+
+  const gaps = unusedPages();
+  if (gaps.length) add('pages', 'source',
+    plural(gaps.length, 'page') + ' of ' + DOC.name + ' are in no lesson: ' + ranges(gaps) + '.', { at:'Source document' });
+
+  return out;
+}
+const open = () => findings().filter(f => !S.resolved.has(f.id));
+</script>
+
+<script>
+/* ==============================================================
+   Icons and helpers
+   ============================================================== */
+const IC = {
+  back:'<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>', chev:'<path d="m9 18 6-6-6-6"/>',
+  down:'<path d="m6 9 6 6 6-6"/>', check:'<path d="M20 6 9 17l-5-5"/>', x:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  alert:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  file:'<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/>',
+  up:'<path d="M12 13v8"/><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/><path d="m8 17 4-4 4 4"/>',
+  spark:'<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>',
+  trash:'<path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  plus:'<path d="M5 12h14"/><path d="M12 5v14"/>',
+  redo:'<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>',
+  play:'<path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/>'
+};
+const ic = (n, s) => '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+IC[n]+'</svg>';
+const $   = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+function toast(title, body) {
+  const el = document.createElement('div'); el.className = 'toast';
+  el.innerHTML = '<div><div class="toast-title">'+esc(title)+'</div>'+(body ? '<div class="toast-body">'+esc(body)+'</div>' : '')+'</div>';
+  $('toasts').appendChild(el); setTimeout(() => el.remove(), 4600);
+}
+const field = (label, body, hint) => '<div class="field"><span class="field-label">'+label+'</span>'+body+
+  (hint ? '<span class="field-hint">'+hint+'</span>' : '')+'</div>';
+
+/* ==============================================================
+   Stage 1: the source
+   ============================================================== */
+function renderSource() {
+  return '<div class="wrap"><header class="page-header"><h1>AI Course Generator</h1>' +
+    '<p>Point it at a document and it drafts the units, lessons, slides and questions. You review what comes back before anyone sees it.</p></header>' +
+    '<div class="stack-5">' +
+      '<div class="card"><div class="panel-title" style="margin-bottom:var(--space-4);">Source</div>' +
+        '<div class="seg-row">' +
+          '<button class="seg-btn'+(S.src === 'upload' ? ' is-active' : '')+'" data-src="upload">Upload a document</button>' +
+          '<button class="seg-btn'+(S.src === 'paste' ? ' is-active' : '')+'" data-src="paste">Paste text</button>' +
+        '</div>' +
+        (S.src === 'paste'
+          ? '<textarea class="textarea" id="pasteBox" rows="7" placeholder="Paste the policy, handbook or plan you want turned into a course."></textarea>'
+          : S.file
+            ? '<div class="doc">'+ic('file', 20)+'<span class="doc-meta"><span class="doc-name">'+esc(S.file.name)+'</span>' +
+              '<span class="doc-sub">'+esc(S.file.size)+', '+plural(S.file.pages, 'page')+'</span></span>' +
+              '<button class="btn btn-ghost is-sm" id="clearFile">Remove</button></div>'
+            : '<button class="drop" id="pick"><span class="drop-ic">'+ic('up', 22)+'</span>' +
+              '<span>Drop a file here, or choose one</span>' +
+              '<span class="drop-hint">PDF, DOCX or PPTX, up to 50 MB</span></button>') +
+      '</div>' +
+
+      '<div class="card"><div class="panel-title" style="margin-bottom:var(--space-4);">Settings</div>' +
+        '<div class="stack-4">' +
+          '<div class="grid-2">' +
+            field('Course title', '<input class="input" id="stTitle" value="'+esc(S.title)+'" placeholder="Taken from the document if you leave it blank" />') +
+            field('Who it is for', '<input class="input" id="stAud" placeholder="New hires, floor supervisors" />') +
+          '</div>' +
+          '<div class="grid-3">' +
+            field('Difficulty', '<select class="select"><option>Introductory</option><option selected>Intermediate</option><option>Advanced</option></select>') +
+            field('Lessons at most', '<input class="input" type="number" value="10" min="1" max="15" />',
+                  'A 24 page document usually makes 5 to 8.') +
+            field('Language', '<select class="select"><option selected>English</option><option>Spanish</option></select>') +
+          '</div>' +
+          '<div class="grid-2">' +
+            field('Slide template', '<select class="select"><option selected>Deck White</option><option>Community default</option><option>Skypoint amber</option></select>',
+                  'Styles the slides and the video made from them.') +
+            '<div class="tpl-prev">' + canvas({ kind:'bullets', h:'Preventing Falls in Senior Living',
+              items:['The first key point about the topic.','A second important detail to remember.','A third thing worth keeping in mind.'] }) +
+              '<div class="tpl-cap">Deck White. Crisp white, one accent, bold headings.</div></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="foot-row"><span class="foot-note">Nothing is published. The draft opens for review first.</span>' +
+        '<span class="spacer"></span>' +
+        '<button class="btn btn-solid" id="go"'+(S.src === 'upload' && !S.file ? ' disabled' : '')+'>'+ic('spark', 16)+' Generate draft</button>' +
+      '</div>' +
+    '</div></div>';
+}
+
+/* ==============================================================
+   Stage 2: generating.
+
+   The old screen showed a bar filling against nothing and one sentence
+   that never changed. This says what it is doing and, as each step
+   lands, what it found. The wait is the same length; it stops being
+   empty, and by the end the reviewer already knows the shape of what
+   they are about to check.
+   ============================================================== */
+const STEPS = [
+  { t:'Reading ' + DOC.name,   found: () => plural(DOC.pages, 'page') },
+  { t:'Finding the themes',    found: () => plural(units().length, 'unit') },
+  { t:'Drafting lessons',      found: () => plural(lessons().length, 'lesson') },
+  { t:'Writing slides',        found: () => plural(allSlides().length, 'slide') },
+  { t:'Writing quiz questions',found: () => plural(allQ().length, 'question') },
+  { t:'Checking its own work', found: () => plural(findings().length, 'thing') + ' to look at' }
+];
+
+function renderGenerating() {
+  return '<div class="wrap is-centre"><div class="gen">' +
+    '<div class="gen-art"><img src="assets/generating.svg" alt="" /></div>' +
+    '<div><div class="gen-h">Building your course</div>' +
+      '<div class="gen-p">This takes about a minute. You can watch, or step away and come back.</div></div>' +
+    '<div class="gen-steps" id="steps">' + STEPS.map((s, i) =>
+      '<div class="gen-row" id="g'+i+'"><span class="gen-mark"><span class="dot"></span></span>' +
+      '<span>'+esc(s.t)+'</span><span class="gen-found" id="f'+i+'"></span></div>').join('') + '</div>' +
+  '</div></div>';
+}
+
+function runGeneration() {
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const tick = reduce ? 80 : 1100;
+  STEPS.forEach((s, i) => setTimeout(() => {
+    const row = $('g' + i); if (!row) return;
+    row.className = 'gen-row is-doing';
+    if (i > 0) {
+      const prev = $('g' + (i - 1)); if (!prev) return;
+      prev.className = 'gen-row is-done';
+      prev.querySelector('.gen-mark').innerHTML = ic('check', 16);
+      $('f' + (i - 1)).textContent = STEPS[i - 1].found();
+    }
+  }, i * tick));
+  setTimeout(() => {
+    const last = $('g' + (STEPS.length - 1));
+    if (last) { last.className = 'gen-row is-done';
+      last.querySelector('.gen-mark').innerHTML = ic('check', 16);
+      $('f' + (STEPS.length - 1)).textContent = STEPS[STEPS.length - 1].found(); }
+    setTimeout(() => { S.stage = 'review'; render(); }, reduce ? 60 : 700);
+  }, STEPS.length * tick);
+}
+</script>
+
+<script>
+/* ==============================================================
+   Stage 3: review
+   ============================================================== */
+
+/* A slide drawn as a slide. Same function for the thumbnail and the
+   full size one, so a thumbnail can never lie about its slide. */
+function canvas(s, small) {
+  const k = s.kind;
+  if (k === 'title') return '<div class="cv-kicker">Title</div><div class="cv-h">'+esc(s.h)+'</div>' +
+    (s.sub ? '<div class="cv-sub">'+esc(s.sub)+'</div>' : '');
+  if (k === 'end')   return '<div class="cv-kicker">End</div><div class="cv-h">'+esc(s.h)+'</div>' +
+    (s.sub ? '<div class="cv-sub">'+esc(s.sub)+'</div>' : '');
+  if (k === 'image') return '<div class="cv-h" style="font-size:16px;">'+esc(s.cap)+'</div>' +
+    '<div class="cv-img">'+esc(small ? 'image' : s.alt)+'</div>';
+  if (k === 'quote') return '<div class="cv-quote">&ldquo;'+esc(s.quote)+'&rdquo;</div>' +
+    (s.by ? '<div class="cv-sub">'+esc(s.by)+'</div>' : '');
+  if (k === 'steps') return '<div class="cv-h" style="font-size:18px;">'+esc(s.h)+'</div><div class="cv-list">' +
+    s.items.map((it, i) => '<div class="cv-li"><span class="cv-num">'+(i + 1)+'</span><span>'+esc(it[0])+
+      '<span class="cv-sub" style="margin-top:0;"> &middot; '+esc(it[1])+'</span></span></div>').join('') + '</div>';
+  return '<div class="cv-h" style="font-size:18px;">'+esc(s.h)+'</div><div class="cv-list">' +
+    s.items.map(it => '<div class="cv-li"><span class="cv-num">&bull;</span><span>'+esc(it)+'</span></div>').join('') + '</div>';
+}
+const KIND = { title:'Title card', image:'Image', steps:'Steps', bullets:'Bullets', quote:'Quote', end:'End card' };
+
+function renderQuestion(q, qi) {
+  const bad = longestIsRight(q) || dudOption(q);
+  const why = longestIsRight(q)
+    ? 'The right answer is the longest option. A test-wise learner picks it without reading the question.'
+    : dudOption(q) ? 'One option cannot plausibly be chosen, so this is a three-option question wearing four.' : '';
+  return '<div class="qz'+(bad ? ' is-flag' : '')+'"><div class="qz-q">'+(qi + 1)+'. '+esc(q.q)+'</div>' +
+    '<div class="qz-opts">' + q.opts.map((o, i) =>
+      '<div class="qz-o'+(i === q.a ? ' is-right' : '')+'"><span>'+(i === q.a ? ic('check', 14) : '&nbsp;&nbsp;&nbsp;')+'</span>' +
+      '<span>'+String.fromCharCode(65 + i)+') '+esc(o)+'</span></div>').join('') + '</div>' +
+    (why ? '<div class="qz-why">'+ic('alert', 14)+'<span>'+esc(why)+'</span></div>' : '') + '</div>';
+}
+
+function renderLesson(u, ui, l, li) {
+  const openL = S.openLesson === ui + '.' + li;
+  const flags = findings().filter(f => f.where.ui === ui && f.where.li === li && !S.resolved.has(f.id));
+  const head = '<button class="lesson-head" data-lesson="'+ui+'.'+li+'" aria-expanded="'+openL+'">' +
+    '<span class="lesson-t"><span class="lesson-n">'+(ui + 1)+'.'+(li + 1)+' '+esc(l.t)+'</span>' +
+      '<span class="lesson-d">'+esc(l.content)+'</span>' +
+      '<span class="chips" style="margin-top:var(--space-3);">' +
+        '<span class="chip">'+plural(l.objectives.length, 'objective')+'</span>' +
+        '<span class="chip">'+plural(l.slides.length, 'slide')+'</span>' +
+        '<span class="chip">'+plural(l.quiz.length, 'question')+'</span>' +
+        '<span class="chip is-src">'+(l.pages ? 'pages '+l.pages[0]+'&ndash;'+l.pages[1] : 'no source')+'</span>' +
+        (flags.length ? '<span class="chip is-flag">'+ic('alert', 12)+plural(flags.length, 'thing')+' to check</span>' : '') +
+      '</span></span>' +
+    '<span style="color:var(--fg-subtle);">'+ic(openL ? 'down' : 'chev', 18)+'</span></button>';
+
+  if (!openL) return '<div class="lesson">'+head+'</div>';
+
+  const s = l.slides[Math.min(S.slide, l.slides.length - 1)];
+  return '<div class="lesson is-open">'+head+'<div class="lesson-body">' +
+    '<div class="grid-2">' +
+      field('Title', '<input class="input" value="'+esc(l.t)+'" />') +
+      field('Runs about', '<input class="input" value="'+l.mins+' minutes" />') +
+    '</div>' +
+    field('Learning objectives', '<div class="stack-2">' + l.objectives.map(o =>
+      '<input class="input" value="'+esc(o)+'" />').join('') + '</div>') +
+    field('Summary', '<textarea class="textarea" rows="2">'+esc(l.content)+'</textarea>') +
+
+    '<div><div class="sec-h" style="margin-bottom:var(--space-3);">Slides ('+l.slides.length+')</div>' +
+      '<div class="strip">' + l.slides.map((x, i) =>
+        '<button class="thumb'+(i === Math.min(S.slide, l.slides.length - 1) ? ' is-active' : '')+(noVoice(x) ? ' is-flag' : '')+'" data-slide="'+i+'">' +
+        '<span class="thumb-art"><span class="thumb-page">' + canvas(x, true) + '</span></span>' +
+        '<span class="thumb-lab">'+(i + 1)+'. '+KIND[x.kind]+(noVoice(x) ? ' &middot; silent' : '')+'</span></button>').join('') +
+      '</div>' +
+      '<div class="grid-2" style="margin-top:var(--space-4);align-items:start;">' +
+        '<div class="canvas">'+canvas(s)+'</div>' +
+        '<div class="stack-3">' +
+          field('Slide type', '<select class="select">' + Object.keys(KIND).map(k =>
+            '<option'+(k === s.kind ? ' selected' : '')+'>'+KIND[k]+'</option>').join('') + '</select>') +
+          field('Voiceover script', '<textarea class="textarea" rows="5" placeholder="Nothing was written for this slide.">'+esc(s.vo)+'</textarea>',
+            noVoice(s) ? 'Empty. The video would sit on this slide in silence.' : '') +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+
+    '<div><div class="sec-h" style="margin-bottom:var(--space-3);">Quiz ('+l.quiz.length+')</div>' +
+      l.quiz.map(renderQuestion).join('') + '</div>' +
+
+    '<div class="foot-row"><button class="btn btn-surface is-sm" data-regen="'+ui+'.'+li+'">'+ic('redo', 15)+' Rewrite this lesson</button>' +
+      '<span class="spacer"></span>' +
+      '<button class="btn btn-ghost is-sm" data-del="'+ui+'.'+li+'">'+ic('trash', 15)+' Delete lesson</button></div>' +
+  '</div></div>';
+}
+
+function renderUnit(ui) {
+  const u = units()[ui];
+  const mins = u.lessons.reduce((a, l) => a + l.mins, 0);
+  return '<div class="wrap is-full"><header class="page-header ph-row">' +
+      '<div class="ph-text"><h1>'+esc(u.t)+'</h1>' +
+      '<p>'+plural(u.lessons.length, 'lesson')+' &middot; about '+mins+' min &middot; ' +
+      plural(u.lessons.reduce((a, l) => a + l.quiz.length, 0), 'question')+'</p></div>' +
+      '<button class="btn btn-surface" data-addl="'+ui+'">'+ic('plus', 16)+' Add lesson</button></header>' +
+    '<div class="stack-3">' + u.lessons.map((l, li) => renderLesson(u, ui, l, li)).join('') +
+      '<button class="empty-add" data-addl="'+ui+'">'+ic('spark', 16)+' Draft another lesson from the document</button>' +
+    '</div></div>';
+}
+
+function renderOverview() {
+  const fs = findings(), left = open();
+
+  /* Grouped by kind. Twenty separate rows is a wall a reviewer scrolls
+     past; five kinds with counts is a worklist they can finish. */
+  const groups = {};
+  fs.forEach(f => (groups[f.kind] = groups[f.kind] || []).push(f));
+  const GROUP_TXT = {
+    quiz:      n => plural(n, 'question') + ' give' + (n === 1 ? 's' : '') + ' the answer away',
+    voice:     n => plural(n, 'lesson') + ' ha' + (n === 1 ? 's' : 've') + ' slides that would play in silence',
+    objective: n => plural(n, 'objective') + ' ' + (n === 1 ? 'is' : 'are') + ' promised and never taught',
+    source:    n => plural(n, 'gap') + ' between the document and the course'
+  };
+  const ORDER = ['quiz', 'objective', 'voice', 'source'];
+
+  const queue = fs.length
+    ? '<div class="card"><div class="panel-head"><div>' +
+        '<div class="panel-title">Before you publish</div>' +
+        '<div class="panel-sub">' + (left.length
+          ? plural(left.length, 'thing') + ' still to look at, of ' + fs.length + '. Publishing waits until each is fixed or accepted.'
+          : 'All ' + fs.length + ' checked. Ready to publish.') + '</div></div></div>' +
+        '<div class="q-list">' + ORDER.filter(k => groups[k]).map(k => {
+          const g = groups[k], undone = g.filter(x => !S.resolved.has(x.id));
+          const done = !undone.length;
+          return '<div class="q-item'+(done ? ' is-ok' : '')+'"><span class="q-ic">'+ic(done ? 'check' : 'alert', 18)+'</span>' +
+            '<span class="q-txt"><span>'+esc(GROUP_TXT[k](g.length))+'</span>' +
+            '<span class="q-where">'+esc(g.slice(0, 3).map(x => x.where.at.replace(/^Unit \d+ · /, '')).join(' · ') +
+              (g.length > 3 ? ' and ' + (g.length - 3) + ' more' : ''))+'</span></span>' +
+            '<span class="q-acts">' +
+              (undone.length && undone[0].where.ui != null ? '<button class="btn btn-surface is-sm" data-goto="'+undone[0].id+'">Go to the first</button>' : '') +
+              (done ? '<button class="btn btn-ghost is-sm" data-unresolve="'+k+'">Reopen</button>'
+                    : '<button class="btn btn-ghost is-sm" data-resolve="'+k+'">Accept all '+undone.length+'</button>') +
+            '</span></div>';
+        }).join('') + '</div></div>'
+    : '';
+
+  return '<div class="wrap is-full"><div class="stack-5">' +
+      /* The counts read as a sentence rather than four cards. They are
+         context for the queue below, not metrics anybody acts on. */
+      '<p class="tally">'+units().length+' units, '+lessons().length+' lessons, '+
+        allSlides().length+' slides and '+allQ().length+' questions, from '+plural(DOC.pages, 'page')+
+        ' of '+esc(DOC.name)+'. About '+totalMins()+' minutes of learner time.</p>' +
+      queue +
+      '<div class="card"><div class="panel-title" style="margin-bottom:var(--space-4);">Course details</div>' +
+        '<div class="stack-4"><div class="grid-2">' +
+          field('Title', '<input class="input" value="'+esc(COURSE.title)+'" />') +
+          field('Difficulty', '<select class="select"><option selected>'+esc(COURSE.difficulty)+'</option><option>Introductory</option><option>Advanced</option></select>') +
+        '</div>' +
+        field('Description', '<textarea class="textarea" rows="3">'+esc(COURSE.desc)+'</textarea>') +
+        '</div></div>' +
+      '<div><div class="sec-h" style="margin-bottom:var(--space-3);">Units</div><div class="stack-3">' +
+        units().map((u, i) => {
+          const f = findings().filter(x => x.where.ui === i && !S.resolved.has(x.id)).length;
+          return '<button class="unit-row" data-unit="'+i+'"><span class="unit-n">'+(i + 1)+'</span>' +
+            '<span class="unit-t"><span class="unit-name">'+esc(u.t)+'</span>' +
+            '<span class="unit-sub">'+u.lessons.map(l => esc(l.t)).join(', ')+'</span>' +
+            '<span class="chips" style="margin-top:var(--space-2);"><span class="chip">'+plural(u.lessons.length, 'lesson')+'</span>' +
+            (f ? '<span class="chip is-flag">'+ic('alert', 12)+plural(f, 'thing')+' to check</span>' : '') + '</span></span>' +
+            '<span style="color:var(--fg-subtle);">'+ic('chev', 18)+'</span></button>';
+        }).join('') + '</div></div>' +
+    '</div></div>';
+}
+</script>
+
+<script>
+/* ==============================================================
+   Chrome and behaviour
+   ============================================================== */
+function renderBar() {
+  $('crumb').textContent = S.stage === 'review' ? 'Review: ' + COURSE.title : 'AI Course Generator';
+  if (S.stage !== 'review') { $('bar').innerHTML = ''; return; }
+
+  const left = open().length;
+  const tab = (k, label, n, flags) => '<button class="ed-tab'+(String(S.tab) === String(k) ? ' is-active' : '')+'" data-tab="'+k+'" role="tab">' +
+    esc(label) + (n != null ? '<span class="count">'+n+'</span>' : '') + (flags ? '<span class="dot"></span>' : '') + '</button>';
+
+  $('bar').innerHTML =
+    '<header class="page-header ph-row">' +
+      '<div class="ph-text"><div class="rv-title"><h1>'+esc(COURSE.title)+'</h1><span class="badge is-neutral">Draft</span></div>' +
+      '<p>'+esc(COURSE.desc)+'</p></div>' +
+      '<div class="ph-acts"><button class="btn btn-surface" id="save">Save draft</button>' +
+        /* Publishing unreviewed generated material is the one mistake this
+           screen exists to prevent, so the button waits for the queue. */
+        '<button class="btn btn-solid" id="pub"'+(left ? ' disabled' : '')+'>' +
+          (left ? plural(left, 'thing') + ' to check first' : 'Publish course') + '</button></div>' +
+    '</header>' +
+    '<div class="rv-bar" role="tablist">' +
+      tab('overview', 'Overview', null, false) +
+      units().map((u, i) => tab(i, 'Unit ' + (i + 1) + ': ' + u.t, u.lessons.length,
+        findings().some(f => f.where.ui === i && !S.resolved.has(f.id)))).join('') +
+    '</div>';
+}
+
+function render() {
+  renderBar();
+  $('view').innerHTML = S.stage === 'source' ? renderSource()
+    : S.stage === 'generating' ? renderGenerating()
+    : S.tab === 'overview' ? renderOverview() : renderUnit(Number(S.tab));
+  if (S.stage === 'generating') runGeneration();
+}
+
+document.addEventListener('click', e => {
+  const t = e.target;
+  const hit = sel => t.closest(sel);
+
+  const src = hit('[data-src]');   if (src) { S.src = src.dataset.src; return render(); }
+  if (hit('#clearFile')) { S.file = null; return render(); }
+  if (hit('#pick'))      { S.file = DOC; toast('Added.', DOC.name + ', ' + plural(DOC.pages, 'page') + '.'); return render(); }
+  if (hit('#go'))        { S.stage = 'generating'; return render(); }
+
+  const tb = hit('[data-tab]');    if (tb) { S.tab = tb.dataset.tab === 'overview' ? 'overview' : Number(tb.dataset.tab); S.openLesson = null; return render(); }
+  const un = hit('[data-unit]');   if (un) { S.tab = Number(un.dataset.unit); return render(); }
+
+  const ln = hit('[data-lesson]');
+  if (ln) { S.openLesson = S.openLesson === ln.dataset.lesson ? null : ln.dataset.lesson; S.slide = 0; return render(); }
+  const sd = hit('[data-slide]');  if (sd) { S.slide = Number(sd.dataset.slide); return render(); }
+
+  const gt = hit('[data-goto]');
+  if (gt) { const f = findings().find(x => x.id === gt.dataset.goto); if (!f) return;
+    S.tab = f.where.ui; S.openLesson = f.where.ui + '.' + f.where.li; S.slide = f.where.slide || 0;
+    return render(); }
+  const rs = hit('[data-resolve]');
+  if (rs) { const k = rs.dataset.resolve, hitList = findings().filter(x => x.kind === k);
+    hitList.forEach(x => S.resolved.add(x.id));
+    toast('Accepted ' + plural(hitList.length, 'finding') + '.',
+      'Recorded as reviewed rather than removed, so the decision stays visible to whoever audits this course.');
+    return render(); }
+  const ur = hit('[data-unresolve]');
+  if (ur) { findings().filter(x => x.kind === ur.dataset.unresolve).forEach(x => S.resolved.delete(x.id));
+    return render(); }
+
+  const rg = hit('[data-regen]');
+  if (rg) return toast('Rewriting a single lesson', 'Sends this lesson back with the rest of the course as context, so numbering and tone stay consistent. Not wired up in this prototype.');
+  const dl = hit('[data-del]');
+  if (dl) { const [ui, li] = dl.dataset.del.split('.').map(Number);
+    const gone = units()[ui].lessons.splice(li, 1)[0];
+    S.openLesson = null; toast('Deleted ' + gone.t + '.', 'The pages it came from are now covered by nothing.'); return render(); }
+  const ad = hit('[data-addl]');
+  if (ad) { const ui = Number(ad.dataset.addl);
+    units()[ui].lessons.push({ t:'New lesson', pages:null, mins:0, objectives:[''], content:'',
+      slides:[{ kind:'title', h:'New lesson', sub:'', vo:'' }], quiz:[] });
+    S.openLesson = ui + '.' + (units()[ui].lessons.length - 1); S.slide = 0;
+    toast('Lesson added.', 'Empty, and not traceable to the document, so it is now on the review list.'); return render(); }
+
+  if (hit('#save')) return toast('Draft saved.', 'Nobody can be assigned to it until it is published.');
+  if (hit('#pub')) { if (open().length) return;
+    toast('Published.', COURSE.title + ' is live. ' + plural(findings().length, 'finding') + ' were reviewed first.'); return; }
+});
+
+render();
+
+const viewAsBtn = document.getElementById('viewAsBtn');
+if (viewAsBtn) {
+  const menu = document.getElementById('viewAs');
+  viewAsBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = !menu.hidden;
+    menu.hidden = open;
+    viewAsBtn.setAttribute('aria-expanded', String(!open));
+  });
+  document.addEventListener('click', () => {
+    if (!menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+}
+
+/* Collapsing the rail is shell behaviour, so every page does it. It was
+   markup on twenty pages and wired on one, and standardising the nav dropped
+   the id the one handler depended on. */
+const railBtn = document.getElementById('railBtn');
+if (railBtn) {
+  railBtn.addEventListener('click', () => {
+    const shell = document.querySelector('.app-shell');
+    const side  = document.querySelector('.app-sidebar');
+    const on = shell.style.gridTemplateColumns === '0px 1fr';
+    shell.style.gridTemplateColumns = on ? '256px 1fr' : '0px 1fr';
+    if (side) side.style.visibility = on ? 'visible' : 'hidden';
+    railBtn.setAttribute('aria-label', on ? 'Collapse navigation' : 'Expand navigation');
+  });
+}
+</script>
+</body>
+</html>

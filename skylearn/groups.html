@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<!--
+  skyLearn - Groups, Radix flavour.
+  Two tabs, as the screen it replaces has. What changed is what is in them:
+  audiences that stay true by themselves, and requirements that are the
+  source of "9 of 12 required" everywhere else. See GROUPS-IA.md.
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>skyLearn &middot; Groups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../tokens.css?v=102" />
+<link rel="stylesheet" href="../dashboard.css?v=102" />
+<style>
+  /* Shell bits shared with the other skyLearn screens */
+  .ph-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-5); flex-wrap: wrap; }
+  .ph-text { min-width: 0; }
+  .ph-cta { flex: 0 0 auto; margin-left: auto; }
+
+  .tbar { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-4); }
+
+  .a-title { display: flex; flex-direction: column; min-width: 0; }
+  .a-name { font-size: var(--fs-2); color: var(--fg-high); font-weight: var(--weight-medium); }
+  .a-desc { font-size: var(--fs-1); color: var(--fg-low); margin-top: 1px; }
+  .a-rule { font-size: var(--fs-1); color: var(--fg-low); margin-top: 1px; font-variant-numeric: tabular-nums; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* The whole argument of this screen, in one cell: a list that has drifted
+     says by how much, in people, on the row where it lives. */
+  .drift { display: inline-flex; align-items: center; gap: 4px; margin-top: 2px;
+    font-size: var(--fs-1); color: var(--warning-text); }
+  .drift svg { flex: 0 0 auto; }
+  .unused { font-size: var(--fs-1); color: var(--fg-subtle); }
+
+  .bar { display: flex; align-items: center; gap: var(--space-3); min-width: 150px; }
+  .bar .progress { flex: 1; height: 6px; }
+  .bar .progress-fill.is-low  { background: var(--warning-solid); }
+  .bar .progress-fill.is-bad  { background: var(--danger-solid); }
+  .bar-n { font-size: var(--fs-2); color: var(--fg-high); font-variant-numeric: tabular-nums; min-width: 38px; text-align: right; }
+
+  .row-go { display: inline-flex; color: var(--fg-subtle); opacity: 0; transition: opacity .12s; }
+  tr:hover .row-go, tr:focus-within .row-go { opacity: 1; }
+  @media (hover: none) { .row-go { opacity: 1; } }
+  .row-end { text-align: right; white-space: nowrap; }
+
+  .dialog.is-wide { max-width: 600px; }
+  .dialog.is-wide .dialog-body { max-height: 62vh; overflow: auto; }
+  .rc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+  @media (max-width: 560px) { .rc-grid { grid-template-columns: 1fr; } }
+  .pick-list { max-height: 210px; overflow: auto; padding: var(--space-3);
+    border-radius: var(--radius-3); box-shadow: inset 0 0 0 1px var(--border-subtle); }
+  .pick-list .checkbox { display: flex; padding: var(--space-1) 0; }
+
+  .toast-stack { position: fixed; left: 50%; bottom: var(--space-6); transform: translateX(-50%);
+    display: flex; flex-direction: column; gap: var(--space-2); z-index: 1400; }
+  .toast-stack .toast { animation: t-in .2s ease-out; }
+  @keyframes t-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header is-dark">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect width="24" height="24" rx="6" fill="var(--accent-9)"/><text x="12" y="16.5" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-contrast)">S</text></svg>
+      <span>skyLearn</span>
+    </div>
+    <div class="search hdr-search">
+      <span class="search-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+      <label class="sr-only" for="q">Search</label>
+      <input class="input" id="q" type="search" placeholder="Search courses and learners" autocomplete="off" />
+    </div>
+    <div class="header-right">
+      <span class="presence"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg><span><strong class="pt-num">4</strong> points</span></span>
+      <button class="icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><span class="ic-badge">3</span></button>
+      <button class="icon-btn" id="themeBtn" aria-label="Switch to dark theme"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+      <span class="divider-v"></span>
+      <span class="header-wrap">
+        <button class="header-user" id="viewAsBtn" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar c6">SA</span>
+          <span class="hu-id"><span class="hu-name">Sumit Awinash</span><span class="hu-role">Administrator</span></span>
+        </button>
+        <div class="view-as" id="viewAs" role="menu" hidden>
+          <div class="view-as-t">View as</div>
+          <a href="index.html" role="menuitem" aria-current="true"><span class="vr"></span>
+            <span class="vw">Administrator<span>Everything, across all six communities</span></span></a>
+          <a href="teach.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Instructor<span>Your courses, learners and sessions</span></span></a>
+          <a href="learn.html" role="menuitem" aria-current="false"><span class="vr"></span>
+            <span class="vw">Learner<span>What you have to do, and by when</span></span></a>
+          <div class="vs">
+            <a href="signin.html" role="menuitem">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
+              Sign out</a>
+          </div>
+        </div>
+      </span>
+    </div>
+  </header>
+
+  <nav class="app-sidebar" aria-label="Primary">
+    <button class="sidebar-toggle" id="railBtn" aria-label="Collapse navigation"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>
+    <a class="nav-item" href="index.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg><span class="nav-label">Dashboard</span></a>
+    <a class="nav-item" href="courses.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg><span class="nav-label">Courses</span></a>
+    <a class="nav-item" href="learners.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg><span class="nav-label">Learners</span></a>
+    <a class="nav-item" href="certificate.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg><span class="nav-label">Certifications</span></a>
+    <a class="nav-item" href="sessions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg><span class="nav-label">Sessions</span></a>
+    <a class="nav-item is-active" href="groups.html" aria-current="page"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg><span class="nav-label">Groups</span></a>
+    <a class="nav-item" href="recognition.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0z"/></svg><span class="nav-label">Recognition</span></a>
+    <a class="nav-item" href="discussions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6V2H8"/><path d="m8 18-4 4V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2Z"/><path d="M2 12h2"/><path d="M9 11v2"/><path d="M15 11v2"/><path d="M20 12h2"/></svg><span class="nav-label">Discussions</span></a>
+    <a class="nav-item" href="reports.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg><span class="nav-label">Reports</span></a>
+    <a class="nav-item" href="automations.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/><path d="m2 2 20 20"/></svg><span class="nav-label">Automations</span></a>
+    <a class="nav-item" href="surveys.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/><rect x="3" y="4" width="18" height="16" rx="2"/></svg><span class="nav-label">Surveys</span></a>
+    <a class="nav-item" href="grading.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11h4"/><path d="m9 11-1.5 1.5L9 14"/><path d="M16 16h-4"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg><span class="nav-label">Grading Hub</span></a>
+    <a class="nav-item" href="files.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span class="nav-label">Reference library</span></a>
+    <a class="nav-item nav-tail" href="#"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="nav-label">Help and support</span></a>
+  </nav>
+
+  <main class="app-content">
+    <div class="breadcrumbs">
+      <a href="index.html">Home</a>
+      <span class="sep"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+      <span class="current">Groups</span>
+    </div>
+    <div class="content-body"><div id="view"></div></div>
+    <footer class="app-footer">
+      skyLearn, a Skypoint product. A list of people that somebody has to remember to update is a compliance gap with a name on it.
+    </footer>
+  </main>
+</div>
+
+<div class="overlay" id="overlay" hidden></div>
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+
+<script>
+/* ==============================================================
+   The same 44 people as every other skyLearn screen, with the
+   required and completed counts the learners record carries.
+   name | role | community | required | done
+   ============================================================== */
+const PEOPLE = `Dana Whitfield|CNA|Lakeside Manor|12|9
+Rosalind Vega|CNA|Lakeside Manor|12|11
+Marcus Ellery|Med Tech|Northgate|14|11
+Aurelie Bonnet|CNA|Northgate|12|10
+Piotr Zawadzki|Caregiver|Northgate|10|10
+Desmond Achebe|Caregiver|Lakeside Manor|10|8
+Imani Sowande|LPN|Willow Creek|15|15
+Yusuf Demirci|Caregiver|Willow Creek|10|9
+Theo Brannigan|Caregiver|Sunrise Terrace|10|4
+Fenella Wick|LPN|Sunrise Terrace|15|7
+Nadia Kerr|CNA|Harborview|12|6
+Oren Kaplan|Med Tech|Harborview|14|14
+Callum Reyes|Med Tech|Cedar Ridge|14|13
+Greta Lindqvist|CNA|Cedar Ridge|12|12
+Ines Halvorsen|CNA|Cedar Ridge|12|12
+Tomas Ruiz|Caregiver|Cedar Ridge|10|10
+Priya Raghavan|LPN|Cedar Ridge|15|13
+Bea Ferreira|CNA|Harborview|12|12
+Idris Mensah|Caregiver|Harborview|10|9
+Lena Vogt|CNA|Harborview|12|7
+Sofia Grandi|LPN|Willow Creek|15|14
+Hamid Nazari|Caregiver|Willow Creek|10|10
+Ruth Okonkwo|CNA|Willow Creek|12|12
+Malik Osei|Med Tech|Willow Creek|14|12
+Clara Bianchi|CNA|Sunrise Terrace|12|11
+Jonas Aalto|Caregiver|Sunrise Terrace|10|10
+Mira Solberg|LPN|Sunrise Terrace|15|12
+Ade Balogun|CNA|Northgate|12|10
+Freya Lindholm|Caregiver|Northgate|10|5
+Rafael Duarte|Med Tech|Northgate|14|13
+Zainab Farah|CNA|Lakeside Manor|12|6
+Otto Reinhardt|Caregiver|Lakeside Manor|10|9
+Silvia Marchetti|LPN|Lakeside Manor|15|12
+Kwame Boateng|CNA|Lakeside Manor|12|5
+Elena Petrova|CNA|Cedar Ridge|12|12
+Noor Haddad|Caregiver|Cedar Ridge|10|10
+Bram de Vries|Med Tech|Harborview|14|14
+Aiko Tanaka|CNA|Harborview|12|11
+Miguel Santos|Caregiver|Willow Creek|10|10
+Hana Novak|CNA|Sunrise Terrace|12|10
+Grace Mbeki|Housekeeping|Cedar Ridge|4|4
+Viktor Novikov|Housekeeping|Northgate|4|3
+Tara Sullivan|Administrator|Cedar Ridge|6|6
+Owen Fitzgerald|Administrator|Harborview|6|5`
+  .trim().split('\n').map(l => { const a = l.split('|');
+    return { n:a[0], role:a[1], comm:a[2], req:+a[3], done:+a[4] }; });
+
+const TODAY = new Date('2026-08-17');
+const $   = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+/* Not every plural is +s. `person` was rendering as "13 persons" on five
+   screens; anything else irregular goes in the same map rather than being
+   worked around at the call site. */
+const IRREGULAR = { person:'people' };
+const plural = (n, w) => n + ' ' + (n === 1 ? w : (IRREGULAR[w] || w + 's'));
+const fmtDate = s => new Date(s).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+
+/* ==============================================================
+   Audiences.
+
+   An audience is either a RULE or a LIST, and which one it is has to be
+   on the row, because it is the difference between a group that is
+   correct tomorrow and one that is quietly wrong.
+
+   A rule is evaluated every time it is read: hire a caregiver this
+   afternoon and every caregiver rule already includes them. A list is a
+   photograph of one day, and in a compliance product a photograph
+   silently going out of date is how somebody misses mandatory training.
+   Lists are still allowed, because a committee is a real thing that no
+   rule describes. They are just never the default.
+   ============================================================== */
+const FIELDS = { role:'Role', comm:'Community' };
+const match = (p, clauses) => clauses.every(c => p[c.f] === c.v);
+const membersOf = a => a.kind === 'rule'
+  ? PEOPLE.filter(p => match(p, a.rule))
+  : PEOPLE.filter(p => a.list.indexOf(p.n) > -1);
+const ruleText = a => a.rule.map(c => FIELDS[c.f] + ' is ' + c.v).join(', and ');
+
+const AUDIENCES = [
+  { id:'a1', name:'All CNAs', kind:'rule', rule:[{f:'role',v:'CNA'}], changed:'2026-01-14' },
+  { id:'a2', name:'All caregivers', kind:'rule', rule:[{f:'role',v:'Caregiver'}], changed:'2026-01-14' },
+  { id:'a3', name:'Licensed nurses', kind:'rule', rule:[{f:'role',v:'LPN'}], changed:'2026-01-14' },
+  { id:'a4', name:'Medication technicians', kind:'rule', rule:[{f:'role',v:'Med Tech'}], changed:'2026-01-14' },
+  { id:'a5', name:'Support staff', kind:'rule', rule:[{f:'role',v:'Housekeeping'}], changed:'2026-02-02' },
+  { id:'a6', name:'Lakeside Manor, everyone', kind:'rule', rule:[{f:'comm',v:'Lakeside Manor'}], changed:'2026-03-01' },
+  { id:'a7', name:'Cedar Ridge, everyone', kind:'rule', rule:[{f:'comm',v:'Cedar Ridge'}], changed:'2026-03-01' },
+
+  /* The client's own group, kept exactly as it is: three people, made by
+     hand in March, never touched since. */
+  { id:'a8', name:'Care Givers', kind:'list', changed:'2026-03-25',
+    list:['Piotr Zawadzki','Desmond Achebe','Yusuf Demirci'] },
+
+  /* A list that is legitimately a list. No rule describes a committee. */
+  { id:'a9', name:'Fall prevention committee', kind:'list', changed:'2026-06-11',
+    list:['Priya Raghavan','Greta Lindqvist','Tomas Ruiz','Oren Kaplan','Mira Solberg'] }
+];
+
+/* For a list, the nearest rule that would have described it, and how far
+   the list has drifted from it. This is the whole argument of the screen
+   expressed as a number of people. */
+function drift(a) {
+  if (a.kind !== 'list') return null;
+  const mem = membersOf(a);
+  if (!mem.length) return null;
+  let best = null;
+  Object.keys(FIELDS).forEach(f => {
+    const v = mem[0][f];
+    if (!mem.every(p => p[f] === v)) return;
+    const all = PEOPLE.filter(p => p[f] === v);
+    if (!best || all.length > best.all.length) best = { f:f, v:v, all:all };
+  });
+  if (!best || best.all.length <= mem.length) return null;
+  return { text:FIELDS[best.f] + ' is ' + best.v, missing:best.all.length - mem.length, total:best.all.length };
+}
+
+/* ==============================================================
+   Requirements, which is what course groups actually are.
+
+   The dashboard reports a compliance rate. A learner record says "9 of
+   12 required". Neither number can exist until something says what a CNA
+   in Ohio is required to hold, how many hours it is worth and how often
+   it renews. That something is this tab. It was presented as a
+   convenience for bundling courses; it is the spine of the product.
+   ============================================================== */
+const REQUIREMENTS = [
+  { id:'r1', name:'CNA annual in-service', aud:'a1', renew:'Every year', courses:
+    ['Preventing Falls in Senior Living','Safe Resident Handling','Infection Prevention','Abuse Prevention',
+     'Dementia Care Essentials','Emergency Preparedness','HIPAA and Data Security','Resident Rights',
+     'Nutrition and Hydration','Skin Integrity','Communication','CPR and First Aid'] },
+  { id:'r2', name:'LPN annual in-service', aud:'a3', renew:'Every year', courses:
+    ['Preventing Falls in Senior Living','Safe Resident Handling','Infection Prevention','Abuse Prevention',
+     'Dementia Care Essentials','Emergency Preparedness','HIPAA and Data Security','Resident Rights',
+     'Medication Administration','Wound Care','Delegation and Supervision','Care Planning',
+     'Nutrition and Hydration','Skin Integrity','CPR and First Aid'] },
+  { id:'r3', name:'Caregiver annual in-service', aud:'a2', renew:'Every year', courses:
+    ['Preventing Falls in Senior Living','Safe Resident Handling','Infection Prevention','Abuse Prevention',
+     'Dementia Care Essentials','Emergency Preparedness','HIPAA and Data Security','Resident Rights',
+     'Communication','Nutrition and Hydration'] },
+  { id:'r4', name:'Medication technician annual in-service', aud:'a4', renew:'Every year', courses:
+    ['Preventing Falls in Senior Living','Safe Resident Handling','Infection Prevention','Abuse Prevention',
+     'Dementia Care Essentials','Emergency Preparedness','HIPAA and Data Security','Resident Rights',
+     'Medication Administration','Medication Errors','Controlled Substances','Documentation',
+     'Nutrition and Hydration','CPR and First Aid'] },
+  { id:'r5', name:'Support staff annual in-service', aud:'a5', renew:'Every year', courses:
+    ['Infection Prevention','Abuse Prevention','HIPAA and Data Security','Emergency Preparedness'] },
+  { id:'r6', name:'Ohio annual hours', aud:'a6', renew:'Every year', state:'OH', courses:
+    ['Preventing Falls in Senior Living','Safe Resident Handling','Infection Prevention','Abuse Prevention',
+     'Dementia Care Essentials','Emergency Preparedness','Resident Rights','Communication'] },
+  { id:'r7', name:'Fall prevention corrective action', aud:'a9', renew:'Once', courses:
+    ['Preventing Falls in Senior Living','Safe Resident Handling','Documentation'] },
+
+  /* Written in March, never pointed at anybody. It is the reason the
+     original screen's "0 Total Assignments" was the only honest number
+     on it. */
+  { id:'r8', name:'New hire onboarding', aud:null, renew:'Once', courses:
+    ['Resident Rights','Infection Prevention','Abuse Prevention','Emergency Preparedness',
+     'HIPAA and Data Security','Communication'] }
+];
+
+const audOf = id => AUDIENCES.find(a => a.id === id) || null;
+const covered = r => r.aud ? membersOf(audOf(r.aud)) : [];
+const upToDate = list => list.filter(p => p.done >= p.req).length;
+const usedBy = a => REQUIREMENTS.filter(r => r.aud === a.id).length;
+/* Somebody nobody has defined any training for. In a compliance product
+   that is not an empty row, it is a person who cannot fail an audit
+   because nothing was ever asked of them. */
+const uncovered = () => PEOPLE.filter(p => !REQUIREMENTS.some(r => covered(r).indexOf(p) > -1));
+
+const ALL_COURSES = [...new Set(REQUIREMENTS.reduce((a, r) => a.concat(r.courses), []))].sort();
+</script>
+
+<script>
+/* ==============================================================
+   Icons, toast, state
+   ============================================================== */
+const IC = {
+  alert:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  chev: '<path d="m9 18 6-6-6-6"/>',
+  plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/>',
+  book: '<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
+  bolt: '<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>',
+  hand: '<path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>'
+};
+const ic = (n, s) => '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+IC[n]+'</svg>';
+
+function toast(title, body) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = '<div><div class="toast-title">'+esc(title)+'</div>'+(body ? '<div class="toast-body">'+esc(body)+'</div>' : '')+'</div>';
+  $('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 4600);
+}
+
+const S = { tab:'aud', q:'', nk:'rule', nf:'role', nv:'CNA', rc:new Set() };
+
+function callout(tone, text, act) {
+  return '<div class="callout is-'+tone+'"><span class="co-icon">'+ic(tone === 'info' ? 'info' : 'alert', 18)+
+    '</span><span>'+text+'</span>'+(act || '')+'</div>';
+}
+function bar(done, total, invert) {
+  const pct = total ? Math.round(done / total * 100) : 0;
+  const cls = pct >= 80 ? '' : pct >= 50 ? ' is-low' : ' is-bad';
+  return '<span class="bar"><span class="progress"><span class="progress-fill'+(invert ? '' : cls)+'" style="width:'+pct+'%;"></span></span>' +
+    '<span class="bar-n">'+pct+'%</span></span>';
+}
+</script>
+
+<script>
+/* ==============================================================
+   Audiences tab
+   ============================================================== */
+function renderAud() {
+  const q = S.q.toLowerCase();
+  const list = AUDIENCES.filter(a => !q || a.name.toLowerCase().includes(q));
+  const lists = AUDIENCES.filter(a => a.kind === 'list');
+  const drifted = lists.map(drift).filter(d => d && d.missing);
+  const lost = drifted.reduce((n, d) => n + d.missing, 0);
+
+  const rows = list.map(a => {
+    const mem = membersOf(a), d = drift(a), use = usedBy(a);
+    return '<tr>' +
+      '<td><span class="a-title"><span class="a-name">'+esc(a.name)+'</span>' +
+        '<span class="a-rule">' + (a.kind === 'rule' ? esc(ruleText(a)) : 'chosen by hand, ' + fmtDate(a.changed)) + '</span>' +
+        (d && d.missing ? '<span class="drift">'+ic('alert', 12)+plural(d.missing, 'person')+' who match &ldquo;'+esc(d.text)+'&rdquo; are not on it</span>' : '') +
+      '</span></td>' +
+      '<td>' + (a.kind === 'rule'
+        ? '<span class="badge is-success">'+ic('bolt', 12)+' Rule</span>'
+        : '<span class="badge is-warning">'+ic('hand', 12)+' Fixed list</span>') + '</td>' +
+      '<td class="is-numeric num">'+mem.length+'</td>' +
+      '<td>' + (use ? plural(use, 'requirement') : '<span class="unused">nothing uses it</span>') + '</td>' +
+      '<td>'+fmtDate(a.changed)+'</td>' +
+      '<td class="row-end"><span class="row-go">'+ic('chev', 16)+'</span></td></tr>';
+  }).join('');
+
+  return (lost
+    ? callout('warning',
+        'The fixed lists are ' + plural(lost, 'person') + ' out of date. A list is a photograph of the day it was made: ' +
+        'anyone hired, promoted or moved since is missing from it, and nothing on this screen would have told you.',
+        '<button class="btn btn-surface is-sm" id="fixAll">Turn them into rules</button>')
+    : callout('info', 'Every audience here is a rule, so all of them are correct as of right now.')) +
+    '<div class="table-wrap"><table class="table"><thead><tr>' +
+      '<th style="width:38%;">Audience</th><th style="width:130px;">Stays up to date</th>' +
+      '<th class="is-numeric" style="width:90px;">People</th><th style="width:150px;">Used by</th>' +
+      '<th style="width:130px;">Last changed</th><th></th>' +
+    '</tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+
+/* ==============================================================
+   Requirements tab
+   ============================================================== */
+function renderReq() {
+  const q = S.q.toLowerCase();
+  const list = REQUIREMENTS.filter(r => !q || r.name.toLowerCase().includes(q));
+  const orphans = REQUIREMENTS.filter(r => !covered(r).length);
+  const noReq = uncovered();
+
+  const rows = list.map(r => {
+    const who = audOf(r.aud), mem = covered(r), ok = upToDate(mem);
+    return '<tr>' +
+      '<td><span class="a-title"><span class="a-name">'+esc(r.name)+'</span>' +
+        '<span class="a-desc">'+plural(r.courses.length, 'course')+', '+r.courses.length.toFixed(1)+' hours' +
+        (r.state ? ', counted in hours by '+r.state : '')+'</span></span></td>' +
+      '<td>' + (who
+        ? esc(who.name) + '<div class="cell-sub">'+plural(mem.length, 'person')+'</div>'
+        : '<span class="badge is-danger">Nobody</span>') + '</td>' +
+      '<td>'+esc(r.renew)+'</td>' +
+      '<td>' + (mem.length ? bar(ok, mem.length) + '<div class="cell-sub">'+ok+' of '+mem.length+' up to date</div>'
+                           : '<span class="unused">nothing to measure</span>') + '</td>' +
+      '<td class="row-end"><span class="row-go">'+ic('chev', 16)+'</span></td></tr>';
+  }).join('');
+
+  return (orphans.length
+    ? callout('warning', plural(orphans.length, 'requirement') + ' applies to nobody: ' +
+        orphans.map(r => '&ldquo;'+esc(r.name)+'&rdquo;').join(', ') +
+        '. It was written, and then never pointed at anyone, so it has never asked anything of anybody.') : '') +
+    (noReq.length
+    ? callout('danger', plural(noReq.length, 'person') + (noReq.length === 1 ? ' is' : ' are') + ' covered by no requirement at all: ' +
+        noReq.map(p => esc(p.n) + ' (' + esc(p.role) + ')').join(', ') +
+        '. They cannot fail an audit, because nothing was ever asked of them.') : '') +
+    '<div class="table-wrap"><table class="table"><thead><tr>' +
+      '<th style="width:34%;">Requirement</th><th style="width:22%;">Who must hold it</th>' +
+      '<th style="width:120px;">Renews</th><th style="width:220px;">Up to date</th><th></th>' +
+    '</tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+
+function render() {
+  const tab = (k, label, n) => '<button class="tab-nav-item'+(S.tab === k ? ' is-active' : '')+'" data-tab="'+k+'" ' +
+    'role="tab" aria-selected="'+(S.tab === k)+'">'+label+' <span class="num">'+n+'</span></button>';
+
+  $('view').innerHTML =
+    '<header class="page-header ph-row"><div class="ph-text"><h1>Groups</h1>' +
+      '<p>Who training is aimed at, and what each of them is required to hold.</p></div>' +
+      '<button class="btn btn-solid ph-cta" id="newBtn">'+ic('plus', 16)+
+        (S.tab === 'aud' ? ' New audience' : ' New requirement')+'</button></header>' +
+    '<div class="tab-nav" role="tablist">'+tab('aud', 'Audiences', AUDIENCES.length)+tab('req', 'Requirements', REQUIREMENTS.length)+'</div>' +
+    '<div class="stack-5" style="margin-top:var(--space-5);">' +
+      '<div class="tbar"><div class="search" style="min-width:260px;"><span class="search-icon">' +
+        '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>' +
+        '<label class="sr-only" for="tq">Search</label>' +
+        '<input class="input" id="tq" placeholder="'+(S.tab === 'aud' ? 'Search audiences' : 'Search requirements')+'" value="'+esc(S.q)+'" /></div></div>' +
+      '<section class="stack-3">' + (S.tab === 'aud' ? renderAud() : renderReq()) + '</section>' +
+    '</div>';
+}
+</script>
+
+<script>
+/* ==============================================================
+   Behaviour
+   ============================================================== */
+function closeDialog() { $('overlay').hidden = true; $('overlay').innerHTML = ''; }
+
+/* The create dialog makes the choice explicit rather than burying it.
+   The screen this replaces offered Name, Description and Key, and every
+   group it made was a fixed list because that was the only kind there
+   was. Here the kind is the first question and the rule is the default. */
+function openNewAud() {
+  const card = (k, title, sub) =>
+    '<button class="radio-card'+(S.nk === k ? ' is-selected' : '')+'" data-kind="'+k+'">' +
+      '<span class="rc-title">'+title+'</span><span class="rc-sub">'+sub+'</span></button>';
+  const vals = [...new Set(PEOPLE.map(p => p[S.nf]))].sort();
+  const n = PEOPLE.filter(p => p[S.nf] === S.nv).length;
+
+  $('overlay').hidden = false;
+  $('overlay').innerHTML =
+    '<div class="dialog is-wide" role="dialog" aria-modal="true" aria-labelledby="naT">' +
+      '<div class="dialog-title" id="naT">New audience</div>' +
+      '<div class="dialog-body"><div class="stack-4">' +
+        '<div class="field"><label class="field-label" for="naName">Name<span class="req">*</span></label>' +
+          '<input class="input" id="naName" placeholder="All caregivers at Lakeside Manor" /></div>' +
+        '<div class="field"><span class="field-label">How should it stay up to date?</span>' +
+          '<div class="rc-grid" style="margin-top:var(--space-2);">' +
+            card('rule', 'A rule', 'Anyone who matches is in it, today and every day after. Recommended.') +
+            card('list', 'A fixed list', 'Exactly the people you pick. It will not notice new hires or leavers.') +
+          '</div></div>' +
+        (S.nk === 'rule'
+          ? '<div class="rc-grid">' +
+              '<div class="field"><label class="field-label" for="naField">Match on</label>' +
+                '<select class="select" id="naField">' + Object.keys(FIELDS).map(f =>
+                  '<option value="'+f+'"'+(f === S.nf ? ' selected' : '')+'>'+FIELDS[f]+'</option>').join('') + '</select></div>' +
+              '<div class="field"><label class="field-label" for="naVal">Is</label>' +
+                '<select class="select" id="naVal">' + vals.map(v =>
+                  '<option value="'+esc(v)+'"'+(v === S.nv ? ' selected' : '')+'>'+esc(v)+'</option>').join('') + '</select></div>' +
+            '</div>' +
+            callout('success', '<strong class="num">'+n+'</strong> people match today, and it will keep matching as people join and leave.')
+          : callout('warning', 'A fixed list is right for something no rule describes, like a committee. ' +
+              'For a role or a community, use a rule: a hand-made caregiver list on this system is already ' +
+              plural(drift(AUDIENCES.find(a => a.id === "a8")).missing, "person") + ' out of date.')) +
+      '</div></div>' +
+      '<div class="dialog-footer"><button class="btn btn-surface" id="naCancel">Cancel</button>' +
+        '<button class="btn btn-solid" id="naGo">Create audience</button></div>' +
+    '</div>';
+  const f = $('naName'); if (f) f.focus();
+}
+
+function openNewReq() {
+  $('overlay').hidden = false;
+  $('overlay').innerHTML =
+    '<div class="dialog is-wide" role="dialog" aria-modal="true" aria-labelledby="nrT">' +
+      '<div class="dialog-title" id="nrT">New requirement</div>' +
+      '<div class="dialog-body"><div class="stack-4">' +
+        '<div class="field"><label class="field-label" for="nrName">Name<span class="req">*</span></label>' +
+          '<input class="input" id="nrName" placeholder="CNA annual in-service" /></div>' +
+        '<div class="field"><label class="field-label" for="nrAud">Who must hold it<span class="req">*</span></label>' +
+          '<select class="select" id="nrAud"><option value="">Choose an audience</option>' +
+            AUDIENCES.map(a => '<option value="'+a.id+'">'+esc(a.name)+', '+plural(membersOf(a).length, 'person')+'</option>').join('') +
+          '</select><span class="field-hint">A requirement with no audience asks nothing of anybody. There is one of those on this system already.</span></div>' +
+        '<div class="field"><label class="field-label" for="nrRenew">Renews</label>' +
+          '<select class="select" id="nrRenew"><option>Every year</option><option>Every two years</option><option>Once</option></select></div>' +
+        '<div class="field"><span class="field-label">Courses<span class="req">*</span></span>' +
+          '<div class="pick-list" style="margin-top:var(--space-2);">' + ALL_COURSES.map(c =>
+            '<label class="checkbox"><input type="checkbox" data-course="'+esc(c)+'"'+(S.rc.has(c) ? ' checked' : '')+' /> <span>'+esc(c)+'</span></label>').join('') + '</div>' +
+          '<span class="field-hint" id="nrCount">'+plural(S.rc.size, 'course')+' selected, '+S.rc.size.toFixed(1)+' hours.</span></div>' +
+      '</div></div>' +
+      '<div class="dialog-footer"><button class="btn btn-surface" id="nrCancel">Cancel</button>' +
+        '<button class="btn btn-solid" id="nrGo">Create requirement</button></div>' +
+    '</div>';
+  const f = $('nrName'); if (f) f.focus();
+}
+
+let qt;
+document.addEventListener('input', e => {
+  if (e.target.id === 'tq') { clearTimeout(qt);
+    qt = setTimeout(() => { S.q = e.target.value.trim(); render();
+      const f = $('tq'); if (f) { f.focus(); f.setSelectionRange(f.value.length, f.value.length); } }, 180); }
+});
+
+document.addEventListener('change', e => {
+  if (e.target.id === 'naField') { S.nf = e.target.value;
+    S.nv = [...new Set(PEOPLE.map(p => p[S.nf]))].sort()[0]; return openNewAud(); }
+  if (e.target.id === 'naVal') { S.nv = e.target.value; return openNewAud(); }
+  const c = e.target.closest('[data-course]');
+  if (c) { e.target.checked ? S.rc.add(c.dataset.course) : S.rc.delete(c.dataset.course);
+    const n = $('nrCount'); if (n) n.textContent = plural(S.rc.size, 'course') + ' selected, ' + S.rc.size.toFixed(1) + ' hours.'; }
+});
+
+document.addEventListener('click', e => {
+  const t = e.target;
+
+  const tb = t.closest('[data-tab]');
+  if (tb) { S.tab = tb.dataset.tab; S.q = ''; return render(); }
+
+  if (t.closest('#newBtn')) { S.rc.clear(); return S.tab === 'aud' ? openNewAud() : openNewReq(); }
+  if (t.closest('#naCancel') || t.closest('#nrCancel')) return closeDialog();
+
+  const kd = t.closest('[data-kind]');
+  if (kd) { S.nk = kd.dataset.kind; return openNewAud(); }
+
+  if (t.closest('#fixAll')) {
+    let moved = 0;
+    AUDIENCES.forEach(a => {
+      const d = drift(a);
+      if (!d || !d.missing) return;
+      const f = Object.keys(FIELDS).find(k => FIELDS[k] === d.text.split(' is ')[0]);
+      a.kind = 'rule'; a.rule = [{ f:f, v:d.text.split(' is ')[1] }]; a.changed = '2026-08-17';
+      delete a.list; moved += d.missing;
+    });
+    toast('Turned into rules.', plural(moved, 'person') + ' who were missing are now included, and will stay included.');
+    return render();
+  }
+
+  if (t.closest('#naGo')) {
+    const name = ($('naName') || {}).value || '';
+    if (!name.trim()) { toast('Give it a name.', 'It will appear on requirements and assignments, so it needs one.'); return; }
+    const a = S.nk === 'rule'
+      ? { id:'x'+(AUDIENCES.length+1), name:name.trim(), kind:'rule', rule:[{ f:S.nf, v:S.nv }], changed:'2026-08-17' }
+      : { id:'x'+(AUDIENCES.length+1), name:name.trim(), kind:'list', list:[], changed:'2026-08-17' };
+    AUDIENCES.push(a); closeDialog();
+    toast('Audience created.', S.nk === 'rule'
+      ? plural(membersOf(a).length, 'person') + ' match it now, and it will keep itself right.'
+      : 'It is empty until you add people, and it will not update itself.');
+    return render();
+  }
+
+  if (t.closest('#nrGo')) {
+    const name = ($('nrName') || {}).value || '', aud = ($('nrAud') || {}).value || '';
+    if (!name.trim())  { toast('Give it a name.'); return; }
+    if (!S.rc.size)    { toast('Pick at least one course.', 'A requirement with no courses requires nothing.'); return; }
+    if (!aud)          { toast('Choose who must hold it.', 'Without an audience it asks nothing of anybody, which is how the existing New hire onboarding ended up doing nothing.'); return; }
+    const r = { id:'y'+(REQUIREMENTS.length+1), name:name.trim(), aud:aud,
+                renew:($('nrRenew') || {}).value || 'Every year', courses:[...S.rc] };
+    REQUIREMENTS.push(r); S.rc.clear(); closeDialog();
+    toast('Requirement created.', plural(covered(r).length, 'person') + ' must now hold ' + plural(r.courses.length, 'course') + '.');
+    return render();
+  }
+});
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('overlay').hidden) closeDialog(); });
+
+$('themeBtn').addEventListener('click', () => {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+  $('themeBtn').setAttribute('aria-label', dark ? 'Switch to dark theme' : 'Switch to light theme');
+});
+
+render();
+
+const viewAsBtn = document.getElementById('viewAsBtn');
+if (viewAsBtn) {
+  const menu = document.getElementById('viewAs');
+  viewAsBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = !menu.hidden;
+    menu.hidden = open;
+    viewAsBtn.setAttribute('aria-expanded', String(!open));
+  });
+  document.addEventListener('click', () => {
+    if (!menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !menu.hidden) { menu.hidden = true; viewAsBtn.setAttribute('aria-expanded', 'false'); }
+  });
+}
+
+/* Collapsing the rail is shell behaviour, so every page does it. It was
+   markup on twenty pages and wired on one, and standardising the nav dropped
+   the id the one handler depended on. */
+const railBtn = document.getElementById('railBtn');
+if (railBtn) {
+  railBtn.addEventListener('click', () => {
+    const shell = document.querySelector('.app-shell');
+    const side  = document.querySelector('.app-sidebar');
+    const on = shell.style.gridTemplateColumns === '0px 1fr';
+    shell.style.gridTemplateColumns = on ? '256px 1fr' : '0px 1fr';
+    if (side) side.style.visibility = on ? 'visible' : 'hidden';
+    railBtn.setAttribute('aria-label', on ? 'Collapse navigation' : 'Expand navigation');
+  });
+}
+</script>
+</body>
+</html>
