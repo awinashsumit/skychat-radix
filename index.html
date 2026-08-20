@@ -19,84 +19,70 @@
   <div class="sc-app" id="app">
 
     <!-- ============ SIDEBAR (rail) ============ -->
-    <aside class="sc-sidebar" id="sidebar" aria-label="Conversations">
+    <aside class="sc-sidebar" id="sidebar" aria-label="Navigation">
+      <!-- Window-chrome row: mirrors the reference's toggle + history arrows. -->
+      <div class="sc-rail-chrome">
+        <button class="sc-chrome-btn" id="railToggle" aria-label="Toggle sidebar" data-tip="Toggle sidebar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg>
+        </button>
+        <button class="sc-chrome-btn" id="navBack" aria-label="Back" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+        </button>
+        <button class="sc-chrome-btn" id="navFwd" aria-label="Forward" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m12 5 7 7-7 7"/><path d="M5 12h14"/></svg>
+        </button>
+      </div>
+
       <div class="sc-brand">
-        <svg class="sc-brand-mark" viewBox="0 0 32 32" aria-hidden="true">
-          <clipPath id="scBubble">
-            <rect x="3" y="3" width="26" height="21" rx="5.5" />
-            <path d="M29 16v10.4a1.8 1.8 0 0 1-2.9 1.4L20 23z" />
-          </clipPath>
-          <g clip-path="url(#scBubble)">
-            <rect x="0" y="0" width="32" height="32" fill="var(--accent-3)" />
-            <rect x="16" y="0" width="16" height="32" fill="var(--accent-9)" opacity=".3" />
-          </g>
-          <circle cx="10" cy="13.5" r="2.2" fill="var(--accent-9)" />
-          <circle cx="16" cy="13.5" r="2.2" fill="var(--accent-9)" />
-          <circle cx="22" cy="13.5" r="2.2" fill="var(--accent-9)" />
-        </svg>
-        <span class="sc-brand-name">skyChat<span class="sc-brand-tm">&#8482;</span></span>
+        <button class="sc-brand-btn" id="brandBtn">
+          skyChat<span class="sc-brand-tm">&#8482;</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <span class="sc-brand-spacer"></span>
+        <button class="sc-chrome-btn" id="railSearch" aria-label="Search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </button>
+        <button class="sc-chrome-btn" id="railBell" aria-label="Notifications">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
+        </button>
       </div>
 
       <div class="sc-side-body">
-        <button class="btn btn-solid" id="newChatBtn">
-          <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-          New Chat
-        </button>
-
-        <!-- Persistent shortcuts, same row geometry as the chat history below so
-             the sidebar reads as one list. Agents is the one real analog skyChat
-             has to a "Projects"-style destination: a place people go to browse
-             or configure, not a specific conversation. -->
         <div class="sc-nav-list">
-          <button class="sc-nav-item" id="navAgentsBtn">
+          <button class="sc-nav-item is-active" data-page="chat">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>
+            <span class="nav-label">New chat</span>
+          </button>
+          <button class="sc-nav-item" data-page="projects">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+            <span class="nav-label">Projects</span>
+          </button>
+          <button class="sc-nav-item" data-page="scheduled">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            <span class="nav-label">Scheduled</span>
+          </button>
+          <button class="sc-nav-item" data-page="agents">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
             <span class="nav-label">Agents</span>
           </button>
         </div>
 
-        <div class="search">
-          <span class="search-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
-          <input class="input" id="chatSearch" placeholder="Search chats" aria-label="Search chats" />
+        <div class="sc-page-search" id="chatSearchWrap" hidden style="margin:var(--space-2) 0;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+          <input id="chatSearch" placeholder="Search chats" aria-label="Search chats" style="height:34px;" />
         </div>
-
-        <nav class="sc-groups scroll-area" id="groups" aria-label="Conversation history">
-          <div class="sc-group" id="groupPinned" hidden>
-            <div class="nav-section">Pinned</div>
-          </div>
-          <div class="sc-group" id="groupToday">
-            <div class="nav-section">Today</div>
-            <a class="sc-chat-item" href="#" data-chat="delhi">
-              <span class="sc-chat-title">Delhi the Indian Capital</span>
-              <button class="sc-item-menu" aria-label="Conversation options" aria-haspopup="menu" aria-expanded="false">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
-              </button>
-            </a>
-          </div>
-          <div class="sc-group" id="groupYesterday">
-            <div class="nav-section">Yesterday</div>
-            <a class="sc-chat-item" href="#" data-chat="occupancy">
-              <span class="sc-chat-title">Q3 occupancy recovery plan</span>
-              <button class="sc-item-menu" aria-label="Conversation options" aria-haspopup="menu" aria-expanded="false">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
-              </button>
-            </a>
-            <a class="sc-chat-item" href="#" data-chat="willow">
-              <span class="sc-chat-title">Willow Springs care summary</span>
-              <button class="sc-item-menu" aria-label="Conversation options" aria-haspopup="menu" aria-expanded="false">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
-              </button>
-            </a>
-          </div>
-        </nav>
+        <div class="sc-recents-label" id="recentsLabel">Recents</div>
+        <nav class="sc-recents scroll-area" id="groups" aria-label="Recent conversations"></nav>
+        <button class="sc-viewall" id="viewAllBtn" type="button" hidden>View all</button>
       </div>
 
       <div class="sc-side-foot">
         <button class="persona" id="personaBtn" aria-label="Open account settings">
           <span class="avatar c6">SA</span>
-          <span class="persona-text"><span class="persona-name">Sumit Awinash</span></span>
+          <span class="persona-name">Sumit Awinash</span>
         </button>
-        <button class="icon-btn" id="settingsBtn" aria-label="Settings" data-tip="Settings">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg>
+        <button class="sc-chrome-btn" id="settingsBtn" aria-label="Settings" data-tip="Settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
         </button>
       </div>
     </aside>
@@ -108,33 +94,42 @@
       <!-- Top bar -->
       <header class="sc-topbar">
         <div class="sc-topbar-left">
-          <button class="icon-btn" id="railToggle" aria-label="Toggle sidebar" data-tip="Toggle sidebar">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg>
+          <button class="sc-upgrade" id="upgradeBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/></svg>
+            Upgrade
           </button>
-          <button class="sc-model-btn" id="modelBtn" aria-haspopup="menu" aria-expanded="false">
-            <span id="modelLabel">GPT-5.6 Luna</span>
-            <svg class="sc-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-          </button>
+          <!-- Page-scoped tabs (Agents page only), same slot the reference uses. -->
+          <div class="sc-pagetabs" id="agentTabs" hidden>
+            <button class="is-active" data-agenttab="plugins">Agents</button>
+            <button data-agenttab="skills">Skills</button>
+          </div>
+        </div>
+
+        <!-- Chat / Work, centred on the main pane as in the reference. -->
+        <div class="sc-mode" id="modeSwitch" role="tablist" aria-label="Mode">
+          <button class="sc-mode-item is-active" data-mode="chat" role="tab" aria-selected="true">Chat</button>
+          <button class="sc-mode-item" data-mode="work" role="tab" aria-selected="false">Work</button>
         </div>
 
         <div class="sc-topbar-title" id="topbarTitle" hidden>
           <h1 class="sc-title" id="chatTitle">Delhi the Indian Capital</h1>
-          <div class="sc-title-meta" id="chatMeta">Aug 10 · 07:40 AM</div>
+          <div class="sc-title-meta" id="chatMeta">Aug 10 &#183; 07:40 AM</div>
         </div>
 
         <div class="sc-topbar-right">
-          <button class="icon-btn" aria-label="Voice mode" data-tip="Voice mode">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/></svg>
+          <span id="pageActions"></span>
+          <button class="sc-chrome-btn" id="voiceBtn" aria-label="Voice mode" data-tip="Voice mode">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/></svg>
           </button>
-          <button class="icon-btn" id="memoryBtn" aria-label="Clear memory" data-tip="Clear memory">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 18V5"/><path d="M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4"/><path d="M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5"/><path d="M17.997 5.125a4 4 0 0 1 2.526 5.77"/><path d="M18 18a4 4 0 0 0 2-7.464"/><path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517"/><path d="M6 18a4 4 0 0 1-2-7.464"/><path d="M6.003 5.125a4 4 0 0 0-2.526 5.77"/></svg>
+          <button class="sc-chrome-btn" id="memoryBtn" aria-label="Clear memory" data-tip="Clear memory">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 18V5"/><path d="M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4"/><path d="M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5"/><path d="M17.997 5.125a4 4 0 0 1 2.526 5.77"/><path d="M18 18a4 4 0 0 0 2-7.464"/><path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517"/><path d="M6 18a4 4 0 0 1-2-7.464"/><path d="M6.003 5.125a4 4 0 0 0-2.526 5.77"/></svg>
           </button>
-          <button class="icon-btn" id="shareBtn" aria-label="Share conversation" data-tip="Share" hidden>
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
+          <button class="sc-chrome-btn" id="shareBtn" aria-label="Share conversation" data-tip="Share" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
           </button>
-          <button class="icon-btn" id="themeBtn" aria-label="Toggle theme" data-tip="Theme">
-            <svg id="themeIconMoon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>
-            <svg id="themeIconSun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" hidden><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+          <button class="sc-chrome-btn" id="themeBtn" aria-label="Toggle theme" data-tip="Theme">
+            <svg id="themeIconMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>
+            <svg id="themeIconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" hidden><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
           </button>
         </div>
       </header>
@@ -144,10 +139,10 @@
         <div class="sc-hero">
           <div class="sc-greet">
             <div class="sc-greet-row">
-              <svg class="sc-greet-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path class="sp-star" fill="currentColor" d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><g class="sp-plus"><path d="M20 2v4"/><path d="M22 4h-4"/></g><circle class="sp-dot" fill="currentColor" cx="4" cy="20" r="2"/></svg>
+              <svg class="sc-greet-spark" id="greetSpark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path class="sp-star" fill="currentColor" d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><g class="sp-plus"><path d="M20 2v4"/><path d="M22 4h-4"/></g><circle class="sp-dot" fill="currentColor" cx="4" cy="20" r="2"/></svg>
               <h1 id="greeting">Good evening, Sumit</h1>
             </div>
-            <p>How can I help you today?</p>
+            <p id="greetSub">How can I help you today?</p>
           </div>
 
           <div class="sc-hero-stack">
@@ -170,6 +165,20 @@
                 Research
               </button>
             </div>
+            <div class="sc-worklist" id="worklist" hidden>
+              <button data-fill="Create a file or build a site">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
+                Create a file or build a site
+              </button>
+              <button data-fill="Research and plan next steps">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
+                Research and plan next steps
+              </button>
+              <button data-fill="Automate routine and recurring work">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                Automate routine and recurring work
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -182,45 +191,230 @@
         <div class="sc-composer-zone" id="chatComposerSlot"></div>
       </section>
 
+      <!-- ===== Page: Projects ===== -->
+      <section class="sc-view sc-page" id="viewProjects" hidden>
+        <div class="sc-page-actions">
+          <button class="btn btn-solid" id="projCreateBtn">Create</button>
+        </div>
+        <div class="sc-page-inner">
+          <div class="sc-page-head"><h1>Projects</h1></div>
+          <div class="sc-page-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+            <input id="projSearch" placeholder="Search projects" aria-label="Search projects" />
+          </div>
+          <div class="sc-ptable">
+            <div class="sc-ptable-head">
+              <span>Name</span>
+              <span>Updated &#8595;</span>
+              <span></span>
+            </div>
+            <div id="projRows"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Page: Scheduled ===== -->
+      <section class="sc-view sc-page" id="viewScheduled" hidden>
+        <div class="sc-page-actions">
+          <button class="btn btn-solid" id="schedCreateBtn" aria-haspopup="menu" aria-expanded="false">
+            Create
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+        </div>
+        <div class="sc-page-inner">
+          <div class="sc-page-head">
+            <h1>Scheduled tasks</h1>
+            <p>Ask skyChat to schedule tasks, set reminders, or monitor for updates</p>
+          </div>
+          <div class="sc-page-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+            <input id="schedSearch" placeholder="Search scheduled tasks" aria-label="Search scheduled tasks" />
+          </div>
+          <div class="sc-sec-label">Suggestions</div>
+          <div id="schedSuggestions"></div>
+        </div>
+      </section>
+
+      <!-- ===== Page: Scheduled task editor (three-pane) ===== -->
+      <section class="sc-view" id="viewSchedEdit" hidden>
+        <div class="sc-sched">
+          <div class="sc-sched-list">
+            <div class="sc-subseg" style="margin-bottom:var(--space-3);">
+              <button class="is-active" data-schedfilter="all">All</button>
+              <button data-schedfilter="active">Active</button>
+              <button data-schedfilter="paused">Paused</button>
+            </div>
+            <div class="sc-page-search" style="margin-bottom:var(--space-4);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+              <input placeholder="Search scheduled tasks" aria-label="Search scheduled tasks" />
+            </div>
+            <div class="sc-taskrow">
+              <span class="tr-radio"></span>
+              <span>
+                <span class="tr-title">Follow-up monitor</span>
+                <span class="tr-meta">Weekda&#8230; &#183; Next run in 9 hours</span>
+              </span>
+            </div>
+            <div class="sc-sec-label" style="font-size:var(--fs-2);margin:var(--space-4) 0 var(--space-2);">Suggestions</div>
+            <div id="schedEditSuggestions"></div>
+          </div>
+
+          <div class="sc-sched-detail">
+            <div class="sc-sched-detail-inner">
+              <div class="sc-sched-head">
+                <span class="sh-label">New</span>
+                <button class="sc-chrome-btn" id="schedEditClose" aria-label="Close">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+              </div>
+              <input class="sc-sched-title" id="schedTitle" placeholder="Scheduled task title" aria-label="Scheduled task title" />
+              <textarea class="sc-sched-desc" id="schedDesc" placeholder="Describe what skyChat should do" aria-label="Task description"></textarea>
+
+              <div class="sc-fieldgroup">
+                <div class="fg-label">Details</div>
+                <div class="sc-fieldcard">
+                  <div class="sc-fieldrow"><span class="fr-label">Runs on</span>
+                    <button class="fr-val">This device <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button></div>
+                  <div class="sc-fieldrow"><span class="fr-label">Runs in</span>
+                    <button class="fr-val">Existing chat <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button></div>
+                  <div class="sc-fieldrow"><span class="fr-label">Chat</span>
+                    <button class="fr-val">Choose a pinned chat <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button></div>
+                </div>
+              </div>
+
+              <div class="sc-fieldgroup">
+                <div class="fg-label">Frequency</div>
+                <div class="sc-fieldcard">
+                  <div class="sc-fieldrow"><span class="fr-label">Repeat</span>
+                    <button class="fr-val">Daily <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button></div>
+                  <div class="sc-fieldrow"><span class="fr-label">At</span>
+                    <button class="fr-val">9:00 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button></div>
+                  <div class="sc-fieldrow"><span class="fr-label">Notifications</span>
+                    <button class="fr-val">Important updates <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button></div>
+                </div>
+              </div>
+            </div>
+            <div class="sc-sched-foot">
+              <button class="btn btn-solid" id="schedSaveBtn" disabled>Create</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Page: Agents / Skills ===== -->
+      <section class="sc-view sc-page" id="viewAgentsPage" hidden>
+        <div class="sc-page-actions">
+          <button class="sc-chrome-btn" id="agentsRefresh" aria-label="Refresh">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+          </button>
+          <button class="sc-chrome-btn" id="agentsGear" aria-label="Agent settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+          <button class="btn btn-solid" id="agentsAddBtn" aria-haspopup="menu" aria-expanded="false">
+            Add
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+        </div>
+
+        <div class="sc-page-inner">
+          <!-- Agents tab -->
+          <div data-apane="plugins">
+            <div class="sc-page-head">
+              <h1>Agents</h1>
+              <p>Work with skyChat across your connected tools</p>
+            </div>
+            <div class="sc-page-search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+              <input id="pluginSearch" placeholder="Search agents" aria-label="Search agents" />
+            </div>
+            <div class="sc-sec-label">Installed<span class="sec-spacer"></span>
+              <button class="sc-chrome-btn" aria-label="Manage installed">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+            <div class="sc-iconstrip" id="installedStrip"></div>
+            <div class="sc-sec-label" style="margin-top:var(--space-5);">
+              <span class="sc-subseg">
+                <button class="is-active" data-scope="public">Public</button>
+                <button data-scope="personal">Personal</button>
+              </span>
+            </div>
+            <div class="sc-sec-label" style="font-size:var(--fs-2);color:var(--fg-low);">Featured</div>
+            <div class="sc-pgrid" id="featuredGrid"></div>
+            <div class="sc-sec-label" style="font-size:var(--fs-2);color:var(--fg-low);margin-top:var(--space-6);">Productivity</div>
+            <div class="sc-pgrid" id="productivityGrid"></div>
+          </div>
+
+          <!-- Skills tab -->
+          <div data-apane="skills" hidden>
+            <div class="sc-page-head">
+              <h1>Skills</h1>
+              <p>Extend skyChat with task-specific skills</p>
+            </div>
+            <div class="sc-page-search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+              <input id="skillSearch" placeholder="Search skills" aria-label="Search skills" />
+            </div>
+            <div class="sc-sec-label">Installed</div>
+            <div class="sc-pgrid" id="skillsGrid"></div>
+            <div class="sc-sec-note" id="skillsMore"></div>
+            <div class="sc-sec-label">
+              <span class="sc-subseg">
+                <button class="is-active" data-sscope="personal">Personal</button>
+                <button data-sscope="system">System</button>
+                <button data-sscope="workspace">Skypoint Marketing</button>
+              </span>
+            </div>
+            <div class="sc-pgrid" id="skillsGrid2"></div>
+          </div>
+        </div>
+      </section>
+
     </div>
   </div>
 
   <!-- ============ Composer (single instance, moved between views) ============ -->
   <template id="composerTpl">
     <div class="sc-composer-unit">
-      <div class="sc-composer">
-        <textarea class="sc-input" id="input" rows="1" placeholder="Ask skyChat" aria-label="Message skyChat"></textarea>
-        <div class="sc-composer-row">
-          <button class="icon-btn" aria-label="Attach files" data-tip="Attach">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551"/></svg>
+      <div class="sc-composer" id="composer">
+        <textarea class="sc-input" id="input" rows="1" placeholder="Message skyChat" aria-label="Message skyChat"></textarea>
+        <button class="sc-plus" id="plusBtn" aria-label="Add attachment or context" data-tip="Add">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+        </button>
+        <div class="sc-tools">
+          <!-- Work mode only, matching the reference's approval control. -->
+          <button class="sc-approve sc-tools-lead" id="approveBtn" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>
+            Ask for approval
           </button>
-          <button class="icon-btn" aria-label="Dictate" data-tip="Dictate">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19v3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><rect x="9" y="2" width="6" height="13" rx="3"/></svg>
-          </button>
-          <button class="toggle" id="tglSearch" aria-pressed="false">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
-            Search
-          </button>
-          <button class="toggle" id="tglThink" aria-pressed="false">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 18V5"/><path d="M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4"/><path d="M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5"/><path d="M17.997 5.125a4 4 0 0 1 2.526 5.77"/><path d="M18 18a4 4 0 0 0 2-7.464"/><path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517"/><path d="M6 18a4 4 0 0 1-2-7.464"/><path d="M6.003 5.125a4 4 0 0 0-2.526 5.77"/></svg>
-            Think
-          </button>
-          <span class="sc-row-spacer"></span>
-          <!-- The agent picker. Manual selection today; the natural next step
-               (flagged as "eventually" in client feedback, not built here) is
-               for skyChat to route a message to the right agent itself and
-               only fall back to this chip when it is unsure or overridden. -->
-          <button class="sc-kb-chip" id="kbBtn" aria-haspopup="menu" aria-expanded="false">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
-            <span id="kbLabel">General Knowledge</span>
+          <button class="sc-model-inline" id="kbBtn" aria-haspopup="menu" aria-expanded="false">
+            <span id="kbLabel">Auto</span>
             <svg class="sc-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
           </button>
+          <button class="sc-mic" id="micBtn" aria-label="Dictate" data-tip="Dictate">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19v3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><rect x="9" y="2" width="6" height="13" rx="3"/></svg>
+          </button>
           <button class="sc-send" id="sendBtn" aria-label="Send message" disabled>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3.714 3.048a.498.498 0 0 0-.683.627l2.843 7.627a2 2 0 0 1 0 1.396l-2.842 7.627a.498.498 0 0 0 .682.627l18-8.5a.5.5 0 0 0 0-.904z"/><path d="M6 12h16"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
           </button>
         </div>
       </div>
-      <div class="sc-hint">Enter to send, Shift+Enter for a new line</div>
+      <!-- Work mode context strip, connected to the composer as one unit. -->
+      <div class="sc-workctx" id="workCtx" hidden>
+        <button class="wc-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+          Choose project
+        </button>
+        <span class="wc-icons">
+          <span style="background:var(--chart-1);">D</span>
+          <span style="background:var(--chart-3);">P</span>
+          <span style="background:var(--chart-2);">S</span>
+        </span>
+        <span>Agents</span>
+        <span class="wc-spacer"></span>
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="color:var(--fg-subtle);"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
+      </div>
+      <div class="sc-hint" id="composerHint">Enter to send, Shift+Enter for a new line</div>
     </div>
   </template>
 
@@ -1517,6 +1711,96 @@
     </div>
   </div>
 
+  <!-- ============ Reference dropdowns ============ -->
+  <div class="sc-menu" id="schedCreateMenu" role="menu" hidden style="min-width:210px;">
+    <button class="sc-menu-item" data-act="ai">
+      <svg class="mi-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></svg>
+      <span class="mi-text">Create with skyChat</span>
+    </button>
+    <button class="sc-menu-item" data-act="manual">
+      <svg class="mi-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>
+      <span class="mi-text">Set up manually</span>
+    </button>
+  </div>
+
+  <div class="sc-menu" id="agentsAddMenu" role="menu" hidden style="min-width:210px;">
+    <button class="sc-menu-item" data-act="create">
+      <svg class="mi-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/></svg>
+      <span class="mi-text">Create agent</span>
+    </button>
+    <button class="sc-menu-item" data-act="marketplace">
+      <svg class="mi-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+      <span class="mi-text">Add a marketplace</span>
+    </button>
+    <button class="sc-menu-item" data-act="record">
+      <svg class="mi-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4" fill="currentColor"/></svg>
+      <span class="mi-text">Record a skill</span>
+    </button>
+  </div>
+
+  <!-- ============ Create project ============ -->
+  <div class="overlay is-nested" id="projDialog" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="projDlgTitle" style="width:min(640px,94vw);">
+      <div class="sc-dialog-head">
+        <h2 class="dialog-title" id="projDlgTitle">Create project</h2>
+        <button class="icon-btn" id="projCancelX" aria-label="Close">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+      <div class="field">
+        <label class="field-label">Project type</label>
+        <div class="radio-cards" id="projTypeCards" style="grid-template-columns:1fr 1fr;">
+          <label class="radio-card is-selected" data-ptype="cloud">
+            <span class="rc-title" style="display:flex;align-items:center;gap:var(--space-2);">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
+              Cloud
+            </span>
+            <span class="rc-sub">Work through ideas and tasks without setup</span>
+          </label>
+          <label class="radio-card" data-ptype="local">
+            <span class="rc-title" style="display:flex;align-items:center;gap:var(--space-2);">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
+              Local
+            </span>
+            <span class="rc-sub">Edit, run, and test files on your computer</span>
+          </label>
+        </div>
+      </div>
+      <div class="dialog-footer">
+        <button class="btn btn-solid" id="projNext">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Add marketplace ============ -->
+  <div class="overlay is-nested" id="mktDialog" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="mktDlgTitle" style="width:min(560px,94vw);">
+      <div class="sc-dialog-head">
+        <h2 class="dialog-title" id="mktDlgTitle">Add agent marketplace</h2>
+        <button class="icon-btn" id="mktCancelX" aria-label="Close">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+      <p class="dialog-body">Add from a GitHub repo, Git URL, or local folder. <a class="link" href="#" id="mktLearn">Learn more</a></p>
+      <div class="field">
+        <label class="field-label" for="mktSource">Source</label>
+        <input class="input" id="mktSource" placeholder="skypoint/agents or git@github.com:org/repo.git" />
+      </div>
+      <div class="field">
+        <label class="field-label" for="mktRef">Git ref</label>
+        <input class="input" id="mktRef" value="main" />
+      </div>
+      <div class="field">
+        <label class="field-label" for="mktPaths">Sparse paths</label>
+        <textarea class="textarea" id="mktPaths" placeholder="agents/skychat"></textarea>
+      </div>
+      <div class="dialog-footer">
+        <button class="btn btn-surface" id="mktCancel">Cancel</button>
+        <button class="btn btn-solid" id="mktAdd" disabled>Add marketplace</button>
+      </div>
+    </div>
+  </div>
+
   <div class="sc-toaster" id="toaster" aria-live="polite"></div>
 
   <script>
@@ -1559,8 +1843,11 @@
     var currentKb = "General Knowledge";
 
     /* ---------- Greeting by time of day ---------- */
-    var h = new Date().getHours();
-    $("#greeting").textContent = (h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening") + ", Sumit";
+    function greetText() {
+      var h = new Date().getHours();
+      return (h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening") + ", Sumit";
+    }
+    $("#greeting").textContent = greetText();
 
     /* ---------- Composer: single instance moved between views ---------- */
     var composerUnit = $("#composerTpl").content.firstElementChild.cloneNode(true);
@@ -1573,22 +1860,15 @@
     }
     function autogrow() {
       input.style.height = "auto";
-      input.style.height = Math.min(input.scrollHeight, 160) + "px";
+      input.style.height = Math.min(input.scrollHeight, 200) + "px";
     }
     function syncSend() { sendBtn.disabled = input.value.trim() === ""; }
-    input.addEventListener("input", function () { autogrow(); syncSend(); });
+    input.addEventListener("input", function () { autogrow(); syncSend(); syncComposerShape(); });
     input.addEventListener("keydown", function (e) {
       if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
     });
     sendBtn.addEventListener("click", send);
 
-    /* Toggles: Search / Think */
-    $$(".toggle", composerUnit).forEach(function (t) {
-      t.addEventListener("click", function () {
-        var on = t.classList.toggle("is-on");
-        t.setAttribute("aria-pressed", String(on));
-      });
-    });
 
     /* ---------- Views ---------- */
     function show(el) { el.hidden = false; el.classList.remove("sc-view-anim"); void el.offsetWidth; el.classList.add("sc-view-anim"); }
@@ -1648,6 +1928,70 @@
           'Last week at Willow Springs: 3 care plan reviews completed, 1 new resident intake, and no open incident reports. Medication adherence held at 98 percent.',
           ["List the care plan reviews", "Any staffing gaps this week?"],
           "0.9s"
+        )
+    };
+    /* Extra seeded rows exist to make the Recents / View all pattern
+       demonstrable with real, clickable content rather than a decorative cap
+       on a three-item list. Kept short on purpose: enough to be genuine
+       conversations, not a content-authoring exercise. */
+    chatData["staffing-ratios"] = {
+      title: "Staffing ratios for assisted living", meta: "Aug 10 · 09:15 AM",
+      html:
+        userMsgHtml("What are the staffing ratios required for assisted living?", "10 Aug · 09:15 AM") +
+        assistantMsgHtml(
+          'Minimum ratios vary by state and shift, but a common baseline is 1 direct-care staff per 15 residents on day shift and 1 per 25 at night. I can check the specific policy on file if you tell me which state.',
+          ["Check the policy for Texas", "Show the night-shift ratio table"],
+          "1.0s"
+        )
+    };
+    chatData["gift-policy"] = {
+      title: "Code of conduct on gifts", meta: "Aug 9 · 02:47 PM",
+      html:
+        userMsgHtml("What's our policy on accepting gifts from vendors?", "9 Aug · 02:47 PM") +
+        assistantMsgHtml(
+          'Gifts under $50 in value can be accepted and logged with your manager. Anything above that needs compliance sign-off before it is accepted.',
+          ["Where do I log a gift?", "Who approves compliance sign-off?"],
+          "0.8s"
+        )
+    };
+    chatData["new-hire-checklist"] = {
+      title: "New hire training checklist", meta: "Aug 9 · 10:20 AM",
+      html:
+        userMsgHtml("Give me the training checklist for a new care aide", "9 Aug · 10:20 AM") +
+        assistantMsgHtml(
+          'New care aides need: orientation on day 1, medication handling certification in week 1, fall-prevention training in week 2, and a 30-day competency review with their supervisor.',
+          ["Draft a 30-day review template", "Who runs medication certification?"],
+          "1.1s"
+        )
+    };
+    chatData["med-change-policy"] = {
+      title: "Medication change policy summary", meta: "Aug 6 · 08:52 AM",
+      html:
+        userMsgHtml("Summarize the policy on resident medication changes", "6 Aug · 08:52 AM") +
+        assistantMsgHtml(
+          'Any medication change needs a physician’s order, a pharmacy review, and a documented update to the care plan within 24 hours. Family notification is required for controlled substances.',
+          ["What counts as a controlled substance here?", "Draft a family notification template"],
+          "0.9s"
+        )
+    };
+    chatData["incident-backlog"] = {
+      title: "Incident report backlog review", meta: "Aug 5 · 03:30 PM",
+      html:
+        userMsgHtml("How many open incident reports do we have across all communities?", "5 Aug · 03:30 PM") +
+        assistantMsgHtml(
+          'There are 4 open reports: 2 at Willow Springs, 1 at Bickford, and 1 pending review at the Senior Living Demo site. All are within the 5-day resolution window.',
+          ["Show details for the Bickford report", "Who owns the pending review?"],
+          "1.3s"
+        )
+    };
+    chatData["escalation-steps"] = {
+      title: "Resident complaint escalation steps", meta: "Aug 4 · 11:05 AM",
+      html:
+        userMsgHtml("How do I escalate a resident complaint?", "4 Aug · 11:05 AM") +
+        assistantMsgHtml(
+          'Log it in the care system first, notify the community director within 4 hours for anything safety-related, and loop in compliance if it involves a policy violation or repeat complaint.',
+          ["What counts as safety-related?", "Draft a director notification"],
+          "1.0s"
         )
     };
 
@@ -1768,8 +2112,9 @@
       return a;
     }
     function addHistoryItem(id, title) {
-      var group = $("#groupToday");
-      group.insertBefore(itemTemplate(id, title), group.children[1] || null);
+      var g = $("#groups");
+      g.insertBefore(itemTemplate(id, title), g.firstChild);
+      applyRecentsCap();
     }
     function setActiveItem(id) {
       $$(".sc-chat-item").forEach(function (el) {
@@ -1794,12 +2139,47 @@
     }
     $$(".sc-chat-item").forEach(wireItem);
 
-    /* Search filter */
+    /* Recents cap + "View all". Real state, not a decorative link: past a
+       threshold, older rows collapse behind a toggle rather than the sidebar
+       growing without bound. Pinned items are exempt, since pinning is a
+       deliberate choice and should never be buried. A freshly created chat is
+       always item 0 of Today, i.e. always inside the cap, so sending a new
+       message can never hide the conversation you are looking at. */
+    var RECENTS_CAP = 6, recentsExpanded = false;
+    function recentItems() {
+      return $$(".sc-chat-item").filter(function (el) { return !el._pinned; });
+    }
+    function applyRecentsCap() {
+      var items = recentItems(), btn = $("#viewAllBtn");
+      if (items.length <= RECENTS_CAP) {
+        btn.hidden = true;
+        items.forEach(function (el) { el.classList.remove("is-capped"); });
+        return;
+      }
+      btn.hidden = false;
+      btn.textContent = recentsExpanded ? "Show less" : "View all";
+      items.forEach(function (el, i) {
+        el.classList.toggle("is-capped", !recentsExpanded && i >= RECENTS_CAP);
+      });
+    }
+    $("#viewAllBtn").addEventListener("click", function () {
+      recentsExpanded = !recentsExpanded;
+      applyRecentsCap();
+    });
+    applyRecentsCap();
+
+    /* Search filter. A query overrides the cap entirely (all matches show,
+       capped or not) rather than making a match invisible because it happens
+       to be an older chat; clearing the query restores whatever cap state the
+       user had. */
     $("#chatSearch").addEventListener("input", function () {
       var q = this.value.trim().toLowerCase();
       $$(".sc-chat-item").forEach(function (el) {
-        el.style.display = el.querySelector(".sc-chat-title").textContent.toLowerCase().indexOf(q) === -1 ? "none" : "";
+        var noMatch = el.querySelector(".sc-chat-title").textContent.toLowerCase().indexOf(q) === -1;
+        el.classList.toggle("is-search-hidden", q !== "" && noMatch);
       });
+      if (q === "") applyRecentsCap();
+      else $$(".sc-chat-item").forEach(function (el) { el.classList.remove("is-capped"); });
     });
 
     /* ---------- Menus (shared open/close with pop animation) ---------- */
@@ -1844,12 +2224,15 @@
       else closeShare();
     });
 
-    /* Model menu */
-    $("#modelBtn").addEventListener("click", function () { openMenu($("#modelMenu"), this, "below"); });
+    /* Model menu, opened from the composer's model control. */
+    composerUnit.addEventListener("click", function (e) {
+      var m = e.target.closest("#kbBtn");
+      if (m) openMenu($("#modelMenu"), m, "above");
+    });
     $$("#modelMenu .sc-menu-item").forEach(function (it) {
       it.addEventListener("click", function () {
         currentModel = it.getAttribute("data-model");
-        $("#modelLabel").textContent = currentModel;
+        $("#kbLabel", composerUnit).textContent = currentModel;
         $$("#modelMenu .sc-menu-item").forEach(function (x) {
           x.classList.toggle("is-selected", x === it);
           x.setAttribute("aria-checked", String(x === it));
@@ -1858,15 +2241,14 @@
       });
     });
 
-    /* Knowledge menu (anchored above the chip) */
+    /* Agent / knowledge selection, opened from the "+" control. */
     composerUnit.addEventListener("click", function (e) {
-      var kb = e.target.closest("#kbBtn");
+      var kb = e.target.closest("#plusBtn");
       if (kb) openMenu($("#kbMenu"), kb, "above");
     });
     $$("#kbMenu .sc-menu-item").forEach(function (it) {
       it.addEventListener("click", function () {
         currentKb = it.getAttribute("data-kb");
-        $("#kbLabel", composerUnit).textContent = currentKb;
         $$("#kbMenu .sc-menu-item").forEach(function (x) {
           x.classList.toggle("is-selected", x === it);
           x.setAttribute("aria-checked", String(x === it));
@@ -1890,19 +2272,17 @@
     });
     function togglePin(el) {
       el._pinned = !el._pinned;
-      var pinned = $("#groupPinned"), today = $("#groupToday");
+      var g = $("#groups");
       if (el._pinned) {
-        pinned.hidden = false;
-        pinned.appendChild(el);
+        g.insertBefore(el, g.firstChild);
         var t = el.querySelector(".sc-chat-title");
         t.insertAdjacentHTML("beforebegin", '<svg class="sc-pin-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">' + IC.pin + "</svg>");
         toast("Pinned");
       } else {
         var ic = el.querySelector(".sc-pin-ic"); if (ic) ic.remove();
-        today.insertBefore(el, today.children[1] || null);
-        if (pinned.children.length <= 1) pinned.hidden = true;
         toast("Unpinned");
       }
+      applyRecentsCap();
     }
     function renameItem(el) {
       var titleEl = el.querySelector(".sc-chat-title");
@@ -1939,16 +2319,21 @@
       void el.offsetWidth;
       el.style.opacity = "0"; el.style.height = "0"; el.style.marginTop = "0"; el.style.minHeight = "0"; el.style.paddingTop = "0"; el.style.paddingBottom = "0";
       setTimeout(function () {
-        var group = el.parentElement;
         el.remove();
-        if (group && group.id === "groupPinned" && group.children.length <= 1) group.hidden = true;
         if (activeChat === id) goHome();
         delete chatData[id];
+        applyRecentsCap();
         toast("Conversation deleted");
       }, 200);
     }
 
     /* ---------- Suggestions (home) ---------- */
+    $$("#worklist button").forEach(function (b) {
+      b.addEventListener("click", function () {
+        input.value = b.getAttribute("data-fill");
+        autogrow(); syncSend(); syncComposerShape(); input.focus();
+      });
+    });
     $$("#suggestions .sc-chip").forEach(function (chip) {
       chip.addEventListener("click", function () {
         input.value = chip.getAttribute("data-fill");
@@ -2060,7 +2445,6 @@
     $("#settingsBtn").addEventListener("click", openSettings);
     /* Persistent sidebar shortcuts open straight to the relevant pane, rather
        than to whatever pane Settings last happened to be on. */
-    $("#navAgentsBtn").addEventListener("click", function () { showPane("agents"); openSettings(); });
     $("#personaBtn").addEventListener("click", function () { showPane("account"); openSettings(); });
     $("#setClose").addEventListener("click", closeSettings);
     setOverlay.addEventListener("click", function (e) { if (e.target === setOverlay) closeSettings(); });
@@ -3833,12 +4217,322 @@
 
     renderTickets();
 
+    /* ---------- Recents (flat list, as in the reference) ---------- */
+    var SEED_RECENTS = [
+      ["delhi", "Delhi the Indian Capital"],
+      ["staffing-ratios", "Staffing ratios for assisted living"],
+      ["occupancy", "Q3 occupancy recovery plan"],
+      ["willow", "Willow Springs care summary"],
+      ["gift-policy", "Code of conduct on gifts"],
+      ["new-hire-checklist", "New hire training checklist"],
+      ["med-change-policy", "Medication change policy summary"],
+      ["incident-backlog", "Incident report backlog review"],
+      ["escalation-steps", "Resident complaint escalation steps"]
+    ];
+    (function seedRecents() {
+      var g = $("#groups");
+      SEED_RECENTS.forEach(function (r) { g.appendChild(itemTemplate(r[0], r[1])); });
+      applyRecentsCap();
+    })();
+
+    /* ---------- Page router ----------
+       The sidebar selects a page; Chat additionally has the Chat/Work mode
+       switch in the top bar. Per-page chrome (mode switch, model picker, voice,
+       the Agents tab pair) is shown only where it applies, which is what the
+       reference does rather than leaving inert controls on every page. */
+    var currentPage = "chat", currentMode = "chat";
+
+    function setPage(page) {
+      currentPage = page;
+      $$(".sc-nav-item").forEach(function (n) {
+        n.classList.toggle("is-active", n.getAttribute("data-page") === page);
+      });
+      ["viewHome", "viewChat", "viewProjects", "viewScheduled", "viewSchedEdit", "viewAgentsPage"]
+        .forEach(function (id) { $("#" + id).hidden = true; });
+
+      var isChat = page === "chat";
+      $("#modeSwitch").hidden = !isChat;
+      $("#voiceBtn").hidden = !isChat;
+      $("#memoryBtn").hidden = !isChat;
+      $("#upgradeBtn").hidden = page === "agents";
+      $("#agentTabs").hidden = page !== "agents";
+      $("#shareBtn").hidden = true;
+      $("#topbarTitle").hidden = true;
+
+      if (isChat) {
+        mountPageActions(page);
+        if (activeChat) goChat(activeChat); else goHome();
+        return;
+      }
+      if (page === "projects")  { renderProjects(); show($("#viewProjects")); }
+      if (page === "scheduled") { show($("#viewScheduled")); }
+      if (page === "agents")    { show($("#viewAgentsPage")); }
+      mountPageActions(page);
+    }
+    /* The reference puts a page's primary actions on the top-bar row rather
+       than floating them over the canvas, so each page's action group is moved
+       into that slot when the page activates. Chat-only icons step aside. */
+    function mountPageActions(page) {
+      var slot = $("#pageActions");
+      while (slot.firstChild) {
+        var owner = slot.firstChild._ownerView;
+        if (owner) owner.appendChild(slot.firstChild); else slot.removeChild(slot.firstChild);
+      }
+      var src = { projects: "#viewProjects", scheduled: "#viewScheduled", agents: "#viewAgentsPage" }[page];
+      if (!src) return;
+      var group = $(src + " > .sc-page-actions");
+      if (group) { group._ownerView = $(src); slot.appendChild(group); }
+    }
+
+    $$(".sc-nav-item").forEach(function (n) {
+      n.addEventListener("click", function () {
+        var page = n.getAttribute("data-page");
+        /* "New chat" is an action as well as a destination, matching the
+           reference: clicking it from within Chat starts a fresh one. */
+        if (page === "chat") { activeChat = null; setActiveItem(null); }
+        setPage(page);
+        if (window.matchMedia("(max-width: 1024px)").matches) closeRail();
+      });
+    });
+
+    /* ---------- Chat / Work mode ---------- */
+    function setMode(mode) {
+      currentMode = mode;
+      $$(".sc-mode-item").forEach(function (b) {
+        var on = b.getAttribute("data-mode") === mode;
+        b.classList.toggle("is-active", on);
+        b.setAttribute("aria-selected", String(on));
+      });
+      var work = mode === "work";
+      $("#approveBtn").hidden = !work;
+      $("#workCtx").hidden = !work;
+      $("#worklist").hidden = !work;
+      $("#suggestions").hidden = work;
+      $("#composerHint").hidden = work;
+      $("#input").placeholder = work ? "Work with skyChat" : "Message skyChat";
+      $("#greeting").textContent = work ? "What should we work on?" : greetText();
+      $("#greetSub").hidden = work;
+      /* SVGElement.hidden is a plain JS property, not a reflected attribute, so
+         it never reaches the [hidden] CSS rule. Toggle the attribute instead. */
+      $("#greetSpark").toggleAttribute("hidden", work);
+      syncComposerShape();
+      if (activeChat) { activeChat = null; setActiveItem(null); goHome(); }
+    }
+    $$(".sc-mode-item").forEach(function (b) {
+      b.addEventListener("click", function () { setMode(b.getAttribute("data-mode")); });
+    });
+
+    /* Composer is a pill on an empty single-line Chat, and a two-row box once
+       there is text or when Work mode adds its own controls. */
+    function syncComposerShape() {
+      var c = $("#composer"); if (!c) return;
+      var el = $("#input");
+      var multiline = el.value.indexOf("\n") !== -1 || el.scrollHeight > 30;
+      c.classList.toggle("is-expanded", currentMode === "work" || el.value.trim() !== "" || multiline);
+    }
+
+    /* ---------- Projects ---------- */
+    var PROJECTS = [
+      { id: "p1", name: "Design System", kind: "local",  updated: "9m" },
+      { id: "p2", name: "Website",        kind: "local",  updated: "4d" },
+      { id: "p3", name: "Skypoint Marketing", kind: "local", updated: "5d" }
+    ];
+    var LAPTOP = '<svg class="pn-kind" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>';
+    function renderProjects() {
+      var q = ($("#projSearch").value || "").trim().toLowerCase();
+      var list = PROJECTS.filter(function (p) { return !q || p.name.toLowerCase().indexOf(q) !== -1; });
+      $("#projRows").innerHTML = list.map(function (p) {
+        return '<div class="sc-prow" data-proj="' + p.id + '">' +
+          '<span class="sc-prow-name">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>' +
+            '<span class="pn">' + esc(p.name) + '</span>' + LAPTOP +
+          '</span>' +
+          '<span class="sc-prow-when">' + esc(p.updated) + '</span>' +
+          '<span class="sc-prow-acts">' +
+            '<button aria-label="More">' + svg("ellipsis", 16) + '</button>' +
+            '<button aria-label="Pin">' + svg("pin", 16) + '</button>' +
+            '<button aria-label="Rename"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg></button>' +
+          '</span>' +
+        '</div>';
+      }).join("") || '<div class="empty-state"><p>No projects match that search.</p></div>';
+      $$("#projRows [aria-label]").forEach(function (b) {
+        b.addEventListener("click", function (e) { e.stopPropagation(); toast(b.getAttribute("aria-label") + " is not wired yet"); });
+      });
+      $$("#projRows .sc-prow").forEach(function (r) {
+        r.addEventListener("click", function () { toast("Opening " + r.querySelector(".pn").textContent); });
+      });
+    }
+    $("#projSearch").addEventListener("input", renderProjects);
+
+    var projType = "cloud";
+    $("#projCreateBtn").addEventListener("click", function () { $("#projDialog").hidden = false; $("#projNext").focus(); });
+    function closeProjDlg() { $("#projDialog").hidden = true; }
+    $("#projCancelX").addEventListener("click", closeProjDlg);
+    $("#projDialog").addEventListener("click", function (e) { if (e.target === $("#projDialog")) closeProjDlg(); });
+    $$("#projTypeCards .radio-card").forEach(function (c) {
+      c.addEventListener("click", function () {
+        $$("#projTypeCards .radio-card").forEach(function (x) { x.classList.toggle("is-selected", x === c); });
+        projType = c.getAttribute("data-ptype");
+      });
+    });
+    $("#projNext").addEventListener("click", function () {
+      PROJECTS.unshift({ id: "p" + (Date.now() % 10000), name: "Untitled project", kind: projType, updated: "now" });
+      closeProjDlg(); renderProjects(); toast("Project created");
+    });
+
+    /* ---------- Scheduled ---------- */
+    var SCHED = [
+      { t: "Daily brief",       when: "Weekdays at 8:00",  d: "Start each weekday with a summary of your calendar, unread email, and priorities", c: "var(--chart-1)", i: "bell" },
+      { t: "Weekly review",     when: "Fridays at 16:00",  d: "Turn your recent work into a concise status update every Friday",                 c: "var(--chart-4)", i: "doc" },
+      { t: "Follow-up monitor", when: "Weekdays at 9:00",  d: "Review recent email and calendar activity and flag anything that needs your attention", c: "var(--chart-2)", i: "docsearch" }
+    ];
+    var SCHED_ICONS = {
+      bell: '<path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>',
+      doc: '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 12h5"/><path d="M10 16h5"/>',
+      docsearch: '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v3"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><circle cx="16" cy="17" r="3"/><path d="m21 22-1.9-1.9"/>'
+    };
+    function schedRow(s, short) {
+      return '<div class="sc-listrow">' +
+        '<span class="lr-ic" style="color:' + s.c + ';">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">' + SCHED_ICONS[s.i] + '</svg>' +
+        '</span>' +
+        '<span class="lr-body">' +
+          '<span class="lr-title">' + esc(s.t) + '<span class="lr-when">' + esc(s.when) + '</span></span>' +
+          '<span class="lr-desc">' + esc(short ? s.d.slice(0, 34) + "…" : s.d) + '</span>' +
+        '</span></div>';
+    }
+    $("#schedSuggestions").innerHTML = SCHED.map(function (s) { return schedRow(s, false); }).join("");
+    $("#schedEditSuggestions").innerHTML = SCHED.slice(0, 2).map(function (s) { return schedRow(s, true); }).join("");
+
+    $("#schedCreateBtn").addEventListener("click", function (e) {
+      e.stopPropagation(); openMenu($("#schedCreateMenu"), $("#schedCreateBtn"), "below");
+    });
+    $$("#schedCreateMenu .sc-menu-item").forEach(function (it) {
+      it.addEventListener("click", function () {
+        var act = it.getAttribute("data-act");
+        closeMenu();
+        if (act === "manual") {
+          $("#viewScheduled").hidden = true;
+          show($("#viewSchedEdit"));
+        } else {
+          setPage("chat");
+          $("#input").value = "Let's set up a scheduled task together. First, explain how scheduled tasks work in skyChat. Then interview me to figure out what I need scheduled and when it should run.";
+          $("#input").dispatchEvent(new Event("input", { bubbles: true }));
+          $("#greeting").textContent = "Where should we begin?";
+        }
+      });
+    });
+    $("#schedEditClose").addEventListener("click", function () { setPage("scheduled"); });
+    $("#schedTitle").addEventListener("input", function () { $("#schedSaveBtn").disabled = !this.value.trim(); });
+    $("#schedSaveBtn").addEventListener("click", function () { toast("Scheduled task created"); setPage("scheduled"); });
+
+    /* ---------- Agents / Skills ---------- */
+    var INSTALLED_ICONS = ["file", "brain", "database", "sparkles", "chart", "clock", "users", "check"];
+    var FEATURED = [
+      { n: "Computer Use",  d: "Control desktop apps from skyChat", a: "install" },
+      { n: "Chrome",        d: "Control Chrome with skyChat",       a: "install" },
+      { n: "Spreadsheets",  d: "Create and edit spreadsheet files", a: "more" },
+      { n: "Presentations", d: "Create and edit presentations",     a: "more" },
+      { n: "Email",         d: "Read and manage email",             a: "lock" },
+      { n: "Drive",         d: "Work across Drive, Docs, Sheets",   a: "lock" }
+    ];
+    var PRODUCTIVITY = [
+      { n: "Notion", d: "Notion workflows for specs", a: "install" },
+      { n: "Linear", d: "Plan and build products",    a: "install" },
+      { n: "ClickUp", d: "Turn skyChat into your ClickUp", a: "install" },
+      { n: "Asana",  d: "Turn chats into actions",    a: "install" }
+    ];
+    var SKILLS = [
+      { n: "Find Skills",   d: "Helps users discover and install agents" },
+      { n: "Graphify",      d: "Any input (code, docs, papers, images)" },
+      { n: "Image Gen",     d: "Generate or edit images for websites" },
+      { n: "Skypoint Docs", d: "Product docs for models and platform" },
+      { n: "Agent Creator", d: "Scaffold agents and marketplace entries" },
+      { n: "Radix Design System", d: "Build dashboard pages in the Radix flavour" }
+    ];
+    var SKILLS2 = [
+      { n: "Find Skills", d: "Helps users discover and install agents" },
+      { n: "Graphify",    d: "Any input (code, docs, papers, images)" },
+      { n: "Radix Design System", d: "Build dashboard pages in the Radix flavour" },
+      { n: "Care Playbooks", d: "Best practices for senior living operations" },
+      { n: "Skypoint Design System", d: "Build Skypoint dashboards" }
+    ];
+    function pIcon(name) {
+      return '<span class="pi-ic">' + svg(name === "chart" ? "chart" : name, 18) + '</span>';
+    }
+    function pRow(o, kind) {
+      var right = "";
+      if (kind === "check") right = '<span class="pi-check">' + svg("check", 17) + '</span>';
+      else if (o.a === "install") right = '<button class="btn btn-surface is-sm" data-install="' + esc(o.n) + '">Install</button>';
+      else if (o.a === "more") right = '<button class="sc-chrome-btn" aria-label="More options for ' + esc(o.n) + '">' + svg("ellipsis", 16) + '</button>';
+      else right = '<span class="pi-check">' + svg("users", 16) + '</span>';
+      return '<div class="sc-pitem">' + pIcon("sparkles") +
+        '<span class="pi-body"><span class="pi-name">' + esc(o.n) + '</span>' +
+        '<span class="pi-desc">' + esc(o.d) + '</span></span>' + right + '</div>';
+    }
+    $("#installedStrip").innerHTML = INSTALLED_ICONS.map(function (n) {
+      return '<span>' + svg(n === "chart" ? "chart" : n, 19) + '</span>';
+    }).join("");
+    $("#featuredGrid").innerHTML = FEATURED.map(function (o) { return pRow(o); }).join("");
+    $("#productivityGrid").innerHTML = PRODUCTIVITY.map(function (o) { return pRow(o); }).join("");
+    $("#skillsGrid").innerHTML = SKILLS.map(function (o) { return pRow(o, "check"); }).join("");
+    $("#skillsGrid2").innerHTML = SKILLS2.map(function (o) { return pRow(o, "check"); }).join("");
+    $("#skillsMore").textContent = "See Care Playbooks, Review Agent, and 4 more";
+    $$("[data-install]").forEach(function (b) {
+      b.addEventListener("click", function () { toast("Installing " + b.getAttribute("data-install") + " is not wired yet"); });
+    });
+
+    $$("#agentTabs button").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var k = b.getAttribute("data-agenttab");
+        $$("#agentTabs button").forEach(function (x) { x.classList.toggle("is-active", x === b); });
+        $$("[data-apane]").forEach(function (p) { p.hidden = p.getAttribute("data-apane") !== k; });
+      });
+    });
+    $$(".sc-subseg").forEach(function (seg) {
+      $$("button", seg).forEach(function (b) {
+        b.addEventListener("click", function () {
+          $$("button", seg).forEach(function (x) { x.classList.toggle("is-active", x === b); });
+        });
+      });
+    });
+
+    $("#agentsAddBtn").addEventListener("click", function (e) {
+      e.stopPropagation(); openMenu($("#agentsAddMenu"), $("#agentsAddBtn"), "below");
+    });
+    $$("#agentsAddMenu .sc-menu-item").forEach(function (it) {
+      it.addEventListener("click", function () {
+        var act = it.getAttribute("data-act");
+        closeMenu();
+        if (act === "marketplace") { $("#mktDialog").hidden = false; $("#mktSource").focus(); }
+        else if (act === "create") { setPage("chat"); $("#input").value = "help me create an agent"; $("#input").dispatchEvent(new Event("input", { bubbles: true })); $("#greeting").textContent = "What's on your mind today?"; }
+        else toast("Skill recording is not wired yet");
+      });
+    });
+    function closeMkt() { $("#mktDialog").hidden = true; }
+    $("#mktCancel").addEventListener("click", closeMkt);
+    $("#mktCancelX").addEventListener("click", closeMkt);
+    $("#mktDialog").addEventListener("click", function (e) { if (e.target === $("#mktDialog")) closeMkt(); });
+    $("#mktLearn").addEventListener("click", function (e) { e.preventDefault(); toast("Docs are not wired yet"); });
+    $("#mktSource").addEventListener("input", function () { $("#mktAdd").disabled = !this.value.trim(); });
+    $("#mktAdd").addEventListener("click", function () { closeMkt(); toast("Marketplace added"); });
+
+    $("#upgradeBtn").addEventListener("click", function () { toast("Plans are not wired yet"); });
+    $("#railSearch").addEventListener("click", function () {
+      var w = $("#chatSearchWrap"), open = w.hidden;
+      w.hidden = !open; $("#recentsLabel").hidden = open;
+      if (open) $("#chatSearch").focus();
+      else { $("#chatSearch").value = ""; $("#chatSearch").dispatchEvent(new Event("input", { bubbles: true })); }
+    });
+    $("#railBell").addEventListener("click", function () { toast("No new notifications"); });
+    $("#brandBtn").addEventListener("click", function () { toast("Workspace switcher is not wired yet"); });
+    $("#micBtn").addEventListener("click", function () { toast("Dictation is not wired yet"); });
+    $("#approveBtn").addEventListener("click", function () { toast("Approval mode is not wired yet"); });
+    $("#agentsRefresh").addEventListener("click", function () { toast("Refreshed"); });
+    $("#agentsGear").addEventListener("click", function () { showPane("agents"); openSettings(); });
+
     /* ---------- Top bar: memory, theme, new chat, rail ---------- */
     $("#memoryBtn").addEventListener("click", function () { toast("Memory has been cleared"); });
-    $("#newChatBtn").addEventListener("click", function () {
-      goHome();
-      if (window.matchMedia("(max-width: 1024px)").matches) closeRail();
-    });
 
     /* One place sets the theme, so the top-bar toggle and the settings cards
        can never disagree about the current mode. */

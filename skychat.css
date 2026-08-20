@@ -31,134 +31,156 @@
 /* A dialog launched from inside another dialog. */
 .overlay.is-nested { z-index: var(--z-dialog-nested); }
 
-/* ---- Shell: rail + canvas ---- */
+/* ---- Shell ----
+   Structure copied from the reference app; every value below is the measured
+   reference dimension converted to logical px and then snapped to the nearest
+   existing token, so nothing here introduces a new size. Sidebar 267->264px,
+   chrome row 45->44px, nav row pitch 29.5->32px (our standard row). */
 .sc-app { display: flex; height: 100vh; background: var(--color-panel-solid); overflow: hidden; }
 
 .sc-sidebar {
-  width: 288px; flex: 0 0 auto; min-width: 0;
+  width: 264px; flex: 0 0 auto; min-width: 0;
   background: var(--gray-2);
   border-right: var(--stroke-thin) solid var(--border-subtle);
   display: flex; flex-direction: column;
   margin-left: 0;
   transition: margin-left .2s ease-in-out, opacity .2s ease-in-out;
 }
-.sc-app.is-rail-collapsed .sc-sidebar { margin-left: -288px; opacity: 0; }
+.sc-app.is-rail-collapsed .sc-sidebar { margin-left: -264px; opacity: 0; }
 
 .sc-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 
-/* ---- Sidebar internals ---- */
+/* ---- Sidebar ---- */
+/* Window-chrome row: sits at the same height as the main top bar so the two
+   read as one 44px band across the whole window, as in the reference. */
+.sc-rail-chrome {
+  height: 44px; flex: 0 0 auto;
+  display: flex; align-items: center; gap: 2px;
+  padding: 0 var(--space-2);
+}
+.sc-chrome-btn {
+  width: 28px; height: 28px; flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: var(--radius-2); background: transparent;
+  color: var(--fg-low); cursor: pointer;
+  transition: background .12s ease-in-out, color .12s ease-in-out;
+}
+.sc-chrome-btn svg { width: 17px; height: 17px; }
+.sc-chrome-btn:hover { background: var(--gray-4); color: var(--fg-high); }
+.sc-chrome-btn:disabled { color: var(--fg-subtle); cursor: default; }
+.sc-chrome-btn:disabled:hover { background: transparent; color: var(--fg-subtle); }
+.sc-chrome-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
+
 .sc-brand {
-  height: 64px; flex: 0 0 auto;
+  height: 40px; flex: 0 0 auto;
   display: flex; align-items: center; gap: var(--space-2);
-  padding: 0 var(--space-4);
-  border-bottom: var(--stroke-thin) solid var(--border-subtle);
+  padding: 0 var(--space-3) 0 var(--space-2);
 }
-/* Logo. The mark is artwork, so its geometry is its own; the fills are still
-   accent tokens, which keeps it correct in both themes. The wordmark is set in
-   the brand serif: a deliberate, logo-only exception to the Inter rule, scoped
-   to this one class so no UI text can inherit it. */
-.sc-brand-mark { width: 30px; height: 30px; flex: 0 0 auto; display: block; }
-.sc-brand-name {
-  font-family: var(--font-brand);
-  font-size: var(--fs-4); line-height: var(--lh-4);
-  font-weight: var(--weight-bold); color: var(--fg-high);
+.sc-brand-btn {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  height: 30px; padding: 0 var(--space-2);
+  border: 0; border-radius: var(--radius-2); background: transparent;
+  cursor: pointer; font-family: var(--font-brand);
+  font-size: var(--fs-3); font-weight: var(--weight-bold); color: var(--fg-high);
+  transition: background .12s ease-in-out;
 }
-.sc-brand-name .sc-brand-tm { font-size: var(--fs-1); color: var(--fg-subtle); vertical-align: super; margin-left: 1px; }
+.sc-brand-btn:hover { background: var(--gray-4); }
+.sc-brand-btn svg { width: 15px; height: 15px; color: var(--fg-low); }
+.sc-brand-tm { font-family: var(--font-base); font-size: var(--fs-1); color: var(--fg-subtle); vertical-align: super; }
+.sc-brand .sc-brand-spacer { flex: 1; }
 
 .sc-side-body {
   flex: 1; min-height: 0;
-  display: flex; flex-direction: column; gap: var(--space-3);
-  padding: var(--space-3);
+  display: flex; flex-direction: column;
+  padding: var(--space-1) var(--space-2) 0;
+  overflow: hidden;
 }
-.sc-side-body > .btn-solid { justify-content: center; }
-.sc-side-body .search { width: 100%; }
-.sc-side-body .search .input { width: 100%; background: var(--color-surface); }
 
-/* Persistent nav shortcuts. Same row geometry as .sc-chat-item (32px, same
-   padding/radius) so the sidebar reads as one continuous list rather than two
-   unrelated components, but plain icon+label since these are fixed
-   destinations, not data. Deliberately NOT the app-shell .nav-item: that
-   variant goes solid amber when active, which is correct for a shell where
-   this is the only nav, but would fight the soft accent-3 tint the chat
-   history already uses for its active row. One accent treatment per list. */
-.sc-nav-list { display: flex; flex-direction: column; gap: 2px; }
+/* Primary nav. Reference uses a quiet gray for the active row rather than a
+   loud fill; our equivalent for a non-primary list is the soft accent tint,
+   which keeps it branded without turning the sidebar into a CTA. */
+.sc-nav-list { display: flex; flex-direction: column; gap: 1px; flex: 0 0 auto; }
 .sc-nav-item {
-  display: flex; align-items: center; gap: var(--space-2);
-  min-height: 32px; padding: var(--space-1) var(--space-2) var(--space-1) var(--space-3);
+  display: flex; align-items: center; gap: var(--space-3);
+  height: 32px; padding: 0 var(--space-2);
   width: 100%; border: 0; background: transparent; border-radius: var(--radius-3);
-  color: var(--fg-low); font-family: inherit; font-size: var(--fs-2); font-weight: var(--weight-medium);
+  color: var(--fg-high); font-family: inherit; font-size: var(--fs-2); font-weight: var(--weight-regular);
   text-decoration: none; cursor: pointer;
-  transition: background .12s ease-in-out, color .12s ease-in-out;
+  transition: background .12s ease-in-out;
 }
-.sc-nav-item svg { width: 18px; height: 18px; flex: 0 0 auto; color: var(--fg-subtle); }
-.sc-nav-item .nav-label { flex: 1; text-align: left; }
-.sc-nav-item:hover { background: var(--gray-3); color: var(--fg-high); }
-.sc-nav-item:hover svg { color: var(--fg-low); }
+.sc-nav-item svg { width: 18px; height: 18px; flex: 0 0 auto; color: var(--fg-low); }
+.sc-nav-item .nav-label { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-nav-item:hover { background: var(--gray-4); }
+.sc-nav-item.is-active { background: var(--accent-3); font-weight: var(--weight-medium); }
+.sc-nav-item.is-active svg { color: var(--accent-9); }
 .sc-nav-item:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--gray-2), 0 0 0 4px var(--focus-ring); }
 
-.sc-groups { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-4); }
-/* Rows sit flush; the group label supplies the only vertical break. */
-.sc-group { display: flex; flex-direction: column; }
-.sc-group .nav-section { padding: 0 var(--space-3); margin: 0 0 var(--space-1); }
+.sc-recents-label {
+  flex: 0 0 auto;
+  padding: 0 var(--space-2); margin: var(--space-4) 0 var(--space-1);
+  font-size: var(--fs-1); line-height: var(--lh-1); color: var(--fg-subtle);
+}
 
-/* History row: nav-item discipline + hover-revealed action */
+/* Recents. Flat list, matching the reference, which does not group by day. */
+.sc-recents { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 1px; }
 .sc-chat-item {
   position: relative;
   display: flex; align-items: center; gap: var(--space-2);
-  min-height: 32px; padding: var(--space-1) var(--space-2) var(--space-1) var(--space-3);
+  height: 32px; padding: 0 var(--space-1) 0 var(--space-2);
   border-radius: var(--radius-3);
-  color: var(--fg-low); font-size: var(--fs-2); font-weight: var(--weight-medium);
-  text-decoration: none; cursor: pointer;
-  transition: background .12s ease-in-out, color .12s ease-in-out;
+  color: var(--fg-high); font-size: var(--fs-2); font-weight: var(--weight-regular);
+  text-decoration: none; cursor: pointer; flex: 0 0 auto;
+  transition: background .12s ease-in-out;
 }
 .sc-chat-item .sc-chat-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sc-chat-item:hover { background: var(--gray-3); color: var(--fg-high); }
+.sc-chat-item:hover { background: var(--gray-4); }
 .sc-chat-item:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--gray-2), 0 0 0 4px var(--focus-ring); }
-/* Selected row is a soft brand tint, not the solid amber pill. This list is
-   conversation history, which the DS treats as a secondary list (same family as
-   .pane-folder in the three-pane archetype) and those may use the accent-3 tint.
-   Text goes to --fg-high rather than --accent-11, so the selected state is
-   carried by fill + text weight and never by low-contrast amber-on-cream. */
-.sc-chat-item.is-active { background: var(--accent-3); color: var(--fg-high); }
-.sc-chat-item.is-active:hover { background: var(--accent-3); }
+.sc-chat-item.is-active { background: var(--accent-3); font-weight: var(--weight-medium); }
+.sc-chat-item.is-search-hidden { display: none; }
 
 .sc-item-menu {
   flex: 0 0 auto; width: 24px; height: 24px;
   display: inline-flex; align-items: center; justify-content: center;
   border: 0; border-radius: var(--radius-2); background: transparent;
-  color: inherit; cursor: pointer;
+  color: var(--fg-low); cursor: pointer;
   opacity: 0; transition: opacity .12s ease-in-out, background .12s ease-in-out;
 }
 .sc-chat-item:hover .sc-item-menu,
 .sc-chat-item:focus-within .sc-item-menu,
 .sc-item-menu[aria-expanded="true"] { opacity: 1; }
-.sc-item-menu:hover { background: var(--gray-4); }
-.sc-chat-item.is-active .sc-item-menu:hover { background: transparent; box-shadow: inset 0 0 0 1px var(--accent-7); }
+.sc-item-menu:hover { background: var(--gray-5); }
 .sc-item-menu:focus-visible { outline: none; opacity: 1; box-shadow: 0 0 0 2px var(--focus-ring); }
-.sc-pin-ic { width: 14px; height: 14px; flex: 0 0 auto; color: var(--fg-subtle); }
-.sc-chat-item.is-active .sc-pin-ic { color: var(--fg-low); }
+.sc-pin-ic { width: 13px; height: 13px; flex: 0 0 auto; color: var(--fg-subtle); }
+
+.sc-viewall {
+  flex: 0 0 auto; align-self: flex-start;
+  margin: var(--space-1) 0 var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border: 0; background: transparent; border-radius: var(--radius-2);
+  color: var(--fg-subtle); font-family: inherit; font-size: var(--fs-2);
+  cursor: pointer;
+  transition: background .12s ease-in-out, color .12s ease-in-out;
+}
+.sc-viewall:hover { background: var(--gray-4); color: var(--fg-high); }
+.sc-viewall:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--gray-2), 0 0 0 4px var(--focus-ring); }
 
 .sc-side-foot {
   flex: 0 0 auto;
   display: flex; align-items: center; gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
+  height: 52px; padding: 0 var(--space-2);
   border-top: var(--stroke-thin) solid var(--border-subtle);
 }
-/* .persona was a static span elsewhere in the DS; here it is the account entry
-   point (opens Settings > Account), so it needs the interactive reset a plain
-   span never had: no button chrome, a hover state, and text left-aligned since
-   buttons center by default. */
 .sc-side-foot .persona {
   flex: 1; min-width: 0; text-align: left;
+  display: inline-flex; align-items: center; gap: var(--space-2);
   border: 0; background: transparent; padding: var(--space-1) var(--space-2);
-  margin: 0 calc(-1 * var(--space-2));
-  border-radius: var(--radius-3); cursor: pointer;
-  font-family: inherit;
+  border-radius: var(--radius-3); cursor: pointer; font-family: inherit;
   transition: background .12s ease-in-out;
 }
-.sc-side-foot .persona:hover { background: var(--gray-3); }
+.sc-side-foot .persona:hover { background: var(--gray-4); }
 .sc-side-foot .persona:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--gray-2), 0 0 0 4px var(--focus-ring); }
-.sc-side-foot .persona-name { font-size: var(--fs-2); }
+.sc-side-foot .persona .avatar { width: 26px; height: 26px; font-size: var(--fs-1); }
+.sc-side-foot .persona-name { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
 
 /* ---- Icon button (standalone, ghost) ---- */
 .icon-btn {
@@ -172,38 +194,71 @@
 .icon-btn:active { transform: scale(.96); }
 .icon-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--color-panel-solid), 0 0 0 4px var(--focus-ring); }
 
-/* ---- Top bar ---- */
+/* ---- Top bar ----
+   44px to match the sidebar chrome row, no bottom border: the reference keeps
+   the header on the same plane as the canvas and lets the content column do
+   the separating. The mode switch is centred on the MAIN area, not the window,
+   which is why it is absolutely positioned inside .sc-main rather than flexed. */
 .sc-topbar {
   position: relative; z-index: 30;
-  height: 64px; flex: 0 0 auto;
+  height: 44px; flex: 0 0 auto;
   display: flex; align-items: center; gap: var(--space-2);
-  padding: 0 var(--space-4);
+  padding: 0 var(--space-3);
   background: var(--color-panel-solid);
-  border-bottom: var(--stroke-thin) solid var(--border-subtle);
 }
 .sc-topbar-left, .sc-topbar-right { display: flex; align-items: center; gap: var(--space-1); z-index: 1; }
 .sc-topbar-left { margin-right: auto; }
 .sc-topbar-right { margin-left: auto; }
 
+/* Upgrade pill, the reference's top-left accent chip. */
+.sc-upgrade {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  height: 28px; padding: 0 var(--space-3);
+  border: 0; border-radius: var(--radius-full);
+  background: var(--accent-3); color: var(--accent-11);
+  font-family: inherit; font-size: var(--fs-2); font-weight: var(--weight-medium);
+  cursor: pointer; transition: background .12s ease-in-out;
+}
+.sc-upgrade:hover { background: var(--accent-4); }
+.sc-upgrade svg { width: 14px; height: 14px; color: var(--accent-9); }
+.sc-upgrade:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--color-panel-solid), 0 0 0 4px var(--focus-ring); }
+
+/* Chat / Work mode switch, centred over the main pane. */
+.sc-mode {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  display: inline-flex; gap: 2px; padding: 3px;
+  background: var(--gray-3); border-radius: var(--radius-full);
+}
+.sc-mode-item {
+  height: 28px; padding: 0 var(--space-5);
+  border: 0; background: transparent; border-radius: var(--radius-full);
+  font-family: inherit; font-size: var(--fs-2); font-weight: var(--weight-medium);
+  color: var(--fg-low); cursor: pointer;
+  transition: background .12s ease-in-out, color .12s ease-in-out;
+}
+.sc-mode-item:hover { color: var(--fg-high); }
+.sc-mode-item.is-active { background: var(--color-panel-solid); color: var(--fg-high); box-shadow: var(--shadow-2); }
+.sc-mode-item:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
+
 .sc-topbar-title {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
   text-align: center; max-width: 40%; pointer-events: none;
 }
-.sc-topbar-title .sc-title { font-size: var(--fs-3); line-height: var(--lh-3); font-weight: var(--weight-medium); color: var(--fg-high); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-topbar-title .sc-title { font-size: var(--fs-2); line-height: var(--lh-2); font-weight: var(--weight-medium); color: var(--fg-high); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sc-topbar-title .sc-title-meta { font-size: var(--fs-1); color: var(--fg-subtle); }
 
 /* Model selector trigger (ghost) */
 .sc-model-btn {
-  display: inline-flex; align-items: center; gap: var(--space-2);
-  height: 36px; padding: 0 var(--space-3);
-  border: 0; border-radius: var(--radius-3); background: transparent;
-  font-family: var(--font-base); font-size: var(--fs-2); font-weight: var(--weight-medium);
-  color: var(--fg-high); cursor: pointer;
-  transition: background .12s ease-in-out;
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  height: 28px; padding: 0 var(--space-2);
+  border: 0; border-radius: var(--radius-2); background: transparent;
+  font-family: var(--font-base); font-size: var(--fs-2); font-weight: var(--weight-regular);
+  color: var(--fg-low); cursor: pointer;
+  transition: background .12s ease-in-out, color .12s ease-in-out;
 }
-.sc-model-btn:hover { background: var(--gray-3); }
+.sc-model-btn:hover { background: var(--gray-3); color: var(--fg-high); }
 .sc-model-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--color-panel-solid), 0 0 0 4px var(--focus-ring); }
-.sc-model-btn .sc-chevron { width: 16px; height: 16px; color: var(--fg-subtle); transition: transform .15s ease-in-out; }
+.sc-model-btn .sc-chevron { width: 15px; height: 15px; color: var(--fg-subtle); transition: transform .15s ease-in-out; }
 .sc-model-btn[aria-expanded="true"] .sc-chevron { transform: rotate(180deg); }
 
 /* ---- Floating menus (model / context / knowledge) ---- */
@@ -254,20 +309,64 @@
 .sc-view { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .sc-view[hidden] { display: none; }
 .sc-view-anim { animation: sc-view-in .25s ease-out; }
+/* Centers its one child the same way .sc-hero centers the greeting; a single
+   empty-state view doesn't need .sc-hero's own scroll/gap rules alongside it. */
+#viewShellStub { align-items: center; justify-content: center; overflow-y: auto; padding: var(--space-6); }
 
-/* ---- Home / hero ---- */
+/* ---- Home / hero ----
+   Reference centres the heading and composer as one optical group slightly
+   above centre, with the heading at 28px and ~28px of air beneath it. */
 .sc-hero {
   flex: 1; min-height: 0; overflow-y: auto;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: var(--space-6); padding: var(--space-6) var(--space-5);
+  gap: var(--space-6); padding: var(--space-6) var(--space-5) 12vh;
 }
 .sc-greet { text-align: center; }
 .sc-greet .sc-greet-row { display: inline-flex; align-items: center; gap: var(--space-3); }
-.sc-greet .sc-greet-spark { width: 32px; height: 32px; color: var(--accent-9); }
-.sc-greet h1 { font-size: var(--fs-8); line-height: var(--lh-8); letter-spacing: var(--ls-8); font-weight: var(--weight-bold); color: var(--fg-high); }
+.sc-greet .sc-greet-spark { width: 26px; height: 26px; color: var(--accent-9); }
+.sc-greet h1 { font-size: var(--fs-7); line-height: var(--lh-7); letter-spacing: var(--ls-7); font-weight: var(--weight-bold); color: var(--fg-high); }
 .sc-greet p { margin-top: var(--space-2); font-size: var(--fs-3); line-height: var(--lh-3); color: var(--fg-low); }
 
-.sc-hero-stack { width: 100%; display: flex; flex-direction: column; align-items: center; gap: var(--space-4); }
+/* 605px measured -> 608px. */
+.sc-hero-stack { width: 100%; max-width: 608px; display: flex; flex-direction: column; align-items: stretch; gap: var(--space-4); }
+
+/* Work-mode task suggestions: quiet text rows under the composer, not chips. */
+.sc-worklist { display: flex; flex-direction: column; gap: 2px; margin-top: var(--space-2); }
+.sc-worklist button {
+  display: flex; align-items: center; gap: var(--space-3);
+  height: 36px; padding: 0 var(--space-2);
+  border: 0; background: transparent; border-radius: var(--radius-3);
+  color: var(--fg-low); font-family: inherit; font-size: var(--fs-2);
+  cursor: pointer; text-align: left;
+  transition: background .12s ease-in-out, color .12s ease-in-out;
+}
+.sc-worklist button svg { width: 17px; height: 17px; flex: 0 0 auto; color: var(--fg-subtle); }
+.sc-worklist button:hover { background: var(--gray-2); color: var(--fg-high); }
+.sc-worklist button:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
+
+/* Work-mode context strip, tucked under the composer as one connected unit. */
+.sc-workctx {
+  display: flex; align-items: center; gap: var(--space-3);
+  height: 44px; padding: 0 var(--space-4);
+  margin: -10px var(--space-3) 0;
+  border: var(--stroke-thin) solid var(--border-subtle); border-top: 0;
+  border-radius: 0 0 var(--radius-4) var(--radius-4);
+  background: var(--gray-2);
+  font-size: var(--fs-2); color: var(--fg-low);
+}
+.sc-workctx .wc-btn {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  border: 0; background: transparent; padding: 0; cursor: pointer;
+  font-family: inherit; font-size: var(--fs-2); color: var(--fg-high);
+}
+.sc-workctx .wc-btn svg { width: 16px; height: 16px; color: var(--fg-low); }
+.sc-workctx .wc-spacer { flex: 1; }
+.sc-workctx .wc-icons { display: inline-flex; gap: var(--space-1); }
+.sc-workctx .wc-icons span {
+  width: 18px; height: 18px; border-radius: var(--radius-1);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: var(--weight-bold); color: #fff;
+}
 
 /* Suggestion chips */
 .sc-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); }
@@ -366,8 +465,13 @@
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
 
-/* ---- Composer ---- */
-.sc-composer-zone { position: relative; flex: 0 0 auto; padding: 0 var(--space-5) var(--space-4); background: var(--color-panel-solid); }
+/* ---- Composer ----
+   The reference shows two shapes: a single-row pill when Chat is empty, and a
+   two-row rounded box once there is text (or always, in Work mode). Rather
+   than duplicate the textarea, the composer is a GRID and only the template
+   changes between the two, which keeps one input element and lets the "+"
+   button sit left of the text in one mode and left of the tools in the other. */
+.sc-composer-zone { position: relative; flex: 0 0 auto; padding: 0 var(--space-5) var(--space-5); background: var(--color-panel-solid); }
 .sc-composer-zone::before {
   content: ""; position: absolute; left: 0; right: 0; top: calc(-1 * var(--space-6)); height: var(--space-6);
   background: linear-gradient(to bottom, transparent, var(--color-panel-solid));
@@ -377,59 +481,106 @@
 .sc-hero .sc-composer-zone::before { display: none; }
 
 .sc-composer {
-  max-width: 768px; width: 100%; margin: 0 auto;
+  max-width: 608px; width: 100%; margin: 0 auto;
+  display: grid; align-items: center;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: "plus input tools";
+  min-height: 48px; padding: 0 var(--space-2) 0 var(--space-2);
   background: var(--color-surface);
+  border-radius: var(--radius-full);
+  box-shadow: inset 0 0 0 1px var(--border-ui), var(--shadow-2);
+  transition: box-shadow .15s ease-in-out, border-radius .15s ease-in-out;
+}
+.sc-composer:focus-within { box-shadow: inset 0 0 0 1px var(--accent-8), var(--shadow-2); }
+
+/* Expanded: text on its own row, controls beneath. */
+.sc-composer.is-expanded {
+  grid-template-columns: auto 1fr;
+  grid-template-areas: "input input" "plus tools";
   border-radius: var(--radius-5);
-  box-shadow: inset 0 0 0 1px var(--border-ui);
-  transition: box-shadow .15s ease-in-out;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-2);
 }
-.sc-composer:focus-within { box-shadow: inset 0 0 0 1px var(--accent-8); }
+
 .sc-composer .sc-input {
+  grid-area: input;
   display: block; width: 100%; resize: none; border: 0; outline: none; background: transparent;
-  padding: var(--space-4) var(--space-4) var(--space-2);
-  font-family: var(--font-base); font-size: var(--fs-3); line-height: var(--lh-3);
-  color: var(--fg-high); max-height: 160px;
+  padding: 0 var(--space-2);
+  font-family: var(--font-base); font-size: var(--fs-2); line-height: var(--lh-2);
+  color: var(--fg-high); max-height: 200px;
 }
+.sc-composer.is-expanded .sc-input { padding: var(--space-2) var(--space-2) var(--space-3); }
 .sc-composer .sc-input::placeholder { color: var(--fg-subtle); }
-.sc-composer-row { display: flex; align-items: center; gap: var(--space-1); padding: var(--space-2) var(--space-3) var(--space-3); }
-.sc-composer-row .sc-row-spacer { flex: 1; }
-.sc-composer-row .toggle { height: 30px; border-radius: var(--radius-3); }
-.sc-composer-row .toggle svg { width: 16px; height: 16px; }
-.sc-composer-row .icon-btn { width: 32px; height: 32px; }
 
-.sc-kb-chip {
-  position: relative;
-  display: inline-flex; align-items: center; gap: var(--space-1);
-  height: 30px; padding: 0 var(--space-2) 0 var(--space-3);
-  border: 0; border-radius: var(--radius-3);
-  background: var(--accent-3); color: var(--accent-11);
-  font-family: var(--font-base); font-size: var(--fs-2); font-weight: var(--weight-medium);
-  cursor: pointer;
-  transition: background .12s ease-in-out;
-}
-/* Hover deepens the hairline ring and leaves the fill alone. Stepping the fill to
-   --accent-4 shifts cream toward yellow, since the amber scale has no intermediate
-   step, which read as a state change rather than a hover. */
-.sc-kb-chip:hover { box-shadow: inset 0 0 0 1px var(--accent-7); }
-.sc-kb-chip:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--color-panel-solid), 0 0 0 4px var(--focus-ring); }
-.sc-kb-chip svg { width: 15px; height: 15px; }
-.sc-kb-chip .sc-chevron { transition: transform .15s ease-in-out; }
-.sc-kb-chip[aria-expanded="true"] .sc-chevron { transform: rotate(180deg); }
-
-.sc-send {
-  width: 34px; height: 34px; flex: 0 0 auto;
+.sc-plus {
+  grid-area: plus;
+  width: 32px; height: 32px; flex: 0 0 auto;
   display: inline-flex; align-items: center; justify-content: center;
-  border: 0; border-radius: var(--radius-3);
+  border: 0; border-radius: var(--radius-full); background: transparent;
+  color: var(--fg-low); cursor: pointer;
+  transition: background .12s ease-in-out, color .12s ease-in-out;
+}
+.sc-plus svg { width: 19px; height: 19px; }
+.sc-plus:hover { background: var(--gray-3); color: var(--fg-high); }
+.sc-plus:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
+
+.sc-tools { grid-area: tools; display: flex; align-items: center; gap: var(--space-1); justify-content: flex-end; }
+.sc-tools .sc-tools-lead { margin-right: auto; }
+
+/* Model label, quiet text rather than a bordered control, as in the reference. */
+.sc-model-inline {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  height: 28px; padding: 0 var(--space-2);
+  border: 0; border-radius: var(--radius-2); background: transparent;
+  font-family: inherit; font-size: var(--fs-2); color: var(--fg-subtle);
+  cursor: pointer; white-space: nowrap;
+  transition: background .12s ease-in-out, color .12s ease-in-out;
+}
+.sc-model-inline:hover { background: var(--gray-3); color: var(--fg-high); }
+.sc-model-inline svg { width: 15px; height: 15px; }
+.sc-model-inline .m-strong { color: var(--fg-high); }
+.sc-model-inline:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
+
+.sc-mic {
+  width: 30px; height: 30px; flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: var(--radius-full); background: transparent;
+  color: var(--fg-low); cursor: pointer;
+  transition: background .12s ease-in-out, color .12s ease-in-out;
+}
+.sc-mic svg { width: 17px; height: 17px; }
+.sc-mic:hover { background: var(--gray-3); color: var(--fg-high); }
+.sc-mic:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
+
+/* Approval chip, Work mode only. */
+.sc-approve {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  height: 30px; padding: 0 var(--space-2);
+  border: 0; border-radius: var(--radius-3); background: transparent;
+  font-family: inherit; font-size: var(--fs-2); color: var(--fg-low);
+  cursor: pointer; transition: background .12s ease-in-out, color .12s ease-in-out;
+}
+.sc-approve svg { width: 16px; height: 16px; color: var(--fg-subtle); }
+.sc-approve:hover { background: var(--gray-3); color: var(--fg-high); }
+.sc-approve:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
+
+/* Circular send, matching the reference's round arrow button. */
+.sc-send {
+  width: 32px; height: 32px; flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: var(--radius-full);
   background: var(--accent-9); color: var(--accent-contrast); cursor: pointer;
   transition: background .15s ease-in-out, color .15s ease-in-out, transform .12s ease-in-out;
 }
-.sc-send svg { width: 16px; height: 16px; }
+.sc-send svg { width: 17px; height: 17px; }
 .sc-send:hover { background: var(--accent-10); }
 .sc-send:active { transform: scale(.94); }
-.sc-send:disabled { background: var(--gray-3); color: var(--fg-disabled); cursor: not-allowed; transform: none; }
+.sc-send:disabled { background: var(--gray-4); color: var(--fg-disabled); cursor: not-allowed; transform: none; }
 .sc-send:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--color-panel-solid), 0 0 0 4px var(--focus-ring); }
 
-.sc-hint { margin-top: var(--space-2); text-align: center; font-size: var(--fs-1); color: var(--fg-subtle); }
+/* Inline skill mention inside the composer text. */
+.sc-mention { color: var(--info-text); font-weight: var(--weight-medium); }
+
+.sc-hint { margin-top: var(--space-3); text-align: center; font-size: var(--fs-1); color: var(--fg-subtle); }
 
 /* ---- Tooltip (CSS, inverted per DS) ---- */
 [data-tip] { position: relative; }
@@ -1034,3 +1185,164 @@
   /* With the twinkle off, the accents must not be left mid-keyframe. */
   .sc-spark.is-loading .sp-plus, .sc-spark.is-loading .sp-dot { opacity: 1; transform: none; }
 }
+
+/* ============================================================
+   Pages: Projects / Scheduled / Plugins, copied from the
+   reference layout. Content column measured at 702px -> 704px,
+   page title 24.5px -> --fs-6, sub 13.7px -> --fs-2, search
+   height 40.3px -> 40px. Nothing here adds a new size token.
+   ============================================================ */
+.sc-page { flex: 1; min-height: 0; overflow-y: auto; }
+.sc-page-inner { width: 100%; max-width: 704px; margin: 0 auto; padding: var(--space-7) var(--space-5) var(--space-8); }
+.sc-page-head { margin-bottom: var(--space-5); }
+.sc-page-head h1 { font-size: var(--fs-6); line-height: var(--lh-6); letter-spacing: var(--ls-6); font-weight: var(--weight-bold); color: var(--fg-high); }
+.sc-page-head p { margin-top: var(--space-1); font-size: var(--fs-2); line-height: var(--lh-2); color: var(--fg-low); }
+
+/* Full-width pill search, distinct from the compact .search used in tables. */
+.sc-page-search { position: relative; margin-bottom: var(--space-5); }
+.sc-page-search svg { position: absolute; left: var(--space-4); top: 50%; transform: translateY(-50%); width: 17px; height: 17px; color: var(--fg-subtle); pointer-events: none; }
+.sc-page-search input {
+  width: 100%; height: 40px;
+  padding: 0 var(--space-4) 0 var(--space-8);
+  border: 0; border-radius: var(--radius-full);
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 1px var(--border-ui);
+  font-family: inherit; font-size: var(--fs-2); color: var(--fg-high);
+}
+.sc-page-search input::placeholder { color: var(--fg-subtle); }
+.sc-page-search input:focus { outline: none; box-shadow: inset 0 0 0 1px var(--accent-8); }
+
+.sc-page-actions { display: flex; align-items: center; gap: var(--space-2); }
+
+/* Section label above a list, e.g. "Suggestions" / "Installed" / "Featured". */
+.sc-sec-label { display: flex; align-items: center; font-size: var(--fs-3); line-height: var(--lh-3); font-weight: var(--weight-medium); color: var(--fg-high); margin: var(--space-5) 0 var(--space-3); }
+.sc-sec-label .sec-spacer { flex: 1; }
+.sc-sec-note { margin: var(--space-3) 0; font-size: var(--fs-2); color: var(--fg-subtle); }
+
+/* ---- Projects table ---- */
+.sc-ptable { width: 100%; }
+.sc-ptable-head {
+  display: grid; grid-template-columns: 1fr 90px 120px; align-items: center;
+  padding: 0 var(--space-2) var(--space-2);
+  font-size: var(--fs-2); color: var(--fg-low);
+  border-bottom: var(--stroke-thin) solid var(--border-subtle);
+}
+.sc-prow {
+  display: grid; grid-template-columns: 1fr 90px 120px; align-items: center;
+  height: 64px; padding: 0 var(--space-2);
+  border-bottom: var(--stroke-thin) solid var(--border-subtle);
+  cursor: pointer;
+}
+.sc-prow:hover { background: var(--gray-2); }
+.sc-prow-name { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.sc-prow-name > svg { width: 18px; height: 18px; flex: 0 0 auto; color: var(--fg-low); }
+.sc-prow-name .pn { font-size: var(--fs-3); color: var(--fg-high); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-prow-name .pn-kind { width: 16px; height: 16px; flex: 0 0 auto; color: var(--fg-subtle); }
+.sc-prow-when { font-size: var(--fs-2); color: var(--fg-low); }
+.sc-prow-acts { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-1); opacity: 0; transition: opacity .12s ease-in-out; }
+.sc-prow:hover .sc-prow-acts, .sc-prow:focus-within .sc-prow-acts { opacity: 1; }
+.sc-prow-acts button { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: var(--radius-2); background: transparent; color: var(--fg-low); cursor: pointer; }
+.sc-prow-acts button svg { width: 16px; height: 16px; }
+.sc-prow-acts button:hover { background: var(--gray-3); color: var(--fg-high); }
+.sc-prow-acts button:focus-visible { outline: none; opacity: 1; box-shadow: 0 0 0 2px var(--focus-ring); }
+
+/* ---- Suggestion / list rows (Scheduled) ---- */
+.sc-listrow { display: flex; gap: var(--space-3); padding: var(--space-3) var(--space-2); border-radius: var(--radius-3); cursor: pointer; transition: background .12s ease-in-out; }
+.sc-listrow:hover { background: var(--gray-2); }
+.sc-listrow .lr-ic { width: 20px; height: 20px; flex: 0 0 auto; margin-top: 1px; }
+.sc-listrow .lr-ic svg { width: 18px; height: 18px; }
+.sc-listrow .lr-body { flex: 1; min-width: 0; }
+.sc-listrow .lr-title { display: block; font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+.sc-listrow .lr-when { margin-left: var(--space-2); font-size: var(--fs-2); font-weight: var(--weight-regular); color: var(--fg-subtle); }
+.sc-listrow .lr-desc { display: block; margin-top: 2px; font-size: var(--fs-2); line-height: var(--lh-2); color: var(--fg-low); }
+
+/* ---- Plugin / skill grid ---- */
+.sc-pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-1) var(--space-6); }
+.sc-pitem { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-2); border-radius: var(--radius-3); }
+.sc-pitem:hover { background: var(--gray-2); }
+.sc-pitem .pi-ic { width: 34px; height: 34px; flex: 0 0 auto; border-radius: var(--radius-3); display: inline-flex; align-items: center; justify-content: center; background: var(--accent-3); color: var(--accent-9); }
+.sc-pitem .pi-ic svg { width: 18px; height: 18px; }
+.sc-pitem .pi-body { flex: 1; min-width: 0; }
+.sc-pitem .pi-name { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+.sc-pitem .pi-desc { margin-top: 1px; font-size: var(--fs-2); color: var(--fg-low); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-pitem .pi-check { width: 17px; height: 17px; flex: 0 0 auto; color: var(--fg-subtle); }
+
+/* Installed app-icon strip. */
+.sc-iconstrip { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.sc-iconstrip span {
+  width: 38px; height: 38px; border-radius: var(--radius-3);
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--gray-3); color: var(--fg-low);
+}
+.sc-iconstrip span svg { width: 19px; height: 19px; }
+
+/* Small segmented used inside pages (Public/Personal, All/Active/Paused). */
+.sc-subseg { display: inline-flex; gap: 2px; }
+.sc-subseg button {
+  height: 30px; padding: 0 var(--space-3);
+  border: 0; border-radius: var(--radius-3); background: transparent;
+  font-family: inherit; font-size: var(--fs-2); font-weight: var(--weight-medium);
+  color: var(--fg-low); cursor: pointer;
+  transition: background .12s ease-in-out, color .12s ease-in-out;
+}
+.sc-subseg button:hover { color: var(--fg-high); }
+.sc-subseg button.is-active { background: var(--gray-3); color: var(--fg-high); }
+.sc-subseg button:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
+
+/* Page-level tab pair (Plugins | Skills) sitting in the top bar. */
+.sc-pagetabs { display: inline-flex; gap: 2px; }
+.sc-pagetabs button {
+  height: 28px; padding: 0 var(--space-3);
+  border: 0; border-radius: var(--radius-3); background: transparent;
+  font-family: inherit; font-size: var(--fs-2); font-weight: var(--weight-medium);
+  color: var(--fg-low); cursor: pointer;
+  transition: background .12s ease-in-out, color .12s ease-in-out;
+}
+.sc-pagetabs button:hover { color: var(--fg-high); }
+.sc-pagetabs button.is-active { background: var(--gray-3); color: var(--fg-high); }
+.sc-pagetabs button:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
+
+/* ---- Scheduled task editor (three-pane) ---- */
+.sc-sched { flex: 1; min-height: 0; display: flex; }
+.sc-sched-list { width: 340px; flex: 0 0 auto; border-right: var(--stroke-thin) solid var(--border-subtle); display: flex; flex-direction: column; padding: var(--space-3); overflow-y: auto; }
+.sc-sched-detail { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow-y: auto; }
+.sc-sched-detail-inner { flex: 1; padding: var(--space-4) var(--space-5); }
+.sc-sched-head { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
+.sc-sched-head .sh-label { flex: 1; font-size: var(--fs-2); color: var(--fg-low); }
+.sc-sched-title {
+  width: 100%; border: 0; outline: none; background: transparent; padding: 0;
+  font-family: inherit; font-size: var(--fs-5); line-height: var(--lh-5); font-weight: var(--weight-medium); color: var(--fg-high);
+}
+.sc-sched-title::placeholder { color: var(--fg-subtle); }
+.sc-sched-desc {
+  width: 100%; min-height: 84px; resize: none; margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 0; border-radius: var(--radius-5);
+  background: var(--color-surface); box-shadow: inset 0 0 0 1px var(--border-ui);
+  font-family: inherit; font-size: var(--fs-2); line-height: var(--lh-2); color: var(--fg-high);
+}
+.sc-sched-desc:focus { outline: none; box-shadow: inset 0 0 0 1px var(--accent-8); }
+.sc-sched-desc::placeholder { color: var(--fg-subtle); }
+.sc-fieldgroup { margin-top: var(--space-5); }
+.sc-fieldgroup > .fg-label { font-size: var(--fs-2); color: var(--fg-low); margin-bottom: var(--space-2); }
+.sc-fieldcard { border: var(--stroke-thin) solid var(--border-subtle); border-radius: var(--radius-5); overflow: hidden; }
+.sc-fieldrow { display: flex; align-items: center; gap: var(--space-3); height: 48px; padding: 0 var(--space-4); }
+.sc-fieldrow + .sc-fieldrow { border-top: var(--stroke-thin) solid var(--border-subtle); }
+.sc-fieldrow .fr-label { flex: 1; font-size: var(--fs-2); color: var(--fg-high); }
+.sc-fieldrow .fr-val {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  border: 0; background: transparent; padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-2); cursor: pointer;
+  font-family: inherit; font-size: var(--fs-2); color: var(--fg-high);
+  transition: background .12s ease-in-out;
+}
+.sc-fieldrow .fr-val:hover { background: var(--gray-3); }
+.sc-fieldrow .fr-val svg { width: 15px; height: 15px; color: var(--fg-subtle); }
+.sc-fieldrow .fr-val:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
+.sc-sched-foot { flex: 0 0 auto; display: flex; justify-content: flex-end; padding: var(--space-3) var(--space-5); border-top: var(--stroke-thin) solid var(--border-subtle); }
+
+.sc-taskrow { display: flex; gap: var(--space-3); padding: var(--space-3) var(--space-2); border-radius: var(--radius-3); cursor: pointer; }
+.sc-taskrow:hover { background: var(--gray-2); }
+.sc-taskrow .tr-radio { width: 18px; height: 18px; flex: 0 0 auto; margin-top: 1px; border-radius: var(--radius-full); box-shadow: inset 0 0 0 1.5px var(--border-strong); }
+.sc-taskrow .tr-title { display: block; font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+.sc-taskrow .tr-meta { display: block; margin-top: 2px; font-size: var(--fs-2); color: var(--fg-subtle); }

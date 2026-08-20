@@ -187,14 +187,44 @@ Every interactive element defines: rest / hover / active / focus-visible / disab
       memory-updated divider.
 - [x] Dropped from old SkyChat: amber user avatar (brand-only rule), double "Conversation
       History" heading, orphan single-item "Chats" accordion.
-- [x] **Adopted from Claude's app shell** (client feedback, 2026-08-11): a persistent
-      nav-shortcut row above the conversation search (currently just "Agents", styled at the
-      same row height as `.sc-chat-item` so it reads as one list, not the app-shell
-      `.nav-item` which goes solid amber active and would fight the soft tint the history
-      list uses), and a clickable account row in the footer opening straight to
-      Settings > Account. Explicitly **not** adopted: the Chat / Cowork / Code top tab bar —
-      skyChat has one product today, so tabs for products that do not exist would mislead
-      rather than orient.
+- [x] **Adopted from Claude's app shell** (client feedback, 2026-08-11, extended 2026-08-12
+      after the first pass read too sparse against the reference):
+      - A persistent nav-shortcut row above search (`.sc-nav-item`, "Agents"), styled at the
+        same row height as `.sc-chat-item` so it reads as one list rather than the app-shell
+        `.nav-item`, which goes solid amber active and would fight the soft tint the history
+        list already uses.
+      - An outer "Recents" eyebrow above Today/Yesterday, matching Claude's terminology.
+        Kept the Today/Yesterday/Earlier sub-grouping rather than flattening to it, since
+        temporal orientation is more useful here than Claude's own flat list, not less.
+      - A real "View all" toggle: past 6 non-pinned conversations, older rows collapse and
+        the button expands/re-collapses them. Pinned items are exempt (pinning is a
+        deliberate choice, never buried), and a freshly sent message is always item 0 of
+        Today, i.e. always inside the cap, so sending never hides the conversation you are
+        looking at. A search query overrides the cap outright rather than hiding an older
+        match.
+      - A clickable account row in the footer opening straight to Settings > Account, now
+        with a chevron — honest to add only once the row actually does something on click.
+
+- [x] **Chat / Cowork / Code tab bar** (client feedback, confirmed explicitly 2026-08-12
+      after the first pass held it back — see above). Reuses the DS `.segmented` track+pill
+      verbatim (same component as Analytics' date range and the Agents status filter),
+      stretched to the sidebar's full width, rather than a bespoke tab component.
+      - **Chat** is the whole real app: unchanged.
+      - **Cowork** and **Code** are real destinations, not decoration. Each swaps the
+        Chat-only sidebar content (nav shortcut, search, recents) for one honest line
+        ("Cowork is not part of skyChat yet.") and swaps the main pane for the same
+        `.empty-state` pattern already used for Settings panes awaiting their design. The
+        model picker and the voice / clear-memory top-bar actions hide too, since they are
+        Chat-specific controls with nothing to act on. The theme toggle and rail-collapse
+        stay, since those are shell-wide, not Chat-specific.
+      - Returning to **Chat** delegates to the existing `goHome()` / `goChat(activeChat)`
+        rather than re-deriving their hidden-state logic, so the exact conversation (title,
+        thread scroll position, active sidebar row, Share button) is restored byte-for-byte,
+        not just "some chat view." Verified: open a conversation, switch to Cowork, switch
+        back — same conversation, not Home.
+      - This is the second time an inert-looking control was almost shipped in this app
+        (after the dead composer "Agents" toggle, §10): a tab that looked clickable and did
+        nothing would have been the same mistake at a much more visible spot.
 
 > **Documented deviation: the selected conversation row.** The DS hard rule says an active
 > sidebar item is a solid `--accent-9` pill. That rule is written for *primary navigation*,
