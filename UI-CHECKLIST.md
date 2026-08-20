@@ -205,10 +205,39 @@ Every interactive element defines: rest / hover / active / focus-visible / disab
       - A clickable account row in the footer opening straight to Settings > Account, now
         with a chevron — honest to add only once the row actually does something on click.
 
-- [x] **Chat / Cowork / Code tab bar** (client feedback, confirmed explicitly 2026-08-12
-      after the first pass held it back — see above). Reuses the DS `.segmented` track+pill
-      verbatim (same component as Analytics' date range and the Agents status filter),
-      stretched to the sidebar's full width, rather than a bespoke tab component.
+- [ ] ~~**Chat / Cowork / Code tab bar**~~ — **removed 2026-08-20 at client request.** It
+      shipped as a sidebar segmented control (below), became a two-item Chat / Work switch in
+      the top bar during the ChatGPT-shell pass, and is now gone entirely along with everything
+      it gated: the approval chip, the project context strip under the composer, the Work task
+      list, and the alternate greeting and placeholder. `currentMode` and `setMode()` no longer
+      exist — there is one mode, so nothing needs to branch on it. Kept below as the record of
+      what was built and why, in case the mode ever returns.
+
+      Removing it exposed a latent bug worth keeping in mind: `syncComposerShape()` treated
+      `scrollHeight > 30` as "multiline", but an empty textarea measures 40px, so the test was
+      always true and the composer never returned to its pill once you typed. Work mode had
+      been forcing the expanded state anyway, which hid it.
+
+      That whole mechanism is now moot — see the composer entry below.
+
+- [x] **Composer is one shape, always** (client reference, 2026-08-20). It was a pill that
+      swapped to a box on typing; it is now permanently the box, so nothing reflows under the
+      cursor as you type. `syncComposerShape()`, the `.is-expanded` class, and the pill rules
+      are all deleted — with a single shape there is no state to track.
+      - Grid is fixed at `"input input" / "plus tools"`, `--radius-6` (16px, the closest
+        on-scale value to the reference's corners), `--space-3` padding, `min-height: 132px`.
+      - Measured against the reference: height/width **0.217** vs the reference's **0.220**;
+        text inset 20px from the box edge in both.
+      - `min-height` rather than a fixed height, so short input sits in a stable box (two
+        lines still measure 132px) and long input grows to the 200px textarea cap.
+      - **Omitted deliberately: the Chat / Cowork toggle** visible in the reference's bottom
+        row. Work mode was removed one instruction earlier in the same session, so reinstating
+        it here would have contradicted that. The slot is free if it comes back.
+
+      Original entry (client feedback, confirmed explicitly 2026-08-12 after the first pass
+      held it back — see above). Reused the DS `.segmented` track+pill verbatim (same component
+      as Analytics' date range and the Agents status filter), stretched to the sidebar's full
+      width, rather than a bespoke tab component.
       - **Chat** is the whole real app: unchanged.
       - **Cowork** and **Code** are real destinations, not decoration. Each swaps the
         Chat-only sidebar content (nav shortcut, search, recents) for one honest line
@@ -254,5 +283,28 @@ Not gaps found during a pass — features scoped out on purpose, so a future con
 - **Removed rather than deferred:** a second, inert "Agents" toggle used to sit beside the
   working agent chip in the composer (`aria-haspopup="menu"` with no menu ever wired to it).
   Two adjacent controls that both look like agent selection, only one of which worked, was worse
-  than one. It is gone; the sidebar's new "Agents" shortcut (below) covers the "browse agents"
-  need instead.
+  than one. It is gone; the sidebar's "Agents" shortcut covers the "browse agents" need instead.
+
+## 11. Navigation: where a surface is allowed to live
+
+Settled 2026-08-20 after Agents and Skills were found existing both as a full-screen page and as
+settings panes. The rule that resolves it:
+
+> Anything you **configure** lives in Settings. The sidebar is for places you **work**.
+
+- [x] Sidebar destinations are Chat, Projects, Scheduled — surfaces you inhabit and return to.
+- [x] Agents, Skills, and Connections are settings panes. Opening one keeps the chat mounted
+      behind the modal, so closing it returns you to your place with no state to restore.
+- [x] A sidebar row may be a **shortcut into settings** (`data-setpane`) rather than a page.
+      Such a row never takes the active nav state — you have not gone anywhere.
+- [x] All routes to a surface resolve identically. Every composer `+` menu "manage" action and
+      the sidebar shortcut all call `showPane(x); openSettings();`. Previously **Manage
+      connectors** opened the modal while **Manage agents** opened a page — three sibling menu
+      items, two kinds of destination.
+- [x] Agents keeps **Your agents** / **Browse** as tabs in one pane, because configuring and
+      installing are two jobs on the same objects. Splitting them into two rail entries would
+      re-create the duplication this rule removes. Skills has only the browse job, so no tabs.
+
+Fixed in the same pass: `IC.chart` and `IC.users` were referenced by `INSTALLED_ICONS` but never
+defined, so `svg()` interpolated the string `"undefined"` and two tiles in the installed strip
+rendered empty. The page-only context had hidden it.

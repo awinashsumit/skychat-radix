@@ -61,7 +61,8 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
             <span class="nav-label">Scheduled</span>
           </button>
-          <button class="sc-nav-item" data-page="agents">
+          <!-- Opens settings, not a page: configuring should never cost you your place. -->
+          <button class="sc-nav-item" id="navAgentsSet" data-setpane="agents">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
             <span class="nav-label">Agents</span>
           </button>
@@ -98,18 +99,9 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/></svg>
             Upgrade
           </button>
-          <!-- Page-scoped tabs (Agents page only), same slot the reference uses. -->
-          <div class="sc-pagetabs" id="agentTabs" hidden>
-            <button class="is-active" data-agenttab="plugins">Agents</button>
-            <button data-agenttab="skills">Skills</button>
-          </div>
         </div>
 
         <!-- Chat / Work, centred on the main pane as in the reference. -->
-        <div class="sc-mode" id="modeSwitch" role="tablist" aria-label="Mode">
-          <button class="sc-mode-item is-active" data-mode="chat" role="tab" aria-selected="true">Chat</button>
-          <button class="sc-mode-item" data-mode="work" role="tab" aria-selected="false">Work</button>
-        </div>
 
         <div class="sc-topbar-title" id="topbarTitle" hidden>
           <h1 class="sc-title" id="chatTitle">Delhi the Indian Capital</h1>
@@ -163,20 +155,6 @@
               <button class="sc-chip" data-fill="Research recent senior living policy changes">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
                 Research
-              </button>
-            </div>
-            <div class="sc-worklist" id="worklist" hidden>
-              <button data-fill="Create a file or build a site">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
-                Create a file or build a site
-              </button>
-              <button data-fill="Research and plan next steps">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
-                Research and plan next steps
-              </button>
-              <button data-fill="Automate routine and recurring work">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                Automate routine and recurring work
               </button>
             </div>
           </div>
@@ -302,75 +280,7 @@
       </section>
 
       <!-- ===== Page: Agents / Skills ===== -->
-      <section class="sc-view sc-page" id="viewAgentsPage" hidden>
-        <div class="sc-page-actions">
-          <button class="sc-chrome-btn" id="agentsRefresh" aria-label="Refresh">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
-          </button>
-          <button class="sc-chrome-btn" id="agentsGear" aria-label="Agent settings">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg>
-          </button>
-          <button class="btn btn-solid" id="agentsAddBtn" aria-haspopup="menu" aria-expanded="false">
-            Add
-            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-          </button>
-        </div>
-
-        <div class="sc-page-inner">
-          <!-- Agents tab -->
-          <div data-apane="plugins">
-            <div class="sc-page-head">
-              <h1>Agents</h1>
-              <p>Work with skyChat across your connected tools</p>
-            </div>
-            <div class="sc-page-search">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
-              <input id="pluginSearch" placeholder="Search agents" aria-label="Search agents" />
-            </div>
-            <div class="sc-sec-label">Installed<span class="sec-spacer"></span>
-              <button class="sc-chrome-btn" aria-label="Manage installed">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg>
-              </button>
-            </div>
-            <div class="sc-iconstrip" id="installedStrip"></div>
-            <div class="sc-sec-label" style="margin-top:var(--space-5);">
-              <span class="sc-subseg">
-                <button class="is-active" data-scope="public">Public</button>
-                <button data-scope="personal">Personal</button>
-              </span>
-            </div>
-            <div class="sc-sec-label" style="font-size:var(--fs-2);color:var(--fg-low);">Featured</div>
-            <div class="sc-pgrid" id="featuredGrid"></div>
-            <div class="sc-sec-label" style="font-size:var(--fs-2);color:var(--fg-low);margin-top:var(--space-6);">Productivity</div>
-            <div class="sc-pgrid" id="productivityGrid"></div>
           </div>
-
-          <!-- Skills tab -->
-          <div data-apane="skills" hidden>
-            <div class="sc-page-head">
-              <h1>Skills</h1>
-              <p>Extend skyChat with task-specific skills</p>
-            </div>
-            <div class="sc-page-search">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
-              <input id="skillSearch" placeholder="Search skills" aria-label="Search skills" />
-            </div>
-            <div class="sc-sec-label">Installed</div>
-            <div class="sc-pgrid" id="skillsGrid"></div>
-            <div class="sc-sec-note" id="skillsMore"></div>
-            <div class="sc-sec-label">
-              <span class="sc-subseg">
-                <button class="is-active" data-sscope="personal">Personal</button>
-                <button data-sscope="system">System</button>
-                <button data-sscope="workspace">Skypoint Marketing</button>
-              </span>
-            </div>
-            <div class="sc-pgrid" id="skillsGrid2"></div>
-          </div>
-        </div>
-      </section>
-
-    </div>
   </div>
 
   <!-- ============ Composer (single instance, moved between views) ============ -->
@@ -382,11 +292,6 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
         </button>
         <div class="sc-tools">
-          <!-- Work mode only, matching the reference's approval control. -->
-          <button class="sc-approve sc-tools-lead" id="approveBtn" hidden>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>
-            Ask for approval
-          </button>
           <button class="sc-model-inline" id="kbBtn" aria-haspopup="menu" aria-expanded="false">
             <span id="kbLabel">Auto</span>
             <svg class="sc-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
@@ -398,21 +303,6 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
           </button>
         </div>
-      </div>
-      <!-- Work mode context strip, connected to the composer as one unit. -->
-      <div class="sc-workctx" id="workCtx" hidden>
-        <button class="wc-btn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
-          Choose project
-        </button>
-        <span class="wc-icons">
-          <span style="background:var(--chart-1);">D</span>
-          <span style="background:var(--chart-3);">P</span>
-          <span style="background:var(--chart-2);">S</span>
-        </span>
-        <span>Agents</span>
-        <span class="wc-spacer"></span>
-        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="color:var(--fg-subtle);"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
       </div>
       <div class="sc-hint" id="composerHint">Enter to send, Shift+Enter for a new line</div>
     </div>
@@ -437,19 +327,38 @@
     </button>
   </div>
 
-  <div class="sc-menu" id="kbMenu" role="menu" hidden style="min-width:260px;">
-    <div class="sc-menu-label">Knowledge base</div>
-    <button class="sc-menu-item is-selected" role="menuitemradio" aria-checked="true" data-kb="General Knowledge">
-      <svg class="mi-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
-      <span class="mi-text"><span class="mi-title">General Knowledge</span></span>
-      <svg class="mi-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+  <!-- ============ Composer "+" menu (with submenus) ============ -->
+  <div class="sc-menu" id="plusMenu" role="menu" hidden style="min-width:250px;">
+    <button class="sc-menu-item" data-plus="files">
+      <svg class="mi-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551"/></svg>
+      <span class="mi-text">Add files or photos</span>
+      <span class="mi-kbd">&#8984;U</span>
     </button>
-    <button class="sc-menu-item" role="menuitemradio" aria-checked="false" data-kb="Senior Living Policies">
-      <svg class="mi-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
-      <span class="mi-text"><span class="mi-title">Senior Living Policies</span></span>
-      <svg class="mi-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+    <button class="sc-menu-item" data-plus="record">
+      <svg class="mi-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
+      <span class="mi-text">Record a skill</span>
+    </button>
+    <hr class="sc-menu-sep" />
+    <button class="sc-menu-item" data-sub="agents" aria-haspopup="menu" aria-expanded="false">
+      <svg class="mi-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+      <span class="mi-text">Agents</span>
+      <svg class="mi-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+    </button>
+    <button class="sc-menu-item" data-sub="skills" aria-haspopup="menu" aria-expanded="false">
+      <svg class="mi-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M9 3v4h6V3"/><path d="M9 12h6"/><path d="M9 16h4"/></svg>
+      <span class="mi-text">Skills</span>
+      <svg class="mi-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+    </button>
+    <button class="sc-menu-item" data-sub="connectors" aria-haspopup="menu" aria-expanded="false">
+      <svg class="mi-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="8" x="3" y="3" rx="2"/><rect width="8" height="8" x="13" y="13" rx="2"/><path d="M11 7h4a2 2 0 0 1 2 2v4"/></svg>
+      <span class="mi-text">Connectors</span>
+      <svg class="mi-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
     </button>
   </div>
+
+  <div class="sc-menu" id="subAgents" role="menu" hidden data-parentmenu="plusMenu" style="min-width:250px;"></div>
+  <div class="sc-menu" id="subSkills" role="menu" hidden data-parentmenu="plusMenu" style="min-width:280px;"></div>
+  <div class="sc-menu" id="subConnectors" role="menu" hidden data-parentmenu="plusMenu" style="min-width:260px;"></div>
 
   <div class="sc-menu" id="ctxMenu" role="menu" hidden style="min-width:180px;">
     <button class="sc-menu-item" data-act="share">
@@ -519,6 +428,10 @@
         <button class="sc-set-nav" data-pane="agents">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
           Agents
+        </button>
+        <button class="sc-set-nav" data-pane="skills">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.287 1.288L3 12l5.8 1.9a2 2 0 0 1 1.288 1.287L12 21l1.9-5.8a2 2 0 0 1 1.287-1.288L21 12l-5.8-1.9a2 2 0 0 1-1.288-1.287z"/></svg>
+          Skills
         </button>
         <button class="sc-set-nav" data-pane="connections">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>
@@ -931,6 +844,12 @@
                 <span>Changes here affect everyone in <strong>Senior Living 365 - Demo v2</strong>.</span>
               </div>
 
+              <div class="tabs sc-set-tabs" role="tablist" aria-label="Agents">
+                <button class="tab is-active" data-agsub="mine" role="tab" aria-selected="true">Your agents</button>
+                <button class="tab" data-agsub="browse" role="tab" aria-selected="false">Browse</button>
+              </div>
+
+              <div data-agsubpanel="mine">
               <section class="sc-set-section" style="padding-top:0;">
                 <div class="sc-set-rows">
                   <div class="sc-set-row">
@@ -973,6 +892,32 @@
                   <p>No agents match that search.</p>
                 </div>
               </div>
+              </div><!-- /mine -->
+
+              <div data-agsubpanel="browse" hidden>
+                <div class="sc-browse-bar">
+                  <div class="sc-page-search" style="margin:0;flex:1;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+                    <input id="pluginSearch" placeholder="Search agents" aria-label="Search agents" />
+                  </div>
+                  <button class="btn btn-surface" id="agentsAddBtn" aria-haspopup="menu" aria-expanded="false">
+                    Add
+                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                  </button>
+                </div>
+                <div class="sc-sec-label">Installed</div>
+                <div class="sc-iconstrip" id="installedStrip"></div>
+                <div class="sc-sec-label" style="margin-top:var(--space-5);">
+                  <span class="sc-subseg">
+                    <button class="is-active" data-scope="public">Public</button>
+                    <button data-scope="personal">Personal</button>
+                  </span>
+                </div>
+                <div class="sc-sec-label" style="font-size:var(--fs-2);color:var(--fg-low);">Featured</div>
+                <div class="sc-pgrid" id="featuredGrid"></div>
+                <div class="sc-sec-label" style="font-size:var(--fs-2);color:var(--fg-low);margin-top:var(--space-6);">Productivity</div>
+                <div class="sc-pgrid" id="productivityGrid"></div>
+              </div><!-- /browse -->
             </div>
 
             <!-- ===== Create. Template and details on one screen, so the choice
@@ -1180,6 +1125,24 @@
                 <button class="btn btn-solid" id="dtSave">Save changes</button>
               </div>
             </div>
+          </div>
+
+          <div class="sc-set-pane" data-pane="skills" hidden>
+            <div class="sc-page-search" style="margin-top:0;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+              <input id="skillSearch" placeholder="Search skills" aria-label="Search skills" />
+            </div>
+            <div class="sc-sec-label">Installed</div>
+            <div class="sc-pgrid" id="skillsGrid"></div>
+            <div class="sc-sec-note" id="skillsMore"></div>
+            <div class="sc-sec-label" style="margin-top:var(--space-5);">
+              <span class="sc-subseg">
+                <button class="is-active" data-sscope="personal">Personal</button>
+                <button data-sscope="system">System</button>
+                <button data-sscope="workspace">Skypoint Marketing</button>
+              </span>
+            </div>
+            <div class="sc-pgrid" id="skillsGrid2"></div>
           </div>
 
           <div class="sc-set-pane" data-pane="connections" hidden>
@@ -1827,7 +1790,9 @@
       refresh: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
       calendar: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
       file: '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/>',
-      ext: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>'
+      ext: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+      chart: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
+      users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'
     };
     function svg(name, size, sw) {
       return '<svg viewBox="0 0 24 24" width="' + (size || 16) + '" height="' + (size || 16) +
@@ -1863,7 +1828,7 @@
       input.style.height = Math.min(input.scrollHeight, 200) + "px";
     }
     function syncSend() { sendBtn.disabled = input.value.trim() === ""; }
-    input.addEventListener("input", function () { autogrow(); syncSend(); syncComposerShape(); });
+    input.addEventListener("input", function () { autogrow(); syncSend(); });
     input.addEventListener("keydown", function (e) {
       if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
     });
@@ -2206,6 +2171,7 @@
       anchor.setAttribute("aria-expanded", "true");
     }
     function closeMenu(instant) {
+      if (typeof closeSubmenu === "function") closeSubmenu();
       if (!openedMenu) return;
       var m = openedMenu, a = openedAnchor;
       openedMenu = null; openedAnchor = null;
@@ -2215,7 +2181,11 @@
       setTimeout(function () { m.classList.remove("is-closing"); m.hidden = true; }, 110);
     }
     document.addEventListener("click", function (e) {
-      if (openedMenu && !openedMenu.contains(e.target) && e.target !== openedAnchor && !openedAnchor.contains(e.target)) closeMenu();
+      if (!openedMenu) return;
+      if (openedMenu.contains(e.target)) return;
+      if (e.target === openedAnchor || openedAnchor.contains(e.target)) return;
+      if (typeof openSub !== "undefined" && openSub && openSub.contains(e.target)) return;
+      closeMenu();
     });
     document.addEventListener("keydown", function (e) {
       if (e.key !== "Escape") return;
@@ -2241,21 +2211,180 @@
       });
     });
 
-    /* Agent / knowledge selection, opened from the "+" control. */
-    composerUnit.addEventListener("click", function (e) {
-      var kb = e.target.closest("#plusBtn");
-      if (kb) openMenu($("#kbMenu"), kb, "above");
-    });
-    $$("#kbMenu .sc-menu-item").forEach(function (it) {
-      it.addEventListener("click", function () {
-        currentKb = it.getAttribute("data-kb");
-        $$("#kbMenu .sc-menu-item").forEach(function (x) {
-          x.classList.toggle("is-selected", x === it);
-          x.setAttribute("aria-checked", String(x === it));
+    /* ---------- Composer "+" menu ----------
+       Mirrors the reference: a root menu of actions, then three submenus that
+       open to the right. Submenu contents are built on open from the live data
+       (agents, skills, connections) rather than duplicated as markup, so the
+       menu can never drift from what the rest of the app shows. */
+    var openSub = null, openSubParent = null;
+
+    function composerPlaceholder() { return "Message skyChat"; }
+    function closeSubmenu() {
+      if (!openSub) return;
+      /* The Skills submenu swaps the placeholder to hint the "/" shortcut, so
+         closing has to put it back or the hint outlives the menu. */
+      var el = $("#input"); if (el) el.placeholder = composerPlaceholder();
+      openSub.hidden = true;
+      if (openSubParent) {
+        openSubParent.classList.remove("is-open");
+        openSubParent.setAttribute("aria-expanded", "false");
+      }
+      openSub = null; openSubParent = null;
+    }
+
+    function positionSubmenu(sub, parentItem) {
+      var host = $("#plusMenu").getBoundingClientRect();
+      var r = parentItem.getBoundingClientRect();
+      sub.hidden = false;
+      sub.style.position = "fixed";
+      var w = sub.offsetWidth, h = sub.offsetHeight;
+      var left = host.right + 4;
+      if (left + w > window.innerWidth - 8) left = Math.max(8, host.left - w - 4);
+      var top = Math.min(r.top - 4, window.innerHeight - h - 8);
+      sub.style.left = Math.round(left) + "px";
+      sub.style.top = Math.round(Math.max(8, top)) + "px";
+      sub.style.transformOrigin = "top left";
+    }
+
+    function menuFooter(items) {
+      return '<hr class="sc-menu-sep" />' + items.map(function (f) {
+        return '<button class="sc-menu-item" data-plus="' + f.act + '">' +
+          '<svg class="mi-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">' + f.ic + '</svg>' +
+          '<span class="mi-text">' + esc(f.label) + '</span></button>';
+      }).join("");
+    }
+    var IC_MANAGE = '<rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>';
+    var IC_PLUS   = '<path d="M5 12h14"/><path d="M12 5v14"/>';
+    var IC_TILE   = '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M9 3v4h6V3"/>';
+
+    function buildAgents() {
+      var live = AGENT_LIST.filter(function (a) { return a.on; });
+      $("#subAgents").innerHTML =
+        live.map(function (a) {
+          return '<button class="sc-menu-item' + (currentKb === a.name ? " is-selected" : "") + '" role="menuitemradio"' +
+            ' aria-checked="' + (currentKb === a.name) + '" data-agentpick="' + esc(a.name) + '">' +
+            '<span class="mi-tile">' + agentIcon(a.icon, 12) + '</span>' +
+            '<span class="mi-text">' + esc(a.name) + '</span>' +
+            '<svg class="mi-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' +
+          '</button>';
+        }).join("") +
+        menuFooter([{ act: "manageAgents", label: "Manage agents", ic: IC_MANAGE }]);
+      $$("#subAgents [data-agentpick]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          currentKb = b.getAttribute("data-agentpick");
+          closeSubmenu(); closeMenu();
+          toast("Agent set to " + currentKb);
         });
-        closeMenu();
-        toast("Knowledge base: " + currentKb);
       });
+      wirePlusActions($("#subAgents"));
+    }
+
+    function buildSkills() {
+      /* Reference hints the "/" shortcut while this submenu is open. */
+      $("#subSkills").innerHTML =
+        '<div class="sc-menu-scroll">' +
+        SKILLS.concat(SKILLS2).filter(function (v, i, arr) {
+          return arr.findIndex(function (x) { return x.n === v.n; }) === i;
+        }).map(function (sk) {
+          return '<button class="sc-menu-item" data-skillpick="' + esc(sk.n) + '">' +
+            '<span class="mi-tile">' +
+              '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">' + IC_TILE + '</svg>' +
+            '</span>' +
+            '<span class="mi-text">' + esc(sk.n) + '</span></button>';
+        }).join("") + '</div>' +
+        menuFooter([
+          { act: "manageSkills", label: "Manage skills", ic: IC_MANAGE },
+          { act: "browseSkills", label: "Browse skills", ic: IC_PLUS }
+        ]);
+      $$("#subSkills [data-skillpick]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          var name = b.getAttribute("data-skillpick");
+          closeSubmenu(); closeMenu();
+          input.value = (input.value ? input.value.replace(/\s+$/, "") + " " : "") + "/" + name + " ";
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+          input.focus();
+        });
+      });
+      wirePlusActions($("#subSkills"));
+    }
+
+    function buildConnectors() {
+      $("#subConnectors").innerHTML =
+        '<button class="sc-menu-item" data-plus="addConnector">' +
+          '<svg class="mi-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">' + IC_PLUS + '</svg>' +
+          '<span class="mi-text">Add connector</span></button>' +
+        '<button class="sc-menu-item" data-plus="manageConnectors">' +
+          '<svg class="mi-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">' + IC_MANAGE + '</svg>' +
+          '<span class="mi-text">Manage connectors</span></button>' +
+        '<hr class="sc-menu-sep" />' +
+        CONNECTIONS.map(function (c) {
+          var on = c.status !== "failed";
+          return '<label class="sc-menu-item has-switch">' +
+            '<span class="mi-tile">' + connIcon(c.type, 12) + '</span>' +
+            '<span class="mi-text">' + esc(c.name) + '</span>' +
+            '<span class="switch"><input type="checkbox" ' + (on ? "checked" : "") +
+              ' data-conntoggle="' + c.id + '" aria-label="Enable ' + esc(c.name) + '"></span>' +
+          '</label>';
+        }).join("");
+      $$("#subConnectors [data-conntoggle]").forEach(function (t) {
+        t.addEventListener("change", function () {
+          var c = connById(t.getAttribute("data-conntoggle"));
+          toast(c.name + (t.checked ? " enabled" : " disabled") + " for this chat");
+        });
+      });
+      wirePlusActions($("#subConnectors"));
+    }
+
+    function wirePlusActions(scope) {
+      $$("[data-plus]", scope).forEach(function (b) {
+        if (b._plusWired) return; b._plusWired = true;
+        b.addEventListener("click", function () {
+          var act = b.getAttribute("data-plus");
+          closeSubmenu(); closeMenu();
+          /* Every "manage" destination is a settings pane, so the chat you
+             were in is still behind you when you close the modal. */
+          if (act === "manageAgents")     { showPane("agents"); openSettings(); }
+          else if (act === "browseSkills") { showPane("skills"); openSettings(); }
+          else if (act === "manageSkills") { showPane("skills"); openSettings(); }
+          else if (act === "manageConnectors") { showPane("connections"); openSettings(); }
+          else if (act === "addConnector")     { showPane("connections"); openSettings(); $("#addConnBtn").click(); }
+          else if (act === "files")   toast("File picker is not wired yet");
+          else if (act === "record")  toast("Skill recording is not wired yet");
+        });
+      });
+    }
+
+    var SUBS = { agents: { el: "#subAgents", build: buildAgents },
+                 skills: { el: "#subSkills", build: buildSkills },
+                 connectors: { el: "#subConnectors", build: buildConnectors } };
+
+    function openSubmenuFor(item) {
+      var key = item.getAttribute("data-sub"), def = SUBS[key];
+      var sub = $(def.el);
+      if (openSub === sub) return;
+      closeSubmenu();
+      def.build();
+      positionSubmenu(sub, item);
+      item.classList.add("is-open");
+      item.setAttribute("aria-expanded", "true");
+      openSub = sub; openSubParent = item;
+      $("#input").placeholder = key === "skills" ? "Type / for skills" : composerPlaceholder();
+    }
+
+    $$("#plusMenu [data-sub]").forEach(function (item) {
+      item.addEventListener("mouseenter", function () { openSubmenuFor(item); });
+      item.addEventListener("click", function (e) { e.stopPropagation(); openSubmenuFor(item); });
+    });
+    /* Hovering a non-submenu row dismisses any open submenu, matching the
+       reference, where only one branch is ever open at a time. */
+    $$("#plusMenu .sc-menu-item:not([data-sub])").forEach(function (item) {
+      item.addEventListener("mouseenter", closeSubmenu);
+    });
+    wirePlusActions($("#plusMenu"));
+
+    composerUnit.addEventListener("click", function (e) {
+      var p = e.target.closest("#plusBtn");
+      if (p) { closeSubmenu(); openMenu($("#plusMenu"), p, "above"); }
     });
 
     /* Context menu actions */
@@ -2328,12 +2457,6 @@
     }
 
     /* ---------- Suggestions (home) ---------- */
-    $$("#worklist button").forEach(function (b) {
-      b.addEventListener("click", function () {
-        input.value = b.getAttribute("data-fill");
-        autogrow(); syncSend(); syncComposerShape(); input.focus();
-      });
-    });
     $$("#suggestions .sc-chip").forEach(function (chip) {
       chip.addEventListener("click", function () {
         input.value = chip.getAttribute("data-fill");
@@ -2391,13 +2514,14 @@
       account:     { title: "Account",           sub: "Your profile and how skyChat looks for you." },
       people:      { title: "People and roles",  sub: "Who can use this instance, and which agents each role can reach." },
       agents:      { title: "Agents",            sub: "Create agents and choose what each one can reach." },
+      skills:      { title: "Skills",            sub: "Task-specific abilities agents can call on. Type / in the composer to use one." },
       connections: { title: "Connections",       sub: "Link the data sources and tools skyChat can use." },
       branding:    { title: "Branding",          sub: "Accent colour, logos, SEO, and the defaults new members start with." },
       voice:       { title: "Voice",             sub: "The voice, personality, and limits used in voice mode." },
       analytics:   { title: "Analytics",         sub: "Usage, cost, and quality across this instance." },
       help:        { title: "Help and support",  sub: "Find an answer, or raise a request with the support team." }
     };
-    var BUILT = { account: 1, people: 1, agents: 1, connections: 1, branding: 1, voice: 1, analytics: 1, help: 1 };
+    var BUILT = { account: 1, people: 1, agents: 1, skills: 1, connections: 1, branding: 1, voice: 1, analytics: 1, help: 1 };
 
     /* Panes still awaiting their designs share one empty state rather than
        showing a blank pane that reads as broken. */
@@ -4240,22 +4364,19 @@
        switch in the top bar. Per-page chrome (mode switch, model picker, voice,
        the Agents tab pair) is shown only where it applies, which is what the
        reference does rather than leaving inert controls on every page. */
-    var currentPage = "chat", currentMode = "chat";
+    var currentPage = "chat";
 
     function setPage(page) {
       currentPage = page;
       $$(".sc-nav-item").forEach(function (n) {
         n.classList.toggle("is-active", n.getAttribute("data-page") === page);
       });
-      ["viewHome", "viewChat", "viewProjects", "viewScheduled", "viewSchedEdit", "viewAgentsPage"]
+      ["viewHome", "viewChat", "viewProjects", "viewScheduled", "viewSchedEdit"]
         .forEach(function (id) { $("#" + id).hidden = true; });
 
       var isChat = page === "chat";
-      $("#modeSwitch").hidden = !isChat;
       $("#voiceBtn").hidden = !isChat;
       $("#memoryBtn").hidden = !isChat;
-      $("#upgradeBtn").hidden = page === "agents";
-      $("#agentTabs").hidden = page !== "agents";
       $("#shareBtn").hidden = true;
       $("#topbarTitle").hidden = true;
 
@@ -4266,7 +4387,6 @@
       }
       if (page === "projects")  { renderProjects(); show($("#viewProjects")); }
       if (page === "scheduled") { show($("#viewScheduled")); }
-      if (page === "agents")    { show($("#viewAgentsPage")); }
       mountPageActions(page);
     }
     /* The reference puts a page's primary actions on the top-bar row rather
@@ -4278,7 +4398,7 @@
         var owner = slot.firstChild._ownerView;
         if (owner) owner.appendChild(slot.firstChild); else slot.removeChild(slot.firstChild);
       }
-      var src = { projects: "#viewProjects", scheduled: "#viewScheduled", agents: "#viewAgentsPage" }[page];
+      var src = { projects: "#viewProjects", scheduled: "#viewScheduled" }[page];
       if (!src) return;
       var group = $(src + " > .sc-page-actions");
       if (group) { group._ownerView = $(src); slot.appendChild(group); }
@@ -4286,6 +4406,10 @@
 
     $$(".sc-nav-item").forEach(function (n) {
       n.addEventListener("click", function () {
+        /* Some rail items are shortcuts into settings rather than pages. They
+           never take the active state, because you have not gone anywhere. */
+        var pane = n.getAttribute("data-setpane");
+        if (pane) { showPane(pane); openSettings(); return; }
         var page = n.getAttribute("data-page");
         /* "New chat" is an action as well as a destination, matching the
            reference: clicking it from within Chat starts a fresh one. */
@@ -4295,41 +4419,6 @@
       });
     });
 
-    /* ---------- Chat / Work mode ---------- */
-    function setMode(mode) {
-      currentMode = mode;
-      $$(".sc-mode-item").forEach(function (b) {
-        var on = b.getAttribute("data-mode") === mode;
-        b.classList.toggle("is-active", on);
-        b.setAttribute("aria-selected", String(on));
-      });
-      var work = mode === "work";
-      $("#approveBtn").hidden = !work;
-      $("#workCtx").hidden = !work;
-      $("#worklist").hidden = !work;
-      $("#suggestions").hidden = work;
-      $("#composerHint").hidden = work;
-      $("#input").placeholder = work ? "Work with skyChat" : "Message skyChat";
-      $("#greeting").textContent = work ? "What should we work on?" : greetText();
-      $("#greetSub").hidden = work;
-      /* SVGElement.hidden is a plain JS property, not a reflected attribute, so
-         it never reaches the [hidden] CSS rule. Toggle the attribute instead. */
-      $("#greetSpark").toggleAttribute("hidden", work);
-      syncComposerShape();
-      if (activeChat) { activeChat = null; setActiveItem(null); goHome(); }
-    }
-    $$(".sc-mode-item").forEach(function (b) {
-      b.addEventListener("click", function () { setMode(b.getAttribute("data-mode")); });
-    });
-
-    /* Composer is a pill on an empty single-line Chat, and a two-row box once
-       there is text or when Work mode adds its own controls. */
-    function syncComposerShape() {
-      var c = $("#composer"); if (!c) return;
-      var el = $("#input");
-      var multiline = el.value.indexOf("\n") !== -1 || el.scrollHeight > 30;
-      c.classList.toggle("is-expanded", currentMode === "work" || el.value.trim() !== "" || multiline);
-    }
 
     /* ---------- Projects ---------- */
     var PROJECTS = [
@@ -4471,7 +4560,7 @@
         '<span class="pi-desc">' + esc(o.d) + '</span></span>' + right + '</div>';
     }
     $("#installedStrip").innerHTML = INSTALLED_ICONS.map(function (n) {
-      return '<span>' + svg(n === "chart" ? "chart" : n, 19) + '</span>';
+      return '<span>' + svg(n, 19) + '</span>';
     }).join("");
     $("#featuredGrid").innerHTML = FEATURED.map(function (o) { return pRow(o); }).join("");
     $("#productivityGrid").innerHTML = PRODUCTIVITY.map(function (o) { return pRow(o); }).join("");
@@ -4482,11 +4571,19 @@
       b.addEventListener("click", function () { toast("Installing " + b.getAttribute("data-install") + " is not wired yet"); });
     });
 
-    $$("#agentTabs button").forEach(function (b) {
+    /* Your agents (configure) and Browse (install) are two jobs on the same
+       objects, so they are tabs in one pane rather than two rail entries. */
+    $$("[data-agsub]").forEach(function (b) {
       b.addEventListener("click", function () {
-        var k = b.getAttribute("data-agenttab");
-        $$("#agentTabs button").forEach(function (x) { x.classList.toggle("is-active", x === b); });
-        $$("[data-apane]").forEach(function (p) { p.hidden = p.getAttribute("data-apane") !== k; });
+        var k = b.getAttribute("data-agsub");
+        $$("[data-agsub]").forEach(function (x) {
+          var on = x === b;
+          x.classList.toggle("is-active", on);
+          x.setAttribute("aria-selected", on ? "true" : "false");
+        });
+        $$("[data-agsubpanel]").forEach(function (p) {
+          p.hidden = p.getAttribute("data-agsubpanel") !== k;
+        });
       });
     });
     $$(".sc-subseg").forEach(function (seg) {
@@ -4505,7 +4602,7 @@
         var act = it.getAttribute("data-act");
         closeMenu();
         if (act === "marketplace") { $("#mktDialog").hidden = false; $("#mktSource").focus(); }
-        else if (act === "create") { setPage("chat"); $("#input").value = "help me create an agent"; $("#input").dispatchEvent(new Event("input", { bubbles: true })); $("#greeting").textContent = "What's on your mind today?"; }
+        else if (act === "create") { closeSettings(); setPage("chat"); $("#input").value = "help me create an agent"; $("#input").dispatchEvent(new Event("input", { bubbles: true })); $("#greeting").textContent = "What's on your mind today?"; }
         else toast("Skill recording is not wired yet");
       });
     });
@@ -4527,9 +4624,6 @@
     $("#railBell").addEventListener("click", function () { toast("No new notifications"); });
     $("#brandBtn").addEventListener("click", function () { toast("Workspace switcher is not wired yet"); });
     $("#micBtn").addEventListener("click", function () { toast("Dictation is not wired yet"); });
-    $("#approveBtn").addEventListener("click", function () { toast("Approval mode is not wired yet"); });
-    $("#agentsRefresh").addEventListener("click", function () { toast("Refreshed"); });
-    $("#agentsGear").addEventListener("click", function () { showPane("agents"); openSettings(); });
 
     /* ---------- Top bar: memory, theme, new chat, rail ---------- */
     $("#memoryBtn").addEventListener("click", function () { toast("Memory has been cleared"); });

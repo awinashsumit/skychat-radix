@@ -20,7 +20,8 @@ YOU
   Account            profile, tenant/instance, my theme, my language
 THIS INSTANCE
   People and roles   members, platform admins, roles
-  Agents
+  Agents             your agents (configure) + browse (install)
+  Skills
   Connections
   Branding           accent, logos, favicon, SEO, defaults for new members
   Voice
@@ -500,6 +501,50 @@ discovered later in the queue.
   to a button; the reply is the primary act.
 - **Status and priority in the detail header sit with the identity**, not beside the actions,
   per the affordance rule established for connections.
+
+---
+
+# Configuration is a detour, not a destination
+
+Late in the build, Agents and Skills existed **twice**: as a full-screen page reached from the
+sidebar, and as panes inside this modal. That is worth writing down, because the duplication
+arrived one reasonable step at a time and neither step looked wrong on its own.
+
+## Why the full-screen page was wrong
+
+Two separate objections, and the second is the one that matters.
+
+**It broke the flow.** You are mid-conversation, you want to turn a connector on, and reaching
+that switch costs you the screen you were working in. Coming back is a second navigation you
+should never have had to make. A settings modal keeps the chat mounted behind it: close the
+modal and you are exactly where you left off, with no state to restore.
+
+**It split one job across two places.** With both surfaces live, "where do I manage agents" had
+two answers that showed different things — the page listed a marketplace, the pane listed
+configuration. Nothing told you which one you wanted. That is worse than either surface alone,
+and it is the real cost of the duplication.
+
+The internal tell was already visible in the composer's `+` menu: **Manage connectors** opened
+the settings modal while **Manage agents** and **Manage skills** navigated to a page. Three
+sibling items in one menu, two different kinds of destination.
+
+## The rule
+
+> Anything you *configure* lives in Settings. The sidebar is for places you *work*.
+
+So the sidebar keeps Chat, Projects, and Scheduled — things you inhabit — and its **Agents**
+entry is now a shortcut that opens Settings on that pane rather than a fourth destination. It
+deliberately does **not** take the active nav state, because you have not gone anywhere. Every
+`+` menu "manage" action resolves the same way, so all routes to a given surface are identical.
+
+## Why Agents kept two tabs and Skills did not
+
+Agents carries two genuinely different jobs on the same objects — *configure the ones you have*
+and *install new ones* — so it has **Your agents** and **Browse** inside one pane. Two rail
+entries would have re-created the split this section exists to remove.
+
+Skills only has the browse job today, so it gets no tabs, per the rule already set out under
+"Tabs came back, but only where they are earned".
 
 ---
 

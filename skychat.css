@@ -223,23 +223,6 @@
 .sc-upgrade svg { width: 14px; height: 14px; color: var(--accent-9); }
 .sc-upgrade:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--color-panel-solid), 0 0 0 4px var(--focus-ring); }
 
-/* Chat / Work mode switch, centred over the main pane. */
-.sc-mode {
-  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  display: inline-flex; gap: 2px; padding: 3px;
-  background: var(--gray-3); border-radius: var(--radius-full);
-}
-.sc-mode-item {
-  height: 28px; padding: 0 var(--space-5);
-  border: 0; background: transparent; border-radius: var(--radius-full);
-  font-family: inherit; font-size: var(--fs-2); font-weight: var(--weight-medium);
-  color: var(--fg-low); cursor: pointer;
-  transition: background .12s ease-in-out, color .12s ease-in-out;
-}
-.sc-mode-item:hover { color: var(--fg-high); }
-.sc-mode-item.is-active { background: var(--color-panel-solid); color: var(--fg-high); box-shadow: var(--shadow-2); }
-.sc-mode-item:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
-
 .sc-topbar-title {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
   text-align: center; max-width: 40%; pointer-events: none;
@@ -305,6 +288,48 @@
 .sc-menu-item.is-danger:hover, .sc-menu-item.is-danger:focus-visible { background: var(--red-9); color: #fff; }
 .sc-menu-item.is-danger:hover .mi-ic, .sc-menu-item.is-danger:focus-visible .mi-ic { color: #fff; }
 
+/* Submenu support, copied from the reference's + menu. A parent row keeps the
+   hover treatment while its submenu is open, so the active path stays legible
+   once the pointer has moved off it and into the child. */
+.sc-menu-item .mi-chev { width: 15px; height: 15px; flex: 0 0 auto; margin-top: 2px; color: var(--fg-subtle); }
+.sc-menu-item .mi-kbd { flex: 0 0 auto; margin-top: 1px; font-size: var(--fs-1); color: var(--fg-subtle); letter-spacing: .02em; }
+.sc-menu-item.is-open { background: var(--accent-9); color: var(--accent-contrast); }
+.sc-menu-item.is-open .mi-ic, .sc-menu-item.is-open .mi-chev, .sc-menu-item.is-open .mi-kbd { color: var(--accent-contrast); }
+.sc-menu-item:hover .mi-chev, .sc-menu-item:focus-visible .mi-chev,
+.sc-menu-item:hover .mi-kbd, .sc-menu-item:focus-visible .mi-kbd { color: var(--accent-contrast); }
+
+/* A long submenu scrolls rather than running off-screen. The scroll and its
+   fade live on an INNER region, not the menu: a mask on the menu itself clips
+   its own box-shadow (the panel loses its edge), and a footer inside the
+   scroller would scroll away instead of staying pinned. */
+.sc-menu-scroll {
+  max-height: 250px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 1px;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
+          mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
+}
+.sc-menu-scroll::-webkit-scrollbar { width: 8px; }
+.sc-menu-scroll::-webkit-scrollbar-thumb { background: var(--gray-6); border-radius: var(--radius-full); border: 2px solid var(--color-panel-solid); }
+
+/* Rows that carry a switch (connectors) rather than an action. */
+.sc-menu-item.has-switch { align-items: center; cursor: default; }
+.sc-menu-item.has-switch .mi-text { font-weight: var(--weight-regular); }
+/* The DS switch is 40px, sized for form rows; scaled down here so it sits
+   inside a compact menu row without dominating it. */
+.sc-menu-item.has-switch .switch { flex: 0 0 auto; transform: scale(.8); transform-origin: right center; }
+.sc-menu-item.has-switch:hover { background: var(--gray-3); color: var(--fg-high); }
+.sc-menu-item.has-switch:hover .mi-ic { color: var(--fg-low); }
+
+/* Small brand tile used for connector / skill rows in menus. */
+.mi-tile {
+  width: 18px; height: 18px; flex: 0 0 auto; margin-top: 1px;
+  border-radius: var(--radius-1);
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--accent-3); color: var(--accent-9);
+}
+.mi-tile svg { width: 12px; height: 12px; }
+.sc-menu-item:hover .mi-tile, .sc-menu-item.is-open .mi-tile { background: var(--accent-contrast); color: var(--accent-9); }
+
 /* ---- Views ---- */
 .sc-view { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .sc-view[hidden] { display: none; }
@@ -329,44 +354,6 @@
 
 /* 605px measured -> 608px. */
 .sc-hero-stack { width: 100%; max-width: 608px; display: flex; flex-direction: column; align-items: stretch; gap: var(--space-4); }
-
-/* Work-mode task suggestions: quiet text rows under the composer, not chips. */
-.sc-worklist { display: flex; flex-direction: column; gap: 2px; margin-top: var(--space-2); }
-.sc-worklist button {
-  display: flex; align-items: center; gap: var(--space-3);
-  height: 36px; padding: 0 var(--space-2);
-  border: 0; background: transparent; border-radius: var(--radius-3);
-  color: var(--fg-low); font-family: inherit; font-size: var(--fs-2);
-  cursor: pointer; text-align: left;
-  transition: background .12s ease-in-out, color .12s ease-in-out;
-}
-.sc-worklist button svg { width: 17px; height: 17px; flex: 0 0 auto; color: var(--fg-subtle); }
-.sc-worklist button:hover { background: var(--gray-2); color: var(--fg-high); }
-.sc-worklist button:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
-
-/* Work-mode context strip, tucked under the composer as one connected unit. */
-.sc-workctx {
-  display: flex; align-items: center; gap: var(--space-3);
-  height: 44px; padding: 0 var(--space-4);
-  margin: -10px var(--space-3) 0;
-  border: var(--stroke-thin) solid var(--border-subtle); border-top: 0;
-  border-radius: 0 0 var(--radius-4) var(--radius-4);
-  background: var(--gray-2);
-  font-size: var(--fs-2); color: var(--fg-low);
-}
-.sc-workctx .wc-btn {
-  display: inline-flex; align-items: center; gap: var(--space-2);
-  border: 0; background: transparent; padding: 0; cursor: pointer;
-  font-family: inherit; font-size: var(--fs-2); color: var(--fg-high);
-}
-.sc-workctx .wc-btn svg { width: 16px; height: 16px; color: var(--fg-low); }
-.sc-workctx .wc-spacer { flex: 1; }
-.sc-workctx .wc-icons { display: inline-flex; gap: var(--space-1); }
-.sc-workctx .wc-icons span {
-  width: 18px; height: 18px; border-radius: var(--radius-1);
-  display: inline-flex; align-items: center; justify-content: center;
-  font-size: 9px; font-weight: var(--weight-bold); color: #fff;
-}
 
 /* Suggestion chips */
 .sc-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); }
@@ -480,35 +467,29 @@
 .sc-hero .sc-composer-zone { padding: 0; background: transparent; width: 100%; }
 .sc-hero .sc-composer-zone::before { display: none; }
 
+/* One shape, always: text on its own row with the controls beneath it, as in
+   the reference. There is no pill state — the box does not change on typing. */
 .sc-composer {
   max-width: 608px; width: 100%; margin: 0 auto;
   display: grid; align-items: center;
-  grid-template-columns: auto 1fr auto;
-  grid-template-areas: "plus input tools";
-  min-height: 48px; padding: 0 var(--space-2) 0 var(--space-2);
+  grid-template-columns: auto 1fr;
+  grid-template-areas: "input input" "plus tools";
+  grid-template-rows: 1fr auto;
+  min-height: 132px; padding: var(--space-3);
   background: var(--color-surface);
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-6);
   box-shadow: inset 0 0 0 1px var(--border-ui), var(--shadow-2);
-  transition: box-shadow .15s ease-in-out, border-radius .15s ease-in-out;
+  transition: box-shadow .15s ease-in-out;
 }
 .sc-composer:focus-within { box-shadow: inset 0 0 0 1px var(--accent-8), var(--shadow-2); }
 
-/* Expanded: text on its own row, controls beneath. */
-.sc-composer.is-expanded {
-  grid-template-columns: auto 1fr;
-  grid-template-areas: "input input" "plus tools";
-  border-radius: var(--radius-5);
-  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-2);
-}
-
 .sc-composer .sc-input {
-  grid-area: input;
+  grid-area: input; align-self: start;
   display: block; width: 100%; resize: none; border: 0; outline: none; background: transparent;
-  padding: 0 var(--space-2);
+  padding: var(--space-3) var(--space-2) var(--space-2);
   font-family: var(--font-base); font-size: var(--fs-2); line-height: var(--lh-2);
   color: var(--fg-high); max-height: 200px;
 }
-.sc-composer.is-expanded .sc-input { padding: var(--space-2) var(--space-2) var(--space-3); }
 .sc-composer .sc-input::placeholder { color: var(--fg-subtle); }
 
 .sc-plus {
@@ -524,7 +505,6 @@
 .sc-plus:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
 
 .sc-tools { grid-area: tools; display: flex; align-items: center; gap: var(--space-1); justify-content: flex-end; }
-.sc-tools .sc-tools-lead { margin-right: auto; }
 
 /* Model label, quiet text rather than a bordered control, as in the reference. */
 .sc-model-inline {
@@ -550,18 +530,6 @@
 .sc-mic svg { width: 17px; height: 17px; }
 .sc-mic:hover { background: var(--gray-3); color: var(--fg-high); }
 .sc-mic:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
-
-/* Approval chip, Work mode only. */
-.sc-approve {
-  display: inline-flex; align-items: center; gap: var(--space-2);
-  height: 30px; padding: 0 var(--space-2);
-  border: 0; border-radius: var(--radius-3); background: transparent;
-  font-family: inherit; font-size: var(--fs-2); color: var(--fg-low);
-  cursor: pointer; transition: background .12s ease-in-out, color .12s ease-in-out;
-}
-.sc-approve svg { width: 16px; height: 16px; color: var(--fg-subtle); }
-.sc-approve:hover { background: var(--gray-3); color: var(--fg-high); }
-.sc-approve:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
 
 /* Circular send, matching the reference's round arrow button. */
 .sc-send {
@@ -1236,7 +1204,7 @@
 .sc-prow:hover { background: var(--gray-2); }
 .sc-prow-name { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
 .sc-prow-name > svg { width: 18px; height: 18px; flex: 0 0 auto; color: var(--fg-low); }
-.sc-prow-name .pn { font-size: var(--fs-3); color: var(--fg-high); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-prow-name .pn { min-width: 0; font-size: var(--fs-3); color: var(--fg-high); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sc-prow-name .pn-kind { width: 16px; height: 16px; flex: 0 0 auto; color: var(--fg-subtle); }
 .sc-prow-when { font-size: var(--fs-2); color: var(--fg-low); }
 .sc-prow-acts { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-1); opacity: 0; transition: opacity .12s ease-in-out; }
@@ -1257,14 +1225,15 @@
 .sc-listrow .lr-desc { display: block; margin-top: 2px; font-size: var(--fs-2); line-height: var(--lh-2); color: var(--fg-low); }
 
 /* ---- Plugin / skill grid ---- */
-.sc-pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-1) var(--space-6); }
+/* Two up when there is room, one up in the narrower settings body. */
+.sc-pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-1) var(--space-6); }
 .sc-pitem { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-2); border-radius: var(--radius-3); }
 .sc-pitem:hover { background: var(--gray-2); }
 .sc-pitem .pi-ic { width: 34px; height: 34px; flex: 0 0 auto; border-radius: var(--radius-3); display: inline-flex; align-items: center; justify-content: center; background: var(--accent-3); color: var(--accent-9); }
 .sc-pitem .pi-ic svg { width: 18px; height: 18px; }
 .sc-pitem .pi-body { flex: 1; min-width: 0; }
-.sc-pitem .pi-name { font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
-.sc-pitem .pi-desc { margin-top: 1px; font-size: var(--fs-2); color: var(--fg-low); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-pitem .pi-name { display: block; font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+.sc-pitem .pi-desc { display: block; margin-top: 1px; font-size: var(--fs-2); color: var(--fg-low); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sc-pitem .pi-check { width: 17px; height: 17px; flex: 0 0 auto; color: var(--fg-subtle); }
 
 /* Installed app-icon strip. */
@@ -1289,18 +1258,8 @@
 .sc-subseg button.is-active { background: var(--gray-3); color: var(--fg-high); }
 .sc-subseg button:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
 
-/* Page-level tab pair (Plugins | Skills) sitting in the top bar. */
-.sc-pagetabs { display: inline-flex; gap: 2px; }
-.sc-pagetabs button {
-  height: 28px; padding: 0 var(--space-3);
-  border: 0; border-radius: var(--radius-3); background: transparent;
-  font-family: inherit; font-size: var(--fs-2); font-weight: var(--weight-medium);
-  color: var(--fg-low); cursor: pointer;
-  transition: background .12s ease-in-out, color .12s ease-in-out;
-}
-.sc-pagetabs button:hover { color: var(--fg-high); }
-.sc-pagetabs button.is-active { background: var(--gray-3); color: var(--fg-high); }
-.sc-pagetabs button:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
+/* Search plus its one action, on the Browse tab of the Agents pane. */
+.sc-browse-bar { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-5); }
 
 /* ---- Scheduled task editor (three-pane) ---- */
 .sc-sched { flex: 1; min-height: 0; display: flex; }
