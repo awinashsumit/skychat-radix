@@ -5,7 +5,7 @@
    Every value binds to a token; documented literals only:
    rail width 288px, top bar 64px, reading column 768px.
    ============================================================ */
-@import url("./dashboard.css?v=2");
+@import url("./dashboard.css?v=3");
 
 /* hidden attr is inert on SVG elements; enforce it */
 [hidden] { display: none !important; }
