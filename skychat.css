@@ -5,7 +5,7 @@
    Every value binds to a token; documented literals only:
    rail width 288px, top bar 64px, reading column 768px.
    ============================================================ */
-@import url("./dashboard.css?v=3");
+@import url("./dashboard.css?v=4");
 
 /* hidden attr is inert on SVG elements; enforce it */
 [hidden] { display: none !important; }
@@ -472,15 +472,18 @@
 .sc-composer {
   max-width: 608px; width: 100%; margin: 0 auto;
   display: grid; align-items: center;
-  grid-template-columns: auto 1fr;
-  grid-template-areas: "input input" "plus tools";
+  grid-template-columns: auto auto 1fr;
+  grid-template-areas: "input input input" "plus mode tools";
   grid-template-rows: 1fr auto;
   min-height: 132px; padding: var(--space-3);
   background: var(--color-surface);
   border-radius: var(--radius-6);
   box-shadow: inset 0 0 0 1px var(--border-ui), var(--shadow-2);
   transition: box-shadow .15s ease-in-out;
+  position: relative; z-index: 1;
 }
+/* In Cowork the strip below completes the shape, so the seam is squared off. */
+.sc-composer.has-ctx { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 .sc-composer:focus-within { box-shadow: inset 0 0 0 1px var(--accent-8), var(--shadow-2); }
 
 .sc-composer .sc-input {
@@ -491,6 +494,86 @@
   color: var(--fg-high); max-height: 200px;
 }
 .sc-composer .sc-input::placeholder { color: var(--fg-subtle); }
+
+/* Mode pair, sitting with the composer it modifies. Same track+pill idiom as
+   the DS segmented control, sized down to the composer's control row. */
+.sc-cmode {
+  grid-area: mode; justify-self: start;
+  display: inline-flex; gap: 2px; padding: 3px; margin-left: var(--space-1);
+  background: var(--gray-3); border-radius: var(--radius-3);
+}
+.sc-cmode-item {
+  height: 26px; padding: 0 var(--space-3);
+  border: 0; background: transparent; border-radius: var(--radius-2);
+  font-family: inherit; font-size: var(--fs-2); font-weight: var(--weight-medium);
+  color: var(--fg-low); cursor: pointer; white-space: nowrap;
+  transition: background .12s ease-in-out, color .12s ease-in-out;
+}
+.sc-cmode-item:hover { color: var(--fg-high); }
+.sc-cmode-item.is-active { background: var(--color-panel-solid); color: var(--fg-high); box-shadow: var(--shadow-2); }
+.sc-cmode-item:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
+
+/* Cowork context strip: the composer's lower half, not a separate panel. */
+.sc-ctx {
+  max-width: 608px; width: 100%; margin: 0 auto;
+  display: flex; align-items: center; gap: var(--space-2);
+  min-height: 48px; padding: 0 var(--space-3);
+  background: var(--gray-2);
+  border-radius: 0 0 var(--radius-6) var(--radius-6);
+  box-shadow: inset 0 0 0 1px var(--border-ui);
+}
+.sc-ctx-spacer { flex: 1; }
+.sc-ctx-btn {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  height: 32px; padding: 0 var(--space-2);
+  border: 0; border-radius: var(--radius-3); background: transparent;
+  font-family: inherit; font-size: var(--fs-2); color: var(--fg-high);
+  cursor: pointer; white-space: nowrap;
+  transition: background .12s ease-in-out;
+}
+.sc-ctx-btn > svg:first-child { width: 16px; height: 16px; color: var(--fg-low); }
+.sc-ctx-btn .sc-chevron { width: 14px; height: 14px; color: var(--fg-subtle); }
+.sc-ctx-btn:hover,
+.sc-ctx-btn[aria-expanded="true"] { background: var(--color-surface); box-shadow: inset 0 0 0 1px var(--border-ui); }
+.sc-ctx-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
+.sc-ctx-info {
+  width: 28px; height: 28px; flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: var(--radius-full); background: transparent;
+  color: var(--fg-subtle); cursor: pointer;
+}
+.sc-ctx-info svg { width: 16px; height: 16px; }
+.sc-ctx-info:hover { color: var(--fg-high); }
+.sc-ctx-info:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
+
+/* Cowork "Ideas for you": named jobs as quiet rows, not chips. */
+.sc-ideas { width: 100%; max-width: 608px; margin: var(--space-5) auto 0; text-align: left; }
+.sc-ideas-label { font-size: var(--fs-2); color: var(--fg-subtle); margin-bottom: var(--space-2); }
+.sc-ideas button {
+  display: flex; align-items: center; gap: var(--space-4);
+  width: 100%; height: 48px; padding: 0 var(--space-2);
+  border: 0; background: transparent; border-radius: var(--radius-3);
+  font-family: inherit; font-size: var(--fs-3); color: var(--fg-high);
+  cursor: pointer; text-align: left;
+  transition: background .12s ease-in-out;
+}
+.sc-ideas button svg { width: 22px; height: 22px; flex: 0 0 auto; color: var(--fg-subtle); }
+.sc-ideas button:hover { background: var(--gray-2); }
+.sc-ideas button:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
+
+/* Search field pinned at the top of a menu. */
+.sc-menu-search { position: relative; padding: var(--space-1) var(--space-1) var(--space-2); }
+.sc-menu-search svg {
+  position: absolute; left: var(--space-3); top: 50%; transform: translateY(-50%);
+  width: 15px; height: 15px; color: var(--fg-subtle); pointer-events: none;
+}
+.sc-menu-search input {
+  width: 100%; height: 30px; padding: 0 var(--space-2) 0 var(--space-7);
+  border: 0; border-radius: var(--radius-3); background: transparent;
+  font-family: inherit; font-size: var(--fs-2); color: var(--fg-high);
+}
+.sc-menu-search input::placeholder { color: var(--fg-subtle); }
+.sc-menu-search input:focus { outline: none; background: var(--gray-2); }
 
 .sc-plus {
   grid-area: plus;
@@ -1305,3 +1388,5 @@
 .sc-taskrow .tr-radio { width: 18px; height: 18px; flex: 0 0 auto; margin-top: 1px; border-radius: var(--radius-full); box-shadow: inset 0 0 0 1.5px var(--border-strong); }
 .sc-taskrow .tr-title { display: block; font-size: var(--fs-2); font-weight: var(--weight-medium); color: var(--fg-high); }
 .sc-taskrow .tr-meta { display: block; margin-top: 2px; font-size: var(--fs-2); color: var(--fg-subtle); }
+
+.sc-menu-empty { padding: var(--space-3) var(--space-3) var(--space-4); font-size: var(--fs-2); color: var(--fg-subtle); }

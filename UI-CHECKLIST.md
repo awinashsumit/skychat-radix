@@ -230,9 +230,30 @@ Every interactive element defines: rest / hover / active / focus-visible / disab
         text inset 20px from the box edge in both.
       - `min-height` rather than a fixed height, so short input sits in a stable box (two
         lines still measure 132px) and long input grows to the 200px textarea cap.
-      - **Omitted deliberately: the Chat / Cowork toggle** visible in the reference's bottom
-        row. Work mode was removed one instruction earlier in the same session, so reinstating
-        it here would have contradicted that. The slot is free if it comes back.
+      - The **Chat / Cowork toggle** was held back on the first pass and added on the next
+        instruction — see below.
+
+- [x] **Chat / Cowork, in the composer** (client reference, 2026-08-20). The mode pair sits in
+      the composer's control row beside `+`, not in the top bar. It changes what that control
+      does, so it belongs with it, and the earlier top-bar placement left the switch far from
+      the thing it switched.
+      - Reuses the DS track+pill idiom (`.sc-cmode`), sized to the composer's 26px control row
+        rather than the 28px top-bar row.
+      - **Cowork adds a context strip** attached under the composer. The composer squares off
+        its bottom corners (`.has-ctx`) so the two read as one control, not a panel with
+        something stuck beneath it.
+      - The strip carries the two decisions a multi-step run needs up front: **which project**
+        it works in, and **how much it may do unattended** (Manually approve / Automatically
+        approve / Skip all approvals). Both are per-run, which is why they are here and not in
+        a settings pane.
+      - **Skip all approvals is the only one that confirms back.** It is the single choice with
+        a blast radius, so it gets a toast; the other two are silent, per the immediate-save
+        rule. Consistent with the analytics colour rule — weight follows consequence.
+      - Cowork swaps the four suggestion chips for **Ideas for you**, three named jobs as quiet
+        rows, and drops the greeting's second line, since the composer placeholder already asks
+        the question. Chat keeps chips, subtitle, and "Message skyChat".
+      - Mode, project, and approval all survive the move into a conversation — the composer is
+        one instance relocated between slots, so there is no second copy to keep in sync.
 
       Original entry (client feedback, confirmed explicitly 2026-08-12 after the first pass
       held it back — see above). Reused the DS `.segmented` track+pill verbatim (same component

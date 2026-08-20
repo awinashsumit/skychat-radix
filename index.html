@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3CclipPath id='b'%3E%3Crect x='3' y='3' width='26' height='21' rx='5.5'/%3E%3Cpath d='M29 16v10.4a1.8 1.8 0 0 1-2.9 1.4L20 23z'/%3E%3C/clipPath%3E%3Cg clip-path='url(%23b)'%3E%3Crect width='32' height='32' fill='%23fff0d1'/%3E%3Crect x='16' width='16' height='32' fill='%23ffb31c' opacity='.3'/%3E%3C/g%3E%3Cg fill='%23ffb31c'%3E%3Ccircle cx='10' cy='13.5' r='2.2'/%3E%3Ccircle cx='16' cy='13.5' r='2.2'/%3E%3Ccircle cx='22' cy='13.5' r='2.2'/%3E%3C/g%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="./skychat.css?v=3" />
+  <link rel="stylesheet" href="./skychat.css?v=4" />
 </head>
 <body>
   <div class="sc-app" id="app">
@@ -157,6 +157,22 @@
                 Research
               </button>
             </div>
+            <!-- Cowork swaps the chips for named jobs, as in the reference. -->
+            <div class="sc-ideas" id="ideas" hidden>
+              <div class="sc-ideas-label">Ideas for you</div>
+              <button data-fill="Send me a daily briefing on occupancy and staffing">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v2"/><path d="m4.93 6.93 1.41 1.41"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="m17.66 8.34 1.41-1.41"/><path d="M8 18a4 4 0 1 1 8 0"/><path d="M3 18h18"/><path d="M5 22h14"/></svg>
+                Send me a daily briefing
+              </button>
+              <button data-fill="Organize my inbox and flag anything urgent">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/></svg>
+                Organize my inbox
+              </button>
+              <button data-fill="Customize Cowork for how I work">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 12h5"/><path d="M8 16h8"/></svg>
+                Customize Cowork for me
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -291,6 +307,12 @@
         <button class="sc-plus" id="plusBtn" aria-label="Add attachment or context" data-tip="Add">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
         </button>
+        <!-- Mode lives in the composer, not the top bar: it changes what this
+             control does, so it belongs with it. -->
+        <div class="sc-cmode" id="modeSwitch" role="tablist" aria-label="Mode">
+          <button class="sc-cmode-item is-active" data-mode="chat" role="tab" aria-selected="true">Chat</button>
+          <button class="sc-cmode-item" data-mode="cowork" role="tab" aria-selected="false">Cowork</button>
+        </div>
         <div class="sc-tools">
           <button class="sc-model-inline" id="kbBtn" aria-haspopup="menu" aria-expanded="false">
             <span id="kbLabel">Auto</span>
@@ -304,11 +326,65 @@
           </button>
         </div>
       </div>
+      <!-- Cowork context strip, tucked under the composer as one unit. -->
+      <div class="sc-ctx" id="coworkCtx" hidden>
+        <button class="sc-ctx-btn" id="ctxProject" aria-haspopup="menu" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="5" x="2" y="4" rx="2"/><path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/></svg>
+          <span id="ctxProjectLabel">Project or folder</span>
+          <svg class="sc-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <button class="sc-ctx-btn" id="ctxApproval" aria-haspopup="menu" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>
+          <span id="ctxApprovalLabel">Manual</span>
+          <svg class="sc-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <span class="sc-ctx-spacer"></span>
+        <button class="sc-ctx-info" id="ctxInfo" aria-label="About Cowork" data-tip="Cowork runs multi-step work for you">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+        </button>
+      </div>
       <div class="sc-hint" id="composerHint">Enter to send, Shift+Enter for a new line</div>
     </div>
   </template>
 
   <!-- ============ Menus ============ -->
+  <!-- Cowork: which project the run works in, and how much it may do unattended. -->
+  <div class="sc-menu" id="projectMenu" role="menu" hidden style="min-width:260px;">
+    <div class="sc-menu-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+      <input id="projSearch" placeholder="Search projects" aria-label="Search projects" />
+    </div>
+    <hr class="sc-menu-sep" />
+    <div id="projMenuList"></div>
+    <hr class="sc-menu-sep" />
+    <button class="sc-menu-item" role="menuitem" data-projact="create">
+      <svg class="mi-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+      <span class="mi-text"><span class="mi-title">Create new project</span></span>
+    </button>
+    <button class="sc-menu-item" role="menuitem" data-projact="folder">
+      <svg class="mi-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/><path d="M12 10v6"/><path d="M9 13h6"/></svg>
+      <span class="mi-text"><span class="mi-title">Add a folder</span></span>
+    </button>
+  </div>
+
+  <div class="sc-menu" id="approvalMenu" role="menu" hidden style="min-width:230px;">
+    <button class="sc-menu-item is-selected" role="menuitemradio" aria-checked="true" data-approval="manual" data-label="Manual">
+      <svg class="mi-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>
+      <span class="mi-text"><span class="mi-title">Manually approve</span></span>
+      <svg class="mi-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+    </button>
+    <button class="sc-menu-item" role="menuitemradio" aria-checked="false" data-approval="auto" data-label="Automatic">
+      <svg class="mi-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m6 5 8 7-8 7z"/><path d="m14 5 8 7-8 7z"/></svg>
+      <span class="mi-text"><span class="mi-title">Automatically approve</span></span>
+      <svg class="mi-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+    </button>
+    <button class="sc-menu-item" role="menuitemradio" aria-checked="false" data-approval="skip" data-label="No approvals">
+      <svg class="mi-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+      <span class="mi-text"><span class="mi-title">Skip all approvals</span></span>
+      <svg class="mi-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+    </button>
+  </div>
+
   <div class="sc-menu" id="modelMenu" role="menu" hidden style="min-width:300px;">
     <div class="sc-menu-label">Model</div>
     <button class="sc-menu-item is-selected" role="menuitemradio" aria-checked="true" data-model="GPT-5.6 Luna">
@@ -1805,6 +1881,7 @@
     var activeChat = null;        // data-chat id of the open conversation
     var chatData = {};            // id -> {title, meta, seeded}
     var currentModel = "GPT-5.6 Luna";
+    var currentMode = "chat";
     var currentKb = "General Knowledge";
 
     /* ---------- Greeting by time of day ---------- */
@@ -2218,7 +2295,9 @@
        menu can never drift from what the rest of the app shows. */
     var openSub = null, openSubParent = null;
 
-    function composerPlaceholder() { return "Message skyChat"; }
+    function composerPlaceholder() {
+      return currentMode === "cowork" ? "How can I help you today?" : "Message skyChat";
+    }
     function closeSubmenu() {
       if (!openSub) return;
       /* The Skills submenu swaps the placeholder to hint the "/" shortcut, so
@@ -4419,6 +4498,102 @@
       });
     });
 
+
+    /* ---------- Chat / Cowork mode ----------
+       Chat answers; Cowork runs multi-step work, so it needs two extra
+       decisions up front: where the work happens (project) and how much it may
+       do unattended (approval). Those live in a strip attached to the composer
+       rather than a settings pane, because they are per-run, not per-account. */
+    var coworkProject = null, coworkApproval = "manual";
+
+    function setMode(mode) {
+      currentMode = mode;
+      $$(".sc-cmode-item", composerUnit).forEach(function (b) {
+        var on = b.getAttribute("data-mode") === mode;
+        b.classList.toggle("is-active", on);
+        b.setAttribute("aria-selected", String(on));
+      });
+      var cw = mode === "cowork";
+      $("#coworkCtx", composerUnit).hidden = !cw;
+      $("#composer", composerUnit).classList.toggle("has-ctx", cw);
+      $("#input", composerUnit).placeholder = composerPlaceholder();
+      $("#ideas").hidden = !cw;
+      $("#suggestions").hidden = cw;
+      /* The reference drops the greeting's second line in Cowork, where the
+         composer's own placeholder already asks the question. */
+      $("#greetSub").hidden = cw;
+      closeMenu();
+      if (activeChat) { activeChat = null; setActiveItem(null); goHome(); }
+    }
+    composerUnit.addEventListener("click", function (e) {
+      var b = e.target.closest(".sc-cmode-item");
+      if (b) setMode(b.getAttribute("data-mode"));
+    });
+
+    /* Cowork: project picker. */
+    function renderProjMenu(q) {
+      var list = PROJECTS.filter(function (p) {
+        return !q || p.name.toLowerCase().indexOf(q.toLowerCase()) !== -1;
+      });
+      $("#projMenuList").innerHTML = list.length
+        ? list.map(function (p) {
+            return '<button class="sc-menu-item' + (coworkProject === p.id ? " is-selected" : "") +
+              '" role="menuitemradio" aria-checked="' + (coworkProject === p.id) + '" data-proj="' + p.id + '">' +
+              '<svg class="mi-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="5" x="2" y="4" rx="2"/><path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/></svg>' +
+              '<span class="mi-text"><span class="mi-title">' + esc(p.name) + '</span></span>' +
+              '<svg class="mi-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' +
+              '</button>';
+          }).join("")
+        : '<div class="sc-menu-empty">No projects match that search.</div>';
+    }
+    composerUnit.addEventListener("click", function (e) {
+      var p = e.target.closest("#ctxProject");
+      if (p) { renderProjMenu($("#projSearch").value); openMenu($("#projectMenu"), p, "below"); return; }
+      var a = e.target.closest("#ctxApproval");
+      if (a) openMenu($("#approvalMenu"), a, "below");
+    });
+    $("#projSearch").addEventListener("input", function () { renderProjMenu(this.value); });
+    $("#projSearch").addEventListener("click", function (e) { e.stopPropagation(); });
+    $("#projectMenu").addEventListener("click", function (e) {
+      var row = e.target.closest("[data-proj]");
+      if (row) {
+        coworkProject = row.getAttribute("data-proj");
+        var p = PROJECTS.filter(function (x) { return x.id === coworkProject; })[0];
+        $("#ctxProjectLabel", composerUnit).textContent = p ? p.name : "Project or folder";
+        closeMenu(); return;
+      }
+      var act = e.target.closest("[data-projact]");
+      if (act) {
+        closeMenu();
+        toast(act.getAttribute("data-projact") === "create"
+          ? "Creating a project is not wired yet"
+          : "Adding a folder is not wired yet");
+      }
+    });
+    $$("#approvalMenu .sc-menu-item").forEach(function (it) {
+      it.addEventListener("click", function () {
+        coworkApproval = it.getAttribute("data-approval");
+        $("#ctxApprovalLabel", composerUnit).textContent = it.getAttribute("data-label");
+        $$("#approvalMenu .sc-menu-item").forEach(function (x) {
+          x.classList.toggle("is-selected", x === it);
+          x.setAttribute("aria-checked", String(x === it));
+        });
+        closeMenu();
+        /* Skipping approvals is the one choice with a blast radius, so it is
+           the only one that says anything back. */
+        if (coworkApproval === "skip") toast("Cowork will act without asking. You can change this any time.");
+      });
+    });
+    $("#ctxInfo", composerUnit).addEventListener("click", function () {
+      toast("Cowork plans and runs multi-step work, checking in as often as you allow.");
+    });
+
+    $$("#ideas button").forEach(function (b) {
+      b.addEventListener("click", function () {
+        input.value = b.getAttribute("data-fill");
+        autogrow(); syncSend(); input.focus();
+      });
+    });
 
     /* ---------- Projects ---------- */
     var PROJECTS = [
