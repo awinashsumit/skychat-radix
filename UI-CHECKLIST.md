@@ -254,6 +254,26 @@ Every interactive element defines: rest / hover / active / focus-visible / disab
         the question. Chat keeps chips, subtitle, and "Message skyChat".
       - Mode, project, and approval all survive the move into a conversation — the composer is
         one instance relocated between slots, so there is no second copy to keep in sync.
+      - **The strip sits behind the composer, not welded to it.** First attempt squared off the
+        composer's bottom corners so the two formed one tall box, which produced a hard seam
+        the reference does not have. The composer now keeps all four corners and its shadow,
+        and the strip is a card tucked up behind it by one corner-radius, so only its lower
+        band shows. The composer stays the object in front; the strip reads as something it
+        rests on.
+
+- [x] **Dark-mode fix: the active segmented pill was recessed, not raised** (found while
+      building the mode pair). `.segmented-item.is-active` used `--color-panel-solid`, which is
+      `#ffffff` in light — above the `#f0f0f0` track — but `--gray-2` (`#191919`) in dark, which
+      is *darker* than the `#222222` track. The active pill sank and the inactive one read as
+      selected. Now overridden to `--gray-5` under `:root[data-theme="dark"]`.
+      This is a DS-level rule, so it also corrects the Analytics date range and the Agents
+      status filter, which had the same inversion.
+
+> **Tooling note for whoever debugs this next.** `getComputedStyle` in the preview browser
+> returned stale values for the composer subtree after a live theme toggle — reporting the
+> light-theme colour while the CSSOM showed the dark rule matching with higher specificity.
+> Screenshots showed the correct paint throughout. Trust the pixels over `getComputedStyle`
+> here, and discard screenshots taken mid theme-transition.
 
       Original entry (client feedback, confirmed explicitly 2026-08-12 after the first pass
       held it back — see above). Reused the DS `.segmented` track+pill verbatim (same component

@@ -4,7 +4,7 @@
    the 1px-ring shadow) on Skypoint amber + Inter.
    All values derive from tokens.css. Never hardcode colors/sizes.
    ============================================================ */
-@import url("./tokens.css?v=4");
+@import url("./tokens.css?v=7");
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -521,6 +521,12 @@ a { color: inherit; }
 .segmented-item { display: inline-flex; align-items: center; gap: var(--space-1); height: 28px; padding: 0 var(--space-3); border: 0; background: transparent; color: var(--fg-low); font-family: var(--font-base); font-size: var(--fs-2); font-weight: var(--weight-medium); border-radius: var(--radius-2); cursor: pointer; }
 .segmented-item:hover { color: var(--fg-high); }
 .segmented-item.is-active { background: var(--color-panel-solid); color: var(--fg-high); box-shadow: var(--shadow-2); }
+/* The active pill must read as RAISED above its track. --color-panel-solid is
+   white in light (above the --gray-3 track) but --gray-2 in dark, which is
+   darker than the track and made the pill recede. Scoped by selector rather
+   than a new token: a matching change invalidates reliably, a freshly added
+   custom property did not. */
+:root[data-theme="dark"] .segmented-item.is-active { background: var(--gray-5); }
 
 /* Toggle Group - pressed/unpressed buttons (single or multi) */
 .toggle-group { display: inline-flex; gap: var(--space-1); }

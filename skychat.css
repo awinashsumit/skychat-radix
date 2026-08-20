@@ -5,7 +5,7 @@
    Every value binds to a token; documented literals only:
    rail width 288px, top bar 64px, reading column 768px.
    ============================================================ */
-@import url("./dashboard.css?v=4");
+@import url("./dashboard.css?v=7");
 
 /* hidden attr is inert on SVG elements; enforce it */
 [hidden] { display: none !important; }
@@ -482,8 +482,6 @@
   transition: box-shadow .15s ease-in-out;
   position: relative; z-index: 1;
 }
-/* In Cowork the strip below completes the shape, so the seam is squared off. */
-.sc-composer.has-ctx { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 .sc-composer:focus-within { box-shadow: inset 0 0 0 1px var(--accent-8), var(--shadow-2); }
 
 .sc-composer .sc-input {
@@ -511,17 +509,25 @@
 }
 .sc-cmode-item:hover { color: var(--fg-high); }
 .sc-cmode-item.is-active { background: var(--color-panel-solid); color: var(--fg-high); box-shadow: var(--shadow-2); }
+:root[data-theme="dark"] .sc-cmode-item.is-active { background: var(--gray-5); }
 .sc-cmode-item:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
 
-/* Cowork context strip: the composer's lower half, not a separate panel. */
+/* Cowork context strip: a card tucked BEHIND the composer, so only its lower
+   band shows. The composer keeps all four corners and stays the object in
+   front — the strip reads as something it is resting on, not a second half
+   welded to it, which is what a squared-off seam produced. */
 .sc-ctx {
-  max-width: 608px; width: 100%; margin: 0 auto;
-  display: flex; align-items: center; gap: var(--space-2);
-  min-height: 48px; padding: 0 var(--space-3);
+  max-width: 608px; width: 100%;
+  margin: calc(var(--radius-6) * -1) auto 0;
+  display: flex; align-items: flex-end; gap: var(--space-2);
+  min-height: calc(48px + var(--radius-6));
+  padding: var(--radius-6) var(--space-3) 0;
   background: var(--gray-2);
-  border-radius: 0 0 var(--radius-6) var(--radius-6);
+  border-radius: var(--radius-6);
   box-shadow: inset 0 0 0 1px var(--border-ui);
+  position: relative; z-index: 0;
 }
+.sc-ctx > * { margin-bottom: var(--space-2); }
 .sc-ctx-spacer { flex: 1; }
 .sc-ctx-btn {
   display: inline-flex; align-items: center; gap: var(--space-2);
