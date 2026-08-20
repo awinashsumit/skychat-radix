@@ -254,6 +254,23 @@ Every interactive element defines: rest / hover / active / focus-visible / disab
         the question. Chat keeps chips, subtitle, and "Message skyChat".
       - Mode, project, and approval all survive the move into a conversation — the composer is
         one instance relocated between slots, so there is no second copy to keep in sync.
+      - **Second reference pass (2026-08-20).** Run settings moved out of the attached strip
+        into free-standing outlined chips below the composer. They scope the *run*, not the
+        text field, so attaching them to the composer overstated the relationship — and it
+        removes the seam problem below entirely. Also from that reference: icons on the mode
+        pair, a labelled **Send** pill rather than a bare arrow, a two-part model label
+        (agent in `--fg-high`, model muted), and a voice-mode button beside dictation.
+      - **Ideas became task cards.** A card carries a title *and* the work it does, which a
+        chip cannot, and the chevron says it starts something rather than filling a box.
+        Under an uppercase label, as in the reference.
+      - **`justify-content: safe center` on the hero.** Plain `center` clips overflowing
+        content above the scroll origin where it cannot be reached — with the task list
+        present the greeting was cut off and unscrollable. `safe` centres when it fits and
+        falls back to the start edge when it does not.
+      - **Deviation from the reference, flagged:** its usage note reads "2× more usage this
+        month", which parses as a personal usage statistic — data we do not have and would be
+        fabricating. Ours states the property instead: "Cowork uses about 2× the usage of
+        Chat". Same warning, no invented number.
       - **The strip sits behind the composer, not welded to it.** First attempt squared off the
         composer's bottom corners so the two formed one tall box, which produced a hard seam
         the reference does not have. The composer now keeps all four corners and its shadow,
