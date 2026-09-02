@@ -5,7 +5,7 @@
    Every value binds to a token; documented literals only:
    rail width 288px, top bar 64px, reading column 768px.
    ============================================================ */
-@import url("./dashboard.css?v=9");
+@import url("./dashboard.css?v=12");
 
 /* hidden attr is inert on SVG elements; enforce it */
 [hidden] { display: none !important; }
@@ -1417,3 +1417,105 @@
 .sc-taskrow .tr-meta { display: block; margin-top: 2px; font-size: var(--fs-2); color: var(--fg-subtle); }
 
 .sc-menu-empty { padding: var(--space-3) var(--space-3) var(--space-4); font-size: var(--fs-2); color: var(--fg-subtle); }
+
+/* ---- Playbooks -------------------------------------------------------
+   A playbook is a saved question sequence plus a schedule; each run is a
+   dated snapshot. Answers sit on plain surface with a hairline — the
+   reference tinted every answer block amber, which turns the brand colour
+   into a container and produces a wall of amber down the page. */
+.sc-pb-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.sc-pb-card {
+  display: flex; align-items: center; gap: var(--space-4);
+  width: 100%; padding: var(--space-4);
+  border: 0; border-radius: var(--radius-5);
+  background: var(--color-surface); box-shadow: inset 0 0 0 1px var(--border-ui);
+  font-family: inherit; text-align: left; cursor: pointer;
+  transition: background .12s ease-in-out;
+}
+.sc-pb-card:hover { background: var(--gray-2); }
+.sc-pb-card:focus-visible { outline: none; box-shadow: inset 0 0 0 1px var(--border-ui), 0 0 0 2px var(--focus-ring); }
+.sc-pb-card-text { flex: 1; min-width: 0; }
+.sc-pb-card-name { display: block; font-size: var(--fs-3); font-weight: var(--weight-medium); color: var(--fg-high); }
+.sc-pb-card-meta { display: block; margin-top: 1px; font-size: var(--fs-2); color: var(--fg-low); }
+.sc-pb-card-run { flex: 0 0 auto; font-size: var(--fs-2); color: var(--fg-subtle); white-space: nowrap; }
+
+/* Run view: answers scroll, the run rail stays put. */
+.sc-pb-run { flex: 1; min-height: 0; display: flex; }
+.sc-pb-main { flex: 1; min-width: 0; overflow-y: auto; padding: var(--space-6) var(--space-6) var(--space-8); }
+.sc-pb-step { max-width: 760px; margin: 0 auto var(--space-7); }
+.sc-pb-q {
+  display: flex; align-items: flex-start; gap: var(--space-3);
+  font-size: var(--fs-3); line-height: var(--lh-3); font-weight: var(--weight-medium);
+  color: var(--fg-high); margin-bottom: var(--space-3);
+}
+/* The step number carries the brand, so the answer body does not have to. */
+.sc-pb-n {
+  flex: 0 0 auto; width: 22px; height: 22px; margin-top: 1px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-full); background: var(--accent-3); color: var(--accent-11);
+  font-size: var(--fs-1); font-weight: var(--weight-semibold);
+}
+.sc-pb-a { padding-left: calc(22px + var(--space-3)); }
+.table td.is-warn { color: var(--danger-text); font-weight: var(--weight-medium); }
+
+.sc-pb-rail {
+  width: 264px; flex: 0 0 auto; overflow-y: auto;
+  border-left: var(--stroke-thin) solid var(--border-subtle);
+  padding: var(--space-5) var(--space-4);
+  display: flex; flex-direction: column; gap: var(--space-2);
+}
+.sc-pb-rail-head {
+  font-size: var(--fs-1); font-weight: var(--weight-medium);
+  letter-spacing: .06em; text-transform: uppercase; color: var(--fg-subtle);
+  margin-bottom: var(--space-1);
+}
+.sc-pb-runs { display: flex; flex-direction: column; gap: 2px; }
+.sc-pb-run-item {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
+  width: 100%; height: 38px; padding: 0 var(--space-3);
+  border: 0; border-radius: var(--radius-3); background: transparent;
+  font-family: inherit; font-size: var(--fs-2); color: var(--fg-low);
+  cursor: pointer; text-align: left;
+  transition: background .12s ease-in-out, color .12s ease-in-out;
+}
+.sc-pb-run-item:hover { background: var(--gray-2); color: var(--fg-high); }
+.sc-pb-run-item.is-active { background: var(--accent-3); color: var(--accent-11); font-weight: var(--weight-medium); }
+.sc-pb-run-item:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
+/* Next run is a quiet footnote in the rail, not a bar pinned over the
+   answers — in the reference it overlapped and clipped the chart. */
+.sc-pb-next {
+  margin-top: auto; padding-top: var(--space-4);
+  border-top: var(--stroke-thin) solid var(--border-subtle);
+  display: flex; align-items: center; gap: var(--space-2);
+  font-size: var(--fs-2); color: var(--fg-high);
+}
+.sc-pb-next svg { width: 16px; height: 16px; flex: 0 0 auto; color: var(--fg-subtle); }
+.sc-pb-next .pn-label { display: block; font-size: var(--fs-1); color: var(--fg-subtle); }
+
+/* Mini bar chart. Amber marks the series that broke forecast; everything
+   else stays neutral, so colour still means something. */
+.sc-pb-chart { border-radius: var(--radius-4); border: var(--stroke-thin) solid var(--border-subtle); padding: var(--space-4); }
+.sc-pb-chart-head { display: flex; align-items: center; justify-content: space-between; font-size: var(--fs-2); color: var(--fg-low); margin-bottom: var(--space-5); }
+.sc-pb-key { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--fs-1); color: var(--fg-subtle); }
+.sc-pb-key i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+.sc-pb-key .k-f { background: var(--gray-7); }
+.sc-pb-key .k-a { background: var(--accent-9); margin-left: var(--space-2); }
+.sc-pb-bars { display: flex; align-items: flex-end; gap: var(--space-5); }
+.sc-pb-bar { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }
+/* Explicit height: percentage bar heights cannot resolve against a parent
+   whose height comes from flex, so the bars collapsed to nothing. */
+.sc-pb-bar-track { height: 150px; width: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 4px; }
+.sc-pb-bar-track span { width: 26px; border-radius: var(--radius-2) var(--radius-2) 0 0; position: relative; }
+.sc-pb-bar-track .b-f { background: var(--gray-7); }
+.sc-pb-bar-track .b-a { background: var(--gray-5); }
+.sc-pb-bar-track .b-a.is-over { background: var(--accent-9); }
+.sc-pb-bar-track .b-a em {
+  position: absolute; top: -18px; left: 50%; transform: translateX(-50%);
+  font-style: normal; font-size: var(--fs-1); color: var(--fg-low);
+  font-variant-numeric: tabular-nums;
+}
+.sc-pb-bar-label { font-size: var(--fs-1); color: var(--fg-subtle); text-align: center; }
+
+@media (max-width: 1024px) {
+  .sc-pb-rail { display: none; }
+}

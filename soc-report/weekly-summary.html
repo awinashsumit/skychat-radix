@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<!--
+  SkyPoint Cloud Managed SOC, Security Operations Weekly Summary.
+  Client deliverable for Delta Dental of Arizona.
+
+  Built to the design shared 2026-08-26. It is brand collateral, not app UI,
+  so it uses the brand pairing (Source Serif 4 for the masthead, Inter for
+  everything else) rather than the single-typeface application rule.
+
+  THE WARM NEUTRALS ARE ONE RAMP. Every tan and cream on the page is brand
+  amber #FFB31C washed over white at 4 / 12 / 32 / 37 / 55 percent. Solving
+  the shared design's samples for alpha gave the same figure from the green
+  and blue channels to within 0.03, so this is the ramp the design was built
+  on, not five separate tans. They are declared once below as --wash-* and
+  used everywhere; no other warm value is allowed on the page.
+
+  Colour is amber, black, white and grey only. No blue, no red, no green:
+  the design carries a zero-incident week, and the palette is deliberately
+  calm rather than status-coded.
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Security Operations Weekly Summary &middot; Delta Dental of Arizona</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../tokens.css?v=3" />
+<style>
+  /* ================================================================
+     REPORT TOKENS
+     The amber wash ramp, derived from brand --accent-9 (#FFB31C).
+     ================================================================ */
+  :root {
+    --wash-1: #fffaf1;   /*  4%  KPI card fill                    */
+    --wash-2: #fff6e4;   /* 12%  table body cells                 */
+    --wash-3: #ffeabf;   /* 32%  callout, current-row emphasis    */
+    --wash-4: #ffe5b2;   /* 37%  table header cells               */
+    --wash-5: #ffd582;   /* 55%  card hairline                    */
+
+    --ink-masthead: #161616;              /* the one near-black on the page */
+    --ink-masthead-low: #a0a0a0;          /* 6.9:1 on the band              */
+
+    --font-brand: "Source Serif 4", Georgia, "Times New Roman", serif;
+
+    --gutter: var(--space-1);             /* white gap between table cells  */
+  }
+
+  /* ================================================================
+     PAGE
+     ================================================================ */
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--color-page); color: var(--fg-high);
+    font-family: var(--font-base); font-size: var(--fs-3); line-height: var(--lh-3);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1600px; margin: 0 auto; padding: 0 var(--space-9); }
+
+  /* ================================================================
+     MASTHEAD - full-bleed dark band
+     ================================================================ */
+  .masthead { background: var(--ink-masthead); color: #fff; }
+  .masthead .wrap {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--space-6); padding-top: var(--space-8); padding-bottom: var(--space-8);
+  }
+
+  .lockup { display: flex; align-items: center; gap: var(--space-4); }
+  /* Brand mark: white disc, serif s, amber counter dot. */
+  .mark {
+    position: relative; width: 56px; height: 56px; flex: 0 0 auto;
+    border-radius: var(--radius-full); background: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .mark span {
+    font-family: var(--font-brand); font-size: 38px; line-height: 1;
+    color: var(--ink-masthead); font-weight: var(--weight-regular);
+    transform: translateY(-1px);
+  }
+  .mark i {
+    position: absolute; left: 14px; bottom: 13px;
+    width: 7px; height: 7px; border-radius: var(--radius-full);
+    background: var(--accent-9);
+  }
+  .wordmark {
+    font-family: var(--font-brand); font-size: 38px; line-height: 1;
+    font-weight: var(--weight-regular); color: #fff; letter-spacing: -.005em;
+  }
+
+  .masthead-meta { text-align: right; }
+  .masthead-meta h1 {
+    margin: 0; font-family: var(--font-brand);
+    font-size: var(--fs-7); line-height: var(--lh-7);
+    font-weight: var(--weight-semibold); color: var(--accent-9);
+  }
+  .masthead-meta p {
+    margin: var(--space-2) 0 0; font-size: var(--fs-3); line-height: var(--lh-3);
+    color: var(--ink-masthead-low);
+  }
+  .masthead-meta p + p { margin-top: 2px; }
+
+  /* ================================================================
+     BODY
+     ================================================================ */
+  main.wrap { padding-top: var(--space-8); padding-bottom: var(--space-8); }
+
+  .callout-band {
+    background: var(--wash-3); border-radius: var(--radius-4);
+    padding: var(--space-5) var(--space-6);
+    font-size: var(--fs-4); line-height: var(--lh-4); color: var(--fg-high);
+  }
+  .callout-band p { margin: 0; }
+  .callout-band p + p { margin-top: 2px; }
+
+  .section { margin-top: var(--space-8); }
+  .section > h2 {
+    margin: 0 0 var(--space-5);
+    font-size: var(--fs-6); line-height: var(--lh-6); letter-spacing: var(--ls-6);
+    font-weight: var(--weight-semibold); color: var(--fg-high);
+  }
+  .note {
+    margin: var(--space-4) 0 0;
+    font-size: var(--fs-2); line-height: var(--lh-3); color: var(--fg-low);
+    max-width: 96ch;
+  }
+
+  /* ================================================================
+     KPI CARDS - amber hairline on the palest wash, numeral in amber
+     ================================================================ */
+  .glance { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--space-5); }
+  .stat {
+    background: var(--wash-1);
+    border: var(--stroke-thin) solid var(--wash-5);
+    border-radius: var(--radius-4);
+    padding: var(--space-5) var(--space-5) var(--space-6);
+  }
+  .stat-v {
+    display: block; font-size: var(--fs-8); line-height: 1;
+    letter-spacing: var(--ls-8); font-weight: var(--weight-light);
+    color: var(--accent-9); font-variant-numeric: tabular-nums;
+  }
+  .stat-l {
+    display: block; margin-top: var(--space-4);
+    font-size: var(--fs-4); line-height: var(--lh-4);
+    font-weight: var(--weight-regular); color: var(--fg-high);
+  }
+  /* Accessible variant. Add class="stat-figures-legible" to <body> to swap the
+     numerals to accent-11: same ramp, same hue, 5.10:1 instead of 1.72:1.
+     Nothing else on the page moves. */
+  .stat-figures-legible .stat-v { color: var(--accent-11); }
+
+  /* ================================================================
+     TABLES - cells are separate tiles, told apart by white gutters
+     rather than by rules. No borders anywhere.
+     ================================================================ */
+  .table-report {
+    width: 100%; border-collapse: separate; border-spacing: var(--gutter);
+    margin: 0 calc(var(--gutter) * -1);
+    font-size: var(--fs-3); line-height: var(--lh-3);
+  }
+  .table-report th, .table-report td {
+    text-align: left; padding: var(--space-4) var(--space-5);
+    vertical-align: middle; font-weight: var(--weight-regular);
+  }
+  .table-report thead th {
+    background: var(--wash-4); color: var(--fg-high);
+    font-weight: var(--weight-semibold); white-space: nowrap;
+  }
+  .table-report tbody th,
+  .table-report tbody td { background: var(--wash-2); color: var(--fg-low); }
+  /* Row label carries the row, so it holds full contrast. */
+  .table-report tbody th { font-weight: var(--weight-medium); color: var(--fg-high); }
+  .table-report .is-numeric { font-variant-numeric: tabular-nums; }
+  /* The week this report covers, marked by the next step up the same ramp. */
+  .table-report tbody tr.is-current th,
+  .table-report tbody tr.is-current td {
+    background: var(--wash-3); color: var(--fg-high); font-weight: var(--weight-medium);
+  }
+
+  /* ================================================================
+     COVERAGE + COLOPHON
+     ================================================================ */
+  .coverage {
+    background: var(--wash-1); border: var(--stroke-thin) solid var(--wash-5);
+    border-radius: var(--radius-4); padding: var(--space-5) var(--space-6);
+  }
+  .coverage p { margin: 0; font-size: var(--fs-3); line-height: var(--lh-3); color: var(--fg-low); }
+  .coverage strong { color: var(--fg-high); font-weight: var(--weight-medium); }
+
+  .colophon {
+    margin-top: var(--space-8); padding-top: var(--space-5);
+    border-top: var(--stroke-thin) solid var(--wash-5);
+    display: flex; justify-content: space-between; align-items: flex-end; gap: var(--space-6);
+    font-size: var(--fs-2); line-height: var(--lh-3); color: var(--fg-subtle);
+  }
+  .colophon p { margin: 0; max-width: 96ch; }
+  .colophon span {
+    font-family: var(--font-brand); font-size: var(--fs-3);
+    color: var(--fg-low); white-space: nowrap;
+  }
+
+  /* ================================================================
+     PRINT - the dark band is the brand, so it must survive the printer
+     ================================================================ */
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .wrap { max-width: none; padding: 0 var(--space-6); }
+    .section, .glance, .callout-band, .coverage, .table-report { break-inside: avoid; }
+    .section > h2 { break-after: avoid; }
+  }
+
+  /* ================================================================
+     RESPONSIVE
+     ================================================================ */
+  @media (max-width: 1100px) {
+    .glance { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 860px) {
+    .wrap { padding: 0 var(--space-5); }
+    .masthead .wrap { flex-direction: column; align-items: flex-start; gap: var(--space-5); padding-top: var(--space-6); padding-bottom: var(--space-6); }
+    .masthead-meta { text-align: left; }
+    .mark { width: 44px; height: 44px; }
+    .mark span { font-size: 30px; }
+    .mark i { left: 11px; bottom: 10px; width: 6px; height: 6px; }
+    .wordmark { font-size: 30px; }
+    .glance { grid-template-columns: repeat(2, 1fr); }
+    .stat:last-child { grid-column: span 2; }
+    .table-scroll { overflow-x: auto; }
+    .table-report { min-width: 620px; }
+    .colophon { flex-direction: column; align-items: flex-start; gap: var(--space-3); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================ MASTHEAD ============================ -->
+<header class="masthead">
+  <div class="wrap">
+    <div class="lockup">
+      <span class="mark" aria-hidden="true"><span>s</span><i></i></span>
+      <span class="wordmark">skypoint</span>
+    </div>
+    <div class="masthead-meta">
+      <h1>Security Operations &mdash; Weekly Summary</h1>
+      <p>Delta Dental of Arizona &middot; week commencing 17 August 2026</p>
+      <p>Prepared by SkyPoint Cloud Managed SOC &middot; issued 24 August 2026</p>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============================ POSITION ============================ -->
+  <div class="callout-band">
+    <p>Position this week: no confirmed security incidents.</p>
+    <p>All alerts raised during the period were investigated and attributed to authorised activity. No malicious or unauthorised access was identified, and no customer data was affected.</p>
+  </div>
+
+  <!-- ============================ AT A GLANCE ============================ -->
+  <section class="section">
+    <h2>At a glance</h2>
+    <div class="glance">
+      <div class="stat"><span class="stat-v">30</span><span class="stat-l">Alerts Raised</span></div>
+      <div class="stat"><span class="stat-v">30</span><span class="stat-l">Closed</span></div>
+      <div class="stat"><span class="stat-v">0</span><span class="stat-l">Open at Close</span></div>
+      <div class="stat"><span class="stat-v">0</span><span class="stat-l">Confirmed Threats</span></div>
+      <div class="stat"><span class="stat-v">97</span><span class="stat-l">Within SLA %</span></div>
+    </div>
+  </section>
+
+  <!-- ============================ SLA ============================ -->
+  <section class="section">
+    <h2>Service level performance</h2>
+    <div class="table-scroll">
+      <table class="table-report">
+        <thead>
+          <tr>
+            <th scope="col">Priority</th>
+            <th scope="col">Closed</th>
+            <th scope="col">Resolution target</th>
+            <th scope="col">Within target</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">High</th>
+            <td class="is-numeric">17</td>
+            <td>2 hours</td>
+            <td class="is-numeric">94.0%</td>
+          </tr>
+          <tr>
+            <th scope="row">Medium</th>
+            <td class="is-numeric">13</td>
+            <td>4 hours</td>
+            <td class="is-numeric">100.0%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Resolution time is measured from alert creation to closure. Acknowledgement-time reporting will be introduced in a future edition once first-response capture is in place.</p>
+  </section>
+
+  <!-- ============================ CATEGORIES ============================ -->
+  <section class="section">
+    <h2>Alert categories</h2>
+    <div class="table-scroll">
+      <table class="table-report">
+        <thead>
+          <tr>
+            <th scope="col">Category</th>
+            <th scope="col">Raised</th>
+            <th scope="col">Outcome</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Privilege / role assignment change</th>
+            <td class="is-numeric">11</td>
+            <td>Authorised or expected activity</td>
+          </tr>
+          <tr>
+            <th scope="row">Network security control change</th>
+            <td class="is-numeric">10</td>
+            <td>Authorised or expected activity</td>
+          </tr>
+          <tr>
+            <th scope="row">Bulk resource deletion</th>
+            <td class="is-numeric">6</td>
+            <td>Authorised or expected activity</td>
+          </tr>
+          <tr>
+            <th scope="row">Security policy change</th>
+            <td class="is-numeric">2</td>
+            <td>Authorised or expected activity</td>
+          </tr>
+          <tr>
+            <th scope="row">Anomalous data egress volume</th>
+            <td class="is-numeric">1</td>
+            <td>Authorised or expected activity</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Detection rules are intentionally broad so that no genuine signal is missed. A high proportion of authorised-activity matches is expected by design.</p>
+  </section>
+
+  <!-- ============================ TREND ============================ -->
+  <section class="section">
+    <h2>Four-week trend</h2>
+    <div class="table-scroll">
+      <table class="table-report">
+        <thead>
+          <tr>
+            <th scope="col">Week commencing</th>
+            <th scope="col">Alerts</th>
+            <th scope="col">High priority</th>
+            <th scope="col">Confirmed threats</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">27 Jul</th>
+            <td class="is-numeric">22</td>
+            <td class="is-numeric">15</td>
+            <td class="is-numeric">1</td>
+          </tr>
+          <tr>
+            <th scope="row">03 Aug</th>
+            <td class="is-numeric">44</td>
+            <td class="is-numeric">15</td>
+            <td class="is-numeric">0</td>
+          </tr>
+          <tr>
+            <th scope="row">10 Aug</th>
+            <td class="is-numeric">52</td>
+            <td class="is-numeric">23</td>
+            <td class="is-numeric">0</td>
+          </tr>
+          <tr class="is-current">
+            <th scope="row">17 Aug (this report)</th>
+            <td class="is-numeric">30</td>
+            <td class="is-numeric">17</td>
+            <td class="is-numeric">0</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============================ COVERAGE ============================ -->
+  <section class="section">
+    <h2>Monitoring coverage</h2>
+    <div class="coverage">
+      <p><strong>Continuous monitoring remained in effect throughout the period</strong> with no interruption to alert ingestion or detection coverage. Detections are mapped to HITRUST CSF and MITRE ATT&amp;CK, covering data egress, privilege change, bulk deletion, network and key-management control changes, and database authentication.</p>
+    </div>
+  </section>
+
+  <!-- ============================ COLOPHON ============================ -->
+  <footer class="colophon">
+    <p>Figures cover alerts raised during the stated period. Case-level detail, system identifiers and investigation records are retained within the SOC platform and available on request under the terms of the service agreement.</p>
+    <span>skypoint</span>
+  </footer>
+
+</main>
+
+</body>
+</html>

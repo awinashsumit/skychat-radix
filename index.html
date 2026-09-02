@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3CclipPath id='b'%3E%3Crect x='3' y='3' width='26' height='21' rx='5.5'/%3E%3Cpath d='M29 16v10.4a1.8 1.8 0 0 1-2.9 1.4L20 23z'/%3E%3C/clipPath%3E%3Cg clip-path='url(%23b)'%3E%3Crect width='32' height='32' fill='%23fff0d1'/%3E%3Crect x='16' width='16' height='32' fill='%23ffb31c' opacity='.3'/%3E%3C/g%3E%3Cg fill='%23ffb31c'%3E%3Ccircle cx='10' cy='13.5' r='2.2'/%3E%3Ccircle cx='16' cy='13.5' r='2.2'/%3E%3Ccircle cx='22' cy='13.5' r='2.2'/%3E%3C/g%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="./skychat.css?v=9" />
+  <link rel="stylesheet" href="./skychat.css?v=12" />
 </head>
 <body>
   <div class="sc-app" id="app">
@@ -56,6 +56,10 @@
           <button class="sc-nav-item" data-page="projects">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
             <span class="nav-label">Projects</span>
+          </button>
+          <button class="sc-nav-item" data-page="playbooks">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/><path d="M9 7h6"/><path d="M9 11h4"/></svg>
+            <span class="nav-label">Playbooks</span>
           </button>
           <button class="sc-nav-item" data-page="scheduled">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
@@ -238,6 +242,38 @@
       </section>
 
       <!-- ===== Page: Scheduled task editor (three-pane) ===== -->
+      <!-- Playbooks: saved prompt sequences that re-run on a schedule. -->
+      <section class="sc-view sc-page" id="viewPlaybooks" hidden>
+        <div class="sc-page-actions">
+          <button class="btn btn-solid" id="newPlaybookBtn">
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+            New playbook
+          </button>
+        </div>
+        <div class="sc-page-inner">
+          <div class="sc-page-head">
+            <h1>Playbooks</h1>
+            <p>A saved sequence of questions skyChat re-runs on a schedule, so the answer is waiting for you.</p>
+          </div>
+          <div class="sc-pb-list" id="pbList"></div>
+        </div>
+      </section>
+
+      <section class="sc-view" id="viewPlaybookRun" hidden>
+        <div class="sc-page-actions">
+          <button class="btn btn-surface" id="pbEditBtn">Edit</button>
+          <button class="btn btn-solid" id="pbContinueBtn">Continue in chat</button>
+        </div>
+        <div class="sc-pb-run">
+          <div class="sc-pb-main" id="pbMain"></div>
+          <aside class="sc-pb-rail">
+            <div class="sc-pb-rail-head">Runs</div>
+            <div class="sc-pb-runs" id="pbRuns"></div>
+            <div class="sc-pb-next" id="pbNext"></div>
+          </aside>
+        </div>
+      </section>
+
       <section class="sc-view" id="viewSchedEdit" hidden>
         <div class="sc-sched">
           <div class="sc-sched-list">
@@ -4470,7 +4506,7 @@
       $$(".sc-nav-item").forEach(function (n) {
         n.classList.toggle("is-active", n.getAttribute("data-page") === page);
       });
-      ["viewHome", "viewChat", "viewProjects", "viewScheduled", "viewSchedEdit"]
+      ["viewHome", "viewChat", "viewProjects", "viewScheduled", "viewSchedEdit", "viewPlaybooks", "viewPlaybookRun"]
         .forEach(function (id) { $("#" + id).hidden = true; });
 
       var isChat = page === "chat";
@@ -4486,6 +4522,7 @@
       }
       if (page === "projects")  { renderProjects(); show($("#viewProjects")); }
       if (page === "scheduled") { show($("#viewScheduled")); }
+      if (page === "playbooks") { renderPlaybooks(); show($("#viewPlaybooks")); }
       mountPageActions(page);
     }
     /* The reference puts a page's primary actions on the top-bar row rather
@@ -4497,7 +4534,8 @@
         var owner = slot.firstChild._ownerView;
         if (owner) owner.appendChild(slot.firstChild); else slot.removeChild(slot.firstChild);
       }
-      var src = { projects: "#viewProjects", scheduled: "#viewScheduled" }[page];
+      var src = { projects: "#viewProjects", scheduled: "#viewScheduled",
+                  playbooks: "#viewPlaybooks", playbookRun: "#viewPlaybookRun" }[page];
       if (!src) return;
       var group = $(src + " > .sc-page-actions");
       if (group) { group._ownerView = $(src); slot.appendChild(group); }
@@ -4609,6 +4647,147 @@
         input.value = b.getAttribute("data-fill");
         autogrow(); syncSend(); input.focus();
       });
+    });
+
+    /* ---------- Playbooks ----------
+       A playbook is a saved sequence of questions plus a schedule. Each run is
+       a dated snapshot of the answers, so you compare weeks rather than
+       re-asking. Steps render as a table or a chart depending on the shape of
+       the answer — the step declares which, the renderer does not guess. */
+    var PLAYBOOKS = [
+      { id: "pb1", name: "Supply usage review", schedule: "Weekly, Thursdays at 09:00",
+        next: "1 May 2026, 09:00",
+        runs: ["24 Apr 2026, 09:00", "17 Apr 2026, 09:00", "10 Apr 2026, 10:00"],
+        steps: [
+          { q: "What are the top 5 SKUs with the highest usage increase this week?",
+            type: "table",
+            cols: ["SKU", "Item", "Last week", "This week", "Change"],
+            num: [0,0,1,1,1],
+            rows: [["SKU-0021","Nitrile gloves","3,200","5,680","+77.5%"],
+                   ["SKU-0089","IV start kits","1,050","1,890","+80.0%"],
+                   ["SKU-0154","Disinfectant spray","850","1,590","+87.1%"],
+                   ["SKU-0073","Surgical masks","2,400","4,050","+68.8%"],
+                   ["SKU-0012","Isolation gowns","960","1,630","+69.8%"]] },
+          { q: "Which inventory items had a fill rate below 85%?",
+            type: "table",
+            cols: ["SKU", "Item", "Fill rate", "Avg order delay"],
+            num: [0,0,1,1],
+            /* Fill rate is the metric under target, so it carries the warning
+               rather than the whole row shouting. */
+            warn: 2,
+            rows: [["SKU-0154","Disinfectant spray","74.6%","1.8 days"],
+                   ["SKU-0073","Surgical masks","79.2%","2.3 days"],
+                   ["SKU-0107","Blood pressure cuffs","81.5%","3.1 days"],
+                   ["SKU-0193","Catheter kits","82.0%","2.0 days"]] },
+          { q: "Highlight any items where actual usage exceeded forecast.",
+            type: "chart", caption: "Forecast vs actual, units",
+            bars: [{ n: "Nitrile gloves", f: 4200, a: 5680 },
+                   { n: "Surgical masks", f: 3100, a: 4050 },
+                   { n: "IV start kits",  f: 1400, a: 1890 },
+                   { n: "Isolation gowns",f: 1500, a: 1630 }] }
+        ] },
+      { id: "pb2", name: "Census and staffing brief", schedule: "Weekdays at 07:30",
+        next: "Tomorrow, 07:30",
+        runs: ["Today, 07:30", "Yesterday, 07:30"],
+        steps: [
+          { q: "What is occupancy by community this morning?",
+            type: "table", cols: ["Community", "Occupancy", "Change"], num: [0,1,1],
+            rows: [["Willow Springs","94.2%","+1.1%"],["Cedar Grove","88.7%","-0.4%"],
+                   ["Harbor Point","91.0%","+0.2%"]] }
+        ] }
+    ];
+    var activePb = null, activeRun = 0;
+
+    function renderPlaybooks() {
+      $("#pbList").innerHTML = PLAYBOOKS.map(function (p) {
+        return '<button class="sc-pb-card" data-pb="' + p.id + '">' +
+          '<span class="sc-pb-card-text">' +
+            '<span class="sc-pb-card-name">' + esc(p.name) + '</span>' +
+            '<span class="sc-pb-card-meta">' + p.steps.length + ' step' + (p.steps.length > 1 ? "s" : "") +
+              ' &middot; ' + esc(p.schedule) + '</span>' +
+          '</span>' +
+          '<span class="sc-pb-card-run">Last run ' + esc(p.runs[0]) + '</span>' +
+          '<svg class="sc-task-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>' +
+          '</button>';
+      }).join("");
+      $$("#pbList [data-pb]").forEach(function (b) {
+        b.addEventListener("click", function () { openPlaybook(b.getAttribute("data-pb"), 0); });
+      });
+    }
+
+    function stepTable(st) {
+      return '<div class="table-wrap"><table class="table"><thead><tr>' +
+        st.cols.map(function (c, i) { return '<th' + (st.num[i] ? ' class="is-numeric"' : '') + '>' + esc(c) + '</th>'; }).join("") +
+        '</tr></thead><tbody>' +
+        st.rows.map(function (r) {
+          return '<tr>' + r.map(function (cell, i) {
+            var cls = st.num[i] ? "is-numeric" : "";
+            if (st.warn === i) cls += " is-warn";
+            return '<td' + (cls ? ' class="' + cls.trim() + '"' : '') + '>' + esc(cell) + '</td>';
+          }).join("") + '</tr>';
+        }).join("") + '</tbody></table></div>';
+    }
+
+    function stepChart(st) {
+      var max = 0;
+      st.bars.forEach(function (b) { max = Math.max(max, b.f, b.a); });
+      return '<div class="sc-pb-chart">' +
+        '<div class="sc-pb-chart-head"><span>' + esc(st.caption) + '</span>' +
+          '<span class="sc-pb-key"><i class="k-f"></i>Forecast<i class="k-a"></i>Actual</span></div>' +
+        '<div class="sc-pb-bars">' + st.bars.map(function (b) {
+          var over = b.a > b.f;
+          return '<div class="sc-pb-bar">' +
+            '<div class="sc-pb-bar-track">' +
+              '<span class="b-f" style="height:' + (b.f / max * 100).toFixed(1) + '%"></span>' +
+              '<span class="b-a' + (over ? " is-over" : "") + '" style="height:' + (b.a / max * 100).toFixed(1) + '%">' +
+                '<em>' + b.a.toLocaleString() + '</em></span>' +
+            '</div>' +
+            '<div class="sc-pb-bar-label">' + esc(b.n) + '</div>' +
+          '</div>';
+        }).join("") + '</div></div>';
+    }
+
+    function openPlaybook(id, runIdx) {
+      activePb = PLAYBOOKS.filter(function (p) { return p.id === id; })[0];
+      if (!activePb) return;
+      activeRun = runIdx || 0;
+      $("#topbarTitle").textContent = activePb.name;
+      $("#topbarTitle").hidden = false;
+
+      $("#pbMain").innerHTML = activePb.steps.map(function (st, n) {
+        return '<section class="sc-pb-step">' +
+          '<div class="sc-pb-q"><span class="sc-pb-n">' + (n + 1) + '</span>' + esc(st.q) + '</div>' +
+          '<div class="sc-pb-a">' + (st.type === "chart" ? stepChart(st) : stepTable(st)) + '</div>' +
+        '</section>';
+      }).join("");
+
+      $("#pbRuns").innerHTML = activePb.runs.map(function (r, i) {
+        return '<button class="sc-pb-run-item' + (i === activeRun ? " is-active" : "") + '" data-run="' + i + '">' +
+          '<span class="sc-pb-run-when">' + esc(r) + '</span>' +
+          (i === 0 ? '<span class="badge is-neutral">Latest</span>' : '') +
+        '</button>';
+      }).join("");
+      $$("#pbRuns [data-run]").forEach(function (b) {
+        b.addEventListener("click", function () { openPlaybook(activePb.id, +b.getAttribute("data-run")); });
+      });
+
+      $("#pbNext").innerHTML =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>' +
+        '<span><span class="pn-label">Next run</span>' + esc(activePb.next) + '</span>';
+
+      $("#viewPlaybooks").hidden = true;
+      show($("#viewPlaybookRun"));
+      mountPageActions("playbookRun");
+      $(".sc-pb-main").scrollTop = 0;
+    }
+
+    $("#newPlaybookBtn").addEventListener("click", function () { toast("Creating a playbook is not wired yet"); });
+    $("#pbEditBtn").addEventListener("click", function () { toast("Editing a playbook is not wired yet"); });
+    $("#pbContinueBtn").addEventListener("click", function () {
+      if (!activePb) return;
+      setPage("chat");
+      input.value = activePb.steps[0].q;
+      autogrow(); syncSend(); input.focus();
     });
 
     /* ---------- Projects ---------- */

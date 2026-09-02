@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<!--
+  Brookfield Senior Living, employee service portal - Home.
+
+  LAYOUT: the client's own design (shared 2026-08-25). Greeting row with search,
+  then two columns: Needs your attention + With someone else on the left,
+  Development / Next shifts / Raise a request on the right.
+
+  STYLING: the shared Radix-Design System (../tokens.css / ../dashboard.css).
+  Every colour, size, radius and shadow binds to a token; the reference's teal
+  and navy map onto the Skypoint amber accent and the system's inverted surface.
+
+  The badge problem the client solved: status is a small UPPERCASE pill sitting
+  in the meta line, not a soft chip in the actions area. See HOME-IA.md.
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Brookfield Senior Living &middot; Home</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../tokens.css?v=3" />
+<link rel="stylesheet" href="../dashboard.css?v=3" />
+<style>
+  /* ================================================================
+     This screen has no sidebar, so the system's app-shell grid does
+     not apply; it builds its own greeting row + two-column body.
+     Everything below is token-bound. The only literals are component
+     dimensions the reference sets deliberately: the 44px brand mark
+     and the 48px search field.
+     ================================================================ */
+
+  body { background: var(--gray-2); }
+  :root[data-theme="dark"] body { background: var(--gray-1); }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: var(--space-6); }
+
+  /* ---- Greeting row ---- */
+  .greet { display: flex; align-items: center; gap: var(--space-4); padding-bottom: var(--space-5); border-bottom: var(--stroke-thin) solid var(--border-subtle); }
+  .greet-mark {
+    width: 44px; height: 44px; flex: 0 0 auto; border-radius: var(--radius-5);
+    background: var(--color-inverted); color: var(--fg-on-inverted);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: var(--fs-2); font-weight: var(--weight-bold);
+  }
+  .greet-text { display: flex; flex-direction: column; }
+  .greet-text h1 { font-size: var(--fs-7); line-height: var(--lh-7); letter-spacing: var(--ls-7); font-weight: var(--weight-bold); }
+  .greet-text p { font-size: var(--fs-2); line-height: var(--lh-2); color: var(--fg-low); }
+  .greet-search { flex: 1; max-width: 480px; margin-left: auto; }
+  .greet-search .input { width: 100%; height: 48px; padding-left: var(--space-7); border-radius: var(--radius-full); }
+  .greet-search .search-icon { left: var(--space-4); width: 18px; height: 18px; }
+
+  /* ---- Two columns ---- */
+  /* Both columns run to the same height: the grid items stretch, and the cards
+     inside each column grow to absorb whatever surplus that column has. It is
+     self-balancing, so it holds whichever column happens to be taller. */
+  .cols { display: grid; grid-template-columns: 2fr 1fr; gap: var(--space-5); align-items: stretch; margin-top: var(--space-5); }
+  .col { display: flex; flex-direction: column; gap: var(--space-5); }
+  .col > .card { flex-grow: 1; }
+  /* The surplus lands in the rows rather than as a dead band under the last one,
+     so a stretched card reads as a relaxed list, not as a card with a gap. */
+  .na-row, .wse-row { flex-grow: 1; }
+
+  /* ---- Shared card furniture ---- */
+  .card-head { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-4); }
+  .card-title { font-size: var(--fs-5); line-height: var(--lh-5); letter-spacing: var(--ls-5); font-weight: var(--weight-bold); color: var(--fg-high); }
+  /* Uppercase micro-label. Same idiom the system already uses for
+     .list-item.is-header, borrowed here so the rail reads as secondary to the
+     main column without needing a second heading size. */
+  .eyebrow { font-size: var(--fs-1); line-height: var(--lh-1); font-weight: var(--weight-medium); letter-spacing: .04em; text-transform: uppercase; color: var(--fg-low); }
+  .card-foot { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-4); padding-top: var(--space-4); border-top: var(--stroke-thin) solid var(--border-subtle); font-size: var(--fs-2); color: var(--fg-low); }
+  .spacer { margin-left: auto; }
+
+  /* ================================================================
+     BADGES. The fix for status-reading-as-a-button, and it is two
+     changes working together, not one:
+       1. Position. The pill sits in the row's meta line beside the
+          ticket id, not in the trailing actions area beside the button.
+       2. Type. UPPERCASE micro-caps at 12px. Every button on this page
+          is 14px sentence case, so the two can no longer be confused
+          at a glance (UI-CHECKLIST.md 8).
+     ================================================================ */
+  /* Links take the brand amber. Client decision, 2026-08-25, recorded because
+     it is a measured regression rather than something the tokens support:
+     --accent-9 on a white card measures 1.79:1 where AA asks 4.5:1 for text at
+     this size. --accent-11 (#a05a00) is the SAME hue at the lightness text
+     requires and measures 5.31:1, which is why tokens.css was changed to it in
+     the first place (see the comment on the accent scale there). Dark is left
+     alone: accent-11 is already #ffca16 there and passes. */
+  :root[data-theme="light"] .link { color: var(--accent-9); }
+
+  .badge.is-caps { text-transform: uppercase; letter-spacing: .04em; }
+  /* Scoped accessibility fix, not a restyle. The shared --success-text
+     (green-11) on --success-bg (green-3) measures 4.21:1 in light, under AA;
+     dark is fine at 7.86:1. Step 12 clears it at 11:1 and holds the hue.
+     The defect is in the shared token pair and needs fixing there too, which
+     touches skyLearn and skyCRM, so it is not done from this page. */
+  :root[data-theme="light"] .badge.is-success { color: var(--green-12); }
+  .badge.is-outline { background: var(--color-panel-solid); box-shadow: inset 0 0 0 1px var(--border-ui); color: var(--fg-low); }
+
+  /* ---- Needs your attention ---- */
+  .na-row { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4); background: var(--gray-2); border-radius: var(--radius-4); }
+  .na-row + .na-row { margin-top: var(--space-3); }
+  .na-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+  .na-title { font-size: var(--fs-3); line-height: var(--lh-3); font-weight: var(--weight-medium); color: var(--fg-high); }
+  .na-meta { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); font-size: var(--fs-2); line-height: var(--lh-2); color: var(--fg-low); }
+
+  /* ---- With someone else ---- */
+  .wse-row { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4) 0; }
+  .wse-row + .wse-row { border-top: var(--stroke-thin) solid var(--border-subtle); }
+  .wse-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .wse-title { font-size: var(--fs-3); line-height: var(--lh-3); font-weight: var(--weight-medium); color: var(--fg-high); }
+  .wse-meta { font-size: var(--fs-2); line-height: var(--lh-2); color: var(--fg-low); }
+
+  /* ---- My onboarding / My courses (two cards, not one) ---- */
+  .onb-progress .progress-fill { width: 62.5%; }
+  .onb-note { margin-top: var(--space-3); font-size: var(--fs-2); line-height: var(--lh-2); color: var(--fg-low); }
+  .dev-row { display: flex; align-items: center; gap: var(--space-3); }
+  .dev-row + .dev-row { margin-top: var(--space-4); }
+  .dev-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .dev-name { font-size: var(--fs-3); line-height: var(--lh-3); color: var(--fg-high); }
+  .dev-meta { font-size: var(--fs-1); line-height: var(--lh-1); color: var(--fg-low); }
+
+  /* ---- Next shifts ----
+     A plain card, like every other one. It was built on the system's inverted
+     surface, following the reference, but an inverted card reads as a highlight
+     and this section carries no more weight than My courses above it. Today is
+     marked by contrast and weight instead, the same way the page already
+     separates Open from Closed. */
+  .sh { display: flex; align-items: baseline; gap: var(--space-3); }
+  .sh + .sh { margin-top: var(--space-4); padding-top: var(--space-4); border-top: var(--stroke-thin) solid var(--border-subtle); }
+  .sh-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .sh-day { font-size: var(--fs-3); line-height: var(--lh-3); font-weight: var(--weight-medium); color: var(--fg-high); }
+  .sh-time { font-size: var(--fs-2); line-height: var(--lh-2); color: var(--fg-low); }
+  .sh-where { font-size: var(--fs-2); color: var(--fg-low); }
+  .sh.is-today .sh-where { font-weight: var(--weight-medium); color: var(--fg-high); }
+
+  /* ---- Raise a request ---- */
+  .portal-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
+  .portal-tile {
+    display: flex; flex-direction: column; align-items: center; gap: var(--space-1);
+    padding: var(--space-3) var(--space-2); text-align: center; text-decoration: none;
+    background: var(--gray-2); border-radius: var(--radius-4);
+  }
+  .portal-tile:hover { background: var(--gray-3); }
+  .portal-tile .pt-ic { color: var(--fg-low); margin-bottom: var(--space-1); }
+  .portal-tile .pt-name { font-size: var(--fs-2); line-height: var(--lh-2); font-weight: var(--weight-medium); color: var(--fg-high); }
+    /* --fg-subtle (gray-10) measures 3.6:1 light and 4.15:1 dark here, under AA.
+     rules.md 14 flags exactly this; the tertiary step steps up to --fg-low. */
+.portal-tile .pt-count { font-size: var(--fs-1); line-height: var(--lh-1); color: var(--fg-low); }
+  /* ---- My requests: full width, below both columns ----
+     ONE card with its title inside, like every other block on this page. The
+     four boxes are inset blocks within it, the same --gray-2 / --radius-4
+     idiom .na-row uses, not four free-standing cards under a bare heading. */
+  .full-sec { margin-top: var(--space-5); }
+  .mr-grid { display: grid; grid-template-columns: repeat(3, 1fr) 4fr; gap: var(--space-3); align-items: stretch; }
+  .mr-stat, .mr-list { background: var(--gray-2); border-radius: var(--radius-4); padding: var(--space-4); }
+  .mr-stat { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-1); text-align: center; }
+  /* fs-6, not fs-8: these are secondary counts and must not out-size the H1. */
+  .mr-num { font-size: var(--fs-6); line-height: var(--lh-6); letter-spacing: var(--ls-6); font-weight: var(--weight-bold); color: var(--fg-high); }
+  .mr-cap { font-size: var(--fs-1); line-height: var(--lh-1); color: var(--fg-low); }
+  .mr-list { display: flex; flex-direction: column; justify-content: center; gap: var(--space-3); }
+  .mr-row { display: grid; grid-template-columns: 104px 1fr auto; align-items: center; gap: var(--space-4); font-size: var(--fs-2); }
+  .mr-id { color: var(--fg-low); }
+  .mr-sum { color: var(--fg-high); }
+
+  @media (max-width: 1080px) { .cols { grid-template-columns: 1fr; } .mr-grid { grid-template-columns: repeat(3, 1fr); } .mr-list { grid-column: 1 / -1; } }
+  @media (max-width: 720px) {
+    .greet { flex-wrap: wrap; }
+    .greet-search { max-width: none; margin-left: 0; flex-basis: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============ GREETING ============ -->
+  <header class="greet">
+    <span class="greet-mark">BS</span>
+    <div class="greet-text">
+      <h1>Good morning, Anita</h1>
+      <p>Brookfield Senior Living &middot; Tuesday, 21 Aug</p>
+    </div>
+    <div class="search greet-search">
+      <span class="search-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34" /> <circle cx="11" cy="11" r="8" /></svg></span>
+      <input class="input" placeholder="Search portals and help articles" aria-label="Search portals and help articles" />
+    </div>
+  </header>
+
+  <div class="cols">
+
+    <!-- ======================= LEFT ======================= -->
+    <div class="col">
+
+      <section class="card is-raised">
+        <div class="card-head">
+          <h2 class="card-title">Needs your attention</h2>
+          <span class="badge is-pill spacer">3 priority items</span>
+        </div>
+
+        <div class="na-row">
+          <div class="na-main">
+            <span class="na-title">Waiting on your answer, the clock is running</span>
+            <span class="na-meta">
+              <span class="badge is-danger is-caps is-pill">Overdue</span>
+              <span>SUP-2477 &middot; Resolution target 6h &middot; 4h 12m elapsed</span>
+            </span>
+          </div>
+          <button class="btn btn-solid">Open ticket</button>
+        </div>
+
+        <div class="na-row">
+          <div class="na-main">
+            <span class="na-title">Marcus Webb replied to you</span>
+            <span class="na-meta">
+              <span class="badge is-outline is-caps is-pill">Your reply</span>
+              <span>SUP-2481 &middot; VPN drops on the Willow floor &middot; IT Service Desk</span>
+            </span>
+          </div>
+          <button class="btn btn-surface">Reply</button>
+        </div>
+
+        <div class="na-row">
+          <div class="na-main">
+            <span class="na-title">Read the resident privacy handbook</span>
+            <span class="na-meta">
+              <span class="badge is-outline is-caps is-pill">Due tomorrow</span>
+              <span>Onboarding &middot; Policy &middot; Due tomorrow, 22 Aug</span>
+            </span>
+          </div>
+          <button class="btn btn-surface">Mark done</button>
+        </div>
+
+        <div class="card-foot">
+          <span>Everything else is with someone. Nothing is waiting silently.</span>
+          <a class="link spacer" href="#">Open the full queue <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" /> <path d="m12 5 7 7-7 7" /></svg></a>
+        </div>
+      </section>
+
+      <section class="card is-raised">
+        <div class="card-head">
+          <h2 class="card-title">With someone else</h2>
+        </div>
+
+        <div class="wse-row">
+          <div class="wse-main">
+            <span class="wse-title">Second monitor for the night station</span>
+            <span class="wse-meta">SUP-2470 &middot; IT Service Desk &middot; updated 2 days ago</span>
+          </div>
+          <span class="badge is-outline is-caps is-pill">In progress</span>
+        </div>
+
+        <div class="wse-row">
+          <div class="wse-main">
+            <span class="wse-title">PointClickCare, clinical role access</span>
+            <span class="wse-meta">SUP-2465 &middot; People &amp; HR &middot; updated yesterday</span>
+          </div>
+          <span class="badge is-outline is-caps is-pill">Pending</span>
+        </div>
+
+        <div class="wse-row">
+          <div class="wse-main">
+            <span class="wse-title">Badge and Willow Wing door access</span>
+            <span class="wse-meta">Onboarding &middot; Facilities &middot; due 23 Aug</span>
+          </div>
+          <span class="badge is-outline is-caps is-pill">Not started</span>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ======================= RIGHT ======================= -->
+    <div class="col">
+
+      <section class="card is-raised">
+        <div class="card-head">
+          <span class="eyebrow">My onboarding</span>
+          <span class="dev-meta spacer">5 of 8 done</span>
+        </div>
+        <div class="progress onb-progress"><div class="progress-fill"></div></div>
+        <p class="onb-note">Three left. One is yours, two are with IT and Facilities.</p>
+      </section>
+
+      <section class="card is-raised">
+        <div class="card-head">
+          <span class="eyebrow">My courses</span>
+          <a class="link spacer" href="#">skyLearn <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6" /> <path d="M10 14 21 3" /> <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></svg></a>
+        </div>
+        <div class="dev-row">
+          <div class="dev-main">
+            <span class="dev-name">Infection control refresher</span>
+            <span class="dev-meta">Due 15 Aug</span>
+          </div>
+          <span class="badge is-danger is-caps is-pill">Overdue</span>
+        </div>
+        <div class="dev-row">
+          <div class="dev-main">
+            <span class="dev-name">Safeguarding adults, level 2</span>
+            <span class="dev-meta">Due 5 Sep</span>
+          </div>
+          <span class="badge is-outline is-caps is-pill">Not started</span>
+        </div>
+      </section>
+
+      <section class="card is-raised">
+        <div class="card-head">
+          <span class="eyebrow">Next shifts</span>
+          <a class="link spacer" href="#">skySchedule <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6" /> <path d="M10 14 21 3" /> <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></svg></a>
+        </div>
+        <div class="sh is-today">
+          <div class="sh-main">
+            <span class="sh-day">Today</span>
+            <span class="sh-time">14:00&ndash;22:00</span>
+          </div>
+          <span class="sh-where">Willow</span>
+        </div>
+        <div class="sh">
+          <div class="sh-main">
+            <span class="sh-day">Friday 23 Aug</span>
+            <span class="sh-time">06:00&ndash;14:00</span>
+          </div>
+          <span class="sh-where">Cedar</span>
+        </div>
+        <div class="sh">
+          <div class="sh-main">
+            <span class="sh-day">Saturday 24 Aug</span>
+            <span class="sh-time">06:00&ndash;14:00</span>
+          </div>
+          <span class="sh-where">Cedar</span>
+        </div>
+      </section>
+
+      <section class="card is-raised">
+        <div class="card-head"><span class="eyebrow">Raise a request</span></div>
+        <div class="portal-tiles">
+          <a class="portal-tile" href="#">
+            <span class="pt-ic"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 5a2 2 0 0 1 2 2v8.526a2 2 0 0 0 .212.897l1.068 2.127a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45l1.068-2.127A2 2 0 0 0 4 15.526V7a2 2 0 0 1 2-2z" /> <path d="M20.054 15.987H3.946" /></svg></span>
+            <span class="pt-name">IT Service Desk</span>
+            <span class="pt-count">9 request types</span>
+          </a>
+          <a class="portal-tile" href="#">
+            <span class="pt-ic"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /> <path d="M16 3.128a4 4 0 0 1 0 7.744" /> <path d="M22 21v-2a4 4 0 0 0-3-3.87" /> <circle cx="9" cy="7" r="4" /></svg></span>
+            <span class="pt-name">People &amp; HR</span>
+            <span class="pt-count">6 request types</span>
+          </a>
+          <a class="portal-tile" href="#">
+            <span class="pt-ic"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h4" /> <path d="M10 8h4" /> <path d="M14 21v-3a2 2 0 0 0-4 0v3" /> <path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2" /> <path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" /></svg></span>
+            <span class="pt-name">Facilities</span>
+            <span class="pt-count">5 request types</span>
+          </a>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- My requests: full width, one card, title inside, like the boxes above. -->
+  <section class="card is-raised full-sec">
+    <div class="card-head">
+      <h2 class="card-title">My requests</h2>
+      <a class="link spacer" href="#">Open the full list <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" /> <path d="m12 5 7 7-7 7" /></svg></a>
+    </div>
+    <div class="mr-grid">
+
+      <div class="mr-stat">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--info-solid)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" /> <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /></svg>
+        <span class="mr-num">14</span>
+        <span class="mr-cap">Total requests</span>
+      </div>
+
+      <div class="mr-stat">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--success-solid)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21.801 10A10 10 0 1 1 17 3.335" /> <path d="m9 11 3 3L22 4" /></svg>
+        <span class="mr-num">4</span>
+        <span class="mr-cap">Open</span>
+      </div>
+
+      <div class="mr-stat">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--gray-9)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /> <path d="m15 9-6 6" /> <path d="m9 9 6 6" /></svg>
+        <span class="mr-num">10</span>
+        <span class="mr-cap">Closed</span>
+      </div>
+
+      <div class="mr-list">
+        <div class="mr-row">
+          <span class="mr-id">SUP-2455</span>
+          <span class="mr-sum">Add me to the on-call rota list</span>
+          <span class="badge is-success is-caps is-pill">Solved</span>
+        </div>
+        <div class="mr-row">
+          <span class="mr-id">SUP-2401</span>
+          <span class="mr-sum">Name badge spelling correction</span>
+          <span class="badge is-outline is-caps is-pill">Closed</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+</div>
+</body>
+</html>
